@@ -5,15 +5,15 @@
     -->
 
   <server>
+    <name>Gerbera (Kinder Filme)</name>
     <port>49152</port>
+    <udn>uuid:2d006d7e-53e2-499b-88dc-8c632155fd6d</udn>
+    <home>/gerbera_home</home>
     <ui enabled="yes" show-tooltips="yes">
       <accounts enabled="no" session-timeout="30">
         <account user="gerbera" password="gerbera"/>
       </accounts>
     </ui>
-    <name>Gerbera (Kinder Filme)</name>
-    <udn>uuid:2d006d7e-53e2-499b-88dc-8c632155fd6d</udn>
-    <home>/gerbera_config</home>
     <webroot>/usr/local/share/gerbera/web</webroot>
     <!--
         How frequently (in seconds) to send ssdp:alive advertisements.

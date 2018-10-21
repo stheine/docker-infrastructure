@@ -2,25 +2,39 @@ version: "2.2"
 # Remain on v2 for https://github.com/docker/compose/issues/4513
 
 volumes:
-#   gerbera-kinder-filme_config:
-#     driver: local
-#     driver_opts:
-#       type: nfs
-#       o: addr=192.168.6.22,nolock,rw
-#       device: :/nfs/Data/linux/gerberaKinderFilme
-# 
-#   gerbera-kinder-cds_config:
-#     driver: local
-#     driver_opts:
-#       type: nfs
-#       o: addr=192.168.6.22,nolock,rw
-#       device: :/nfs/Data/linux/gerberaKinderCds
+  gerbera-kinder-cds:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/gerberaKinderCDs
+      o: bind
+
+  gerbera-kinder-filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/gerberaKinderFilme
+      o: bind
 
   gerbera-musik:
     driver: local
     driver_opts:
       type: none
       device: /share/linux/data/gerberaMusik
+      o: bind
+
+  kinder-cds:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/KinderCDs
+      o: bind
+
+  kinder-filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/KinderFilme
       o: bind
 
   musik:
@@ -30,97 +44,60 @@ volumes:
       device: /share/Musik
       o: bind
 
-#   nas_fritzbox:
-# #    driver: cifs
-# #    driver_opts:
-# #      share: fritz.nas/fritz.nas/Fritz_NAS_HD
-#     driver: local
-#     driver_opts:
-#       type: none
-#       device: /mnt/fritz_nas_hd
-#       o: bind
-# 
 #   portainer:
 #     driver: local
 #     driver_opts:
 #       type: nfs
 #       o: addr=192.168.6.22,nolock,rw
 #       device: :/nfs/Data/linux/portainer-strom
-# 
+#
 #   pi-hole_etc_pihole:
 #     driver: local
 #     driver_opts:
 #       type: nfs
 #       o: addr=192.168.6.22,nolock,rw
 #       device: :/nfs/Data/linux/pi-hole/etc_pihole
-# 
+#
 #   pi-hole_etc_dnsmasq.d:
 #     driver: local
 #     driver_opts:
 #       type: nfs
 #       o: addr=192.168.6.22,nolock,rw
 #       device: :/nfs/Data/linux/pi-hole/etc_dnsmasq.d
-# 
-# #  readymedia_cache:
-# #    driver: local
-# #    driver_opts:
-# #      type: nfs
-# #      o: addr=192.168.6.22,nolock,rw
-# #      device: :/nfs/Data/linux/readymedia/cache
-# #
-# #  readymedia_log:
-# #    driver: local
-# #    driver_opts:
-# #      type: nfs
-# #      o: addr=192.168.6.22,nolock,rw
-# #      device: :/nfs/Data/linux/readymedia/log
-# 
-#   strom:
-#     driver: local
-#     driver_opts:
-#       type: nfs
-#       o: addr=192.168.6.22,nolock,rw
-#       device: :/nfs/Data/linux/strom
 
 networks:
   backend:
     driver: bridge
 
 services:
-#   gerbera-kinder-filme:
-#     restart: unless-stopped
-#     build:
-#       context: gerbera-kinder-filme
-#       args:
-#         - CACHE_DATE=2018-07-16
-#     # Note: 'network_mode: host' is required for the upnp server for multicast traffic
-#     #       to detect the upnp server.
-#     network_mode: host
-#     volumes:
-#       - nas_fritzbox:/mnt/nas_fritzbox:nocopy
-#       - gerbera-kinder-filme_config:/gerbera_config
-# 
-#   gerbera-kinder-cds:
-#     restart: unless-stopped
-#     build:
-#       context: gerbera-kinder-cds
-#       args:
-#         - CACHE_DATE=2018-07-16
-#     # Note: 'network_mode: host' is required for the upnp server for multicast traffic
-#     #       to detect the upnp server.
-#     network_mode: host
-#     volumes:
-#       - nas_fritzbox:/mnt/nas_fritzbox:nocopy
-#       - gerbera-kinder-cds_config:/gerbera_config
-# 
+# Note: 'network_mode: host' is required for the upnp server for multicast traffic
+#       to detect the upnp server.
+  gerbera-kinder-filme:
+    restart: unless-stopped
+    build:
+      context: gerbera
+    network_mode: host
+    environment:
+      - CONFIG=49152-kinder-filme
+    volumes:
+      - kinder-filme:/media:nocopy
+      - gerbera-kinder-filme:/gerbera_home
+
+  gerbera-kinder-cds:
+    restart: unless-stopped
+    build:
+      context: gerbera
+    network_mode: host
+    environment:
+      - CONFIG=49153-kinder-cds
+    volumes:
+      - kinder-cds:/media:nocopy
+      - gerbera-kinder-cds:/gerbera_home
+
   gerbera-musik:
     restart: unless-stopped
     build:
       context: gerbera
-#      args:
-#        - CACHE_DATE=2018-07-16
-    # Note: 'network_mode: host' is required for the upnp server for multicast traffic
-    #       to detect the upnp server.
     network_mode: host
     environment:
       - CONFIG=49154-musik
