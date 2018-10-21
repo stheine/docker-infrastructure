@@ -78,7 +78,7 @@ services:
       context: gerbera
     network_mode: host
     environment:
-      - CONFIG=49152-kinder-filme
+      - CONFIG=49155-kinder-filme
     volumes:
       - kinder-filme:/media:nocopy
       - gerbera-kinder-filme:/gerbera_home
@@ -89,7 +89,7 @@ services:
       context: gerbera
     network_mode: host
     environment:
-      - CONFIG=49153-kinder-cds
+      - CONFIG=49156-kinder-cds
     volumes:
       - kinder-cds:/media:nocopy
       - gerbera-kinder-cds:/gerbera_home
