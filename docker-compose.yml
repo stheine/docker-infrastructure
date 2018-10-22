@@ -44,30 +44,16 @@ volumes:
       device: /share/Musik
       o: bind
 
-#   portainer:
-#     driver: local
-#     driver_opts:
-#       type: nfs
-#       o: addr=192.168.6.22,nolock,rw
-#       device: :/nfs/Data/linux/portainer-strom
-#
-#   pi-hole_etc_pihole:
-#     driver: local
-#     driver_opts:
-#       type: nfs
-#       o: addr=192.168.6.22,nolock,rw
-#       device: :/nfs/Data/linux/pi-hole/etc_pihole
-#
-#   pi-hole_etc_dnsmasq.d:
-#     driver: local
-#     driver_opts:
-#       type: nfs
-#       o: addr=192.168.6.22,nolock,rw
-#       device: :/nfs/Data/linux/pi-hole/etc_dnsmasq.d
+  portainer:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/portainer
+      o: bind
 
-networks:
-  backend:
-    driver: bridge
+#networks:
+#   backend:
+#     driver: bridge
 
 services:
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
@@ -105,61 +91,11 @@ services:
       - musik:/media:nocopy
       - gerbera-musik:/gerbera_home
 
-#   pi-hole:
-#     restart: unless-stopped
-#     build: pi-hole
-# #    image: diginc/pi-hole-multiarch:debian_armhf
-#     ports:
-#       - 53:53/tcp
-#       - 53:53/udp
-#       - 80:80
-#       - 443:443
-#     environment:
-#       - ServerIP=192.168.6.6
-#       - WEBPASSWORD=1234
-#     volumes:
-#       - pi-hole_etc_pihole:/etc/pihole:nocopy
-#       - pi-hole_etc_dnsmasq.d:/etc/dnsmasq.d:nocopy
-# 
-#   portainer:
-#     restart: unless-stopped
-#     image: portainer/portainer
-#     ports:
-#       - 8008:9000
-#     volumes:
-#       - /var/run/docker.sock:/var/run/docker.sock
-#       - portainer:/data:nocopy
-# 
-#   strom:
-#     restart: unless-stopped
-#     build:
-#       context: strom
-#       args:
-#         - CACHE_DATE=2018-04-18
-#     ports:
-#       - 9083:9083
-#     cap_add:
-#       - SYS_RAWIO
-#     devices:
-#       - /dev/ttyAMA0:/dev/ttyAMA0
-#     networks:
-#       - backend
-#     volumes:
-#       - strom:/var/strom:nocopy
-# #    links:
-# #      - postfix
-# #      - pigpiod
-# 
-#   stubby:
-#     restart: unless-stopped
-#     build:
-#       context: stubby
-#       args:
-#         - CACHE_DATE=2018-07-15
-#     ports:
-# #     - 127.0.0.1:53:53/tcp
-# #     - 127.0.0.1:53:53/udp
-#      - 6653:6653/tcp
-#      - 6653:6653/udp
-#     networks:
-#       - backend
+  portainer:
+    restart: unless-stopped
+    image: portainer/portainer
+    ports:
+      - 8008:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data:nocopy
