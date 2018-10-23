@@ -51,9 +51,41 @@ volumes:
       device: /share/linux/data/portainer
       o: bind
 
-#networks:
+#  pihole_etc_pihole:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /share/linux/pihole/etc_pihole
+#      o: bind
+
+#  pihole_etc_dnsmasq.d:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /share/linux/pihole/etc_dnsmasq.d
+#      o: bind
+
+# networks:
+#   bridge:
+#     driver: bridge
+#  qnet-static:
+#    driver: qnet
+#    ipam:
+#      driver: qnet
+#      options:
+#        iface: "eth0"
+#      config:
+#      - subnet: 192.168.6.1/24
+#        gateway: 192.168.6.1
+#
 #   backend:
 #     driver: bridge
+#  vpcbr:
+#    driver: bridge
+#    ipam:
+#      config:
+#        - subnet: 192.168.6.0/24
+#          gateway: 192.168.6.1
 
 services:
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
@@ -91,9 +123,34 @@ services:
       - musik:/media:nocopy
       - gerbera-musik:/gerbera_home
 
+#  pihole:
+#    restart: unless-stopped
+#    image: pihole/pihole
+#    networks:
+#      qnet-static:
+#        ipv4_address: 192.168.6.8
+#    mac_address: 02:42:9B:32:46:48
+#    ports:
+#      - 53:53/tcp
+#      - 53:53/udp
+#      - 80:80
+#      - 443:443
+#    environment:
+#      - ServerIP=192.168.6.8
+#      - WEBPASSWORD=1234
+#      - IPv6=False
+#      - TZ=Europe/Berlin
+#      - DNS1="1.1.1.1"
+#      - DNS2="1.0.0.1"
+#    volumes:
+#      - pihole_etc_pihole:/etc/pihole:nocopy
+#      - pihole_etc_dnsmasq.d:/etc/dnsmasq.d:nocopy
+
   portainer:
     restart: unless-stopped
     image: portainer/portainer
+#    networks:
+#      - bridge
     ports:
       - 8008:9000
     volumes:

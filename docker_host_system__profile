@@ -22,9 +22,10 @@ function set_ps1
     PS1+="\[$BOLDRED\]$FAILEDX($LAST_RESULT)\[$NORMAL\] "
   fi
 
-  PS1+="\[$BGGREEN\]hypriot\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] $ "
+  PS1+="\[$BGGREEN\]hypriot\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] # "
 }
 PROMPT_COMMAND='set_ps1'
 
 alias ll='ls -l'
 set -o vi
+export PATH=$PATH:/share/CACHEDEV1_DATA/.qpkg/container-station/bin/
