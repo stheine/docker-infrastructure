@@ -5,9 +5,9 @@
     -->
 
   <server>
-    <name>Gerbera (Musik)</name>
-    <port>49154</port>
-    <udn>uuid:dc2aaa7d-5ecc-498f-af56-e733271a50b1</udn>
+    <name>Gerbera (Kinder Filme)</name>
+    <port>59155</port>
+    <udn>uuid:2d006d7e-53e2-499b-88dc-8c632155fd6d</udn>
     <home>/gerbera_home</home>
     <ui enabled="yes" show-tooltips="yes">
       <accounts enabled="no" session-timeout="30">

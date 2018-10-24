@@ -1,6 +1,13 @@
 version: "2.2"
 # Remain on v2 for https://github.com/docker/compose/issues/4513
 
+# Ports
+#  8008 portainer         http://192.168.6.7:8008/
+# 59080 apache2           http://192.168.6.7:59080/
+# 59154 musik             http://192.168.6.7:59154/
+# 59155 kinder-filme      http://192.168.6.7:59155/
+# 59156 kinder-cds        http://192.168.6.7:59156/
+
 volumes:
   gerbera-kinder-cds:
     driver: local
@@ -23,21 +30,21 @@ volumes:
       device: /share/linux/data/gerberaMusik
       o: bind
 
-  kinder-cds:
+  media_kinder-cds:
     driver: local
     driver_opts:
       type: none
       device: /share/KinderCDs
       o: bind
 
-  kinder-filme:
+  media_kinder-filme:
     driver: local
     driver_opts:
       type: none
       device: /share/KinderFilme
       o: bind
 
-  musik:
+  media_musik:
     driver: local
     driver_opts:
       type: none
@@ -51,11 +58,35 @@ volumes:
       device: /share/linux/data/portainer
       o: bind
 
+  www:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/www
+      o: bind
+
 # networks:
 #   bridge:
 #     driver: bridge
 
 services:
+  apache2:
+    restart: unless-stopped
+    build: apache2
+    ports:
+      - 59080:80
+#    networks:
+#      - backend
+    volumes:
+#      - jalousie:/var/jalousie
+#      - strom:/var/strom
+#      - vito:/var/vito
+#      - webdav:/var/webdav
+      - www:/var/www
+#      - www_auth:/var/www_auth
+#    links:
+#      - jalousie
+
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
   gerbera-kinder-filme:
@@ -64,9 +95,9 @@ services:
       context: gerbera
     network_mode: host
     environment:
-      - CONFIG=49155-kinder-filme
+      - CONFIG=59155-kinder-filme
     volumes:
-      - kinder-filme:/media:nocopy
+      - media_kinder-filme:/media:ro
       - gerbera-kinder-filme:/gerbera_home
 
   gerbera-kinder-cds:
@@ -75,9 +106,9 @@ services:
       context: gerbera
     network_mode: host
     environment:
-      - CONFIG=49156-kinder-cds
+      - CONFIG=59156-kinder-cds
     volumes:
-      - kinder-cds:/media:nocopy
+      - media_kinder-cds:/media:ro
       - gerbera-kinder-cds:/gerbera_home
 
   gerbera-musik:
@@ -86,9 +117,9 @@ services:
       context: gerbera
     network_mode: host
     environment:
-      - CONFIG=49154-musik
+      - CONFIG=59154-musik
     volumes:
-      - musik:/media:nocopy
+      - media_musik:/media:ro
       - gerbera-musik:/gerbera_home
 
   portainer:
@@ -98,4 +129,4 @@ services:
       - 8008:9000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - portainer:/data:nocopy
+      - portainer:/data
