@@ -2,6 +2,7 @@ version: "2.2"
 # Remain on v2 for https://github.com/docker/compose/issues/4513
 
 # Ports
+#   993 dovecot
 #  8008 portainer         http://192.168.6.7:8008/
 # 59080 apache2           http://192.168.6.7:59080/
 # 59443 apache2           https://192.168.6.7:59443/
@@ -29,6 +30,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/gerberaMusik
+      o: bind
+
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/letsencrypt
       o: bind
 
   media_kinder-cds:
@@ -59,6 +67,13 @@ volumes:
       device: /share/linux/data/portainer
       o: bind
 
+  vmail:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/vmail
+      o: bind
+
   www:
     driver: local
     driver_opts:
@@ -87,6 +102,15 @@ services:
 #      - www_auth:/var/www_auth
 #    depends_on:
 #      - jalousie
+
+  dovecot:
+    restart: unless-stopped
+    build: dovecot
+    ports:
+      - 993:993
+    volumes:
+      - letsencrypt:/usr/local/etc/letsencrypt:nocopy
+      - vmail:/home/vmail:nocopy
 
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
