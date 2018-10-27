@@ -6,7 +6,7 @@ version: "2.2"
 #    53 pihole            dns
 #   993 dovecot           imap
 #  8008 portainer         http://192.168.6.7:8008/
-# 59080 apache2           http://192.168.6.7:59080/
+# 59080 nginx             http://192.168.6.7:59080/
 # 59081 pihole            http://192.168.6.7:59081/admin/index.php
 # 59443 apache2           https://192.168.6.7:59443/
 # 59154 musik             http://192.168.6.7:59154/
@@ -33,6 +33,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/gerberaMusik
+      o: bind
+
+  jalousie:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/jalousie
       o: bind
 
   letsencrypt:
@@ -91,6 +98,20 @@ volumes:
       device: /share/linux/data/postfix_creds
       o: bind
 
+  strom:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/strom
+      o: bind
+
+  vito:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/vito
+      o: bind
+
   vmail:
     driver: local
     driver_opts:
@@ -105,6 +126,13 @@ volumes:
       device: /share/linux/data/www
       o: bind
 
+  www_auth:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/www_auth
+      o: bind
+
 # networks:
 #   bridge:
 #     driver: bridge
@@ -113,19 +141,13 @@ services:
   apache2:
     restart: unless-stopped
     build: apache2
-#    ports:
-#      - 59080:80
-#    networks:
-#      - backend
+    hostname: qnap-apache2
     volumes:
-#      - jalousie:/var/jalousie
-#      - strom:/var/strom
-#      - vito:/var/vito
-#      - webdav:/var/webdav
+      - jalousie:/var/jalousie
+      - strom:/var/strom
+      - vito:/var/vito
       - www:/var/www
-#      - www_auth:/var/www_auth
-#    depends_on:
-#      - jalousie
+      - www_auth:/var/www_auth
 
   dovecot:
     restart: unless-stopped
@@ -184,8 +206,6 @@ services:
 #      - letsencrypt_www:/var/letsencrypt
     depends_on:
       - apache2
-#      - jalousie
-#    command: /bin/bash -c "envsubst < /etc/nginx/conf.d/mysite.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
 
   pihole:
     restart: unless-stopped

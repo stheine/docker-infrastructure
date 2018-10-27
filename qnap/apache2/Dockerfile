@@ -63,4 +63,4 @@ RUN \
 COPY httpd.conf /usr/local/apache2/conf/
 
 EXPOSE 80
-VOLUME /var/jalousie /var/strom /var/vito /var/webdav /var/www /var/www_auth
+VOLUME /var/jalousie /var/strom /var/vito /var/www /var/www_auth
