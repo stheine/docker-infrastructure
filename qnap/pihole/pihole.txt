@@ -1,0 +1,6 @@
+https://hub.docker.com/r/pihole/pihole/
+
+https://discourse.pi-hole.net/t/pi-hole-und-fritzbox-setup-anleitung/7313
+https://forum.qnap.com/viewtopic.php?f=142&t=143669
+
+http://192.168.6.7/admin/

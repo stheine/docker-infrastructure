@@ -2,10 +2,12 @@ version: "2.2"
 # Remain on v2 for https://github.com/docker/compose/issues/4513
 
 # Ports
-#    53 postfix
-#   993 dovecot
+#    25 postfix           smtp
+#    53 pihole            dns
+#   993 dovecot           imap
 #  8008 portainer         http://192.168.6.7:8008/
 # 59080 apache2           http://192.168.6.7:59080/
+# 59081 pihole            http://192.168.6.7:59081/admin/index.php
 # 59443 apache2           https://192.168.6.7:59443/
 # 59154 musik             http://192.168.6.7:59154/
 # 59155 kinder-filme      http://192.168.6.7:59155/
@@ -59,6 +61,20 @@ volumes:
     driver_opts:
       type: none
       device: /share/Musik
+      o: bind
+
+  pihole_etc_pihole:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/pihole/etc_pihole
+      o: bind
+
+  pihole_etc_dnsmasq.d:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/pihole/etc_dnsmasq.d
       o: bind
 
   portainer:
@@ -171,6 +187,22 @@ services:
 #      - jalousie
 #    command: /bin/bash -c "envsubst < /etc/nginx/conf.d/mysite.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
 
+  pihole:
+    restart: unless-stopped
+    build: pihole
+    hostname: qnap-pihole
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 59081:80
+#      - 443:443
+    environment:
+      - ServerIP=192.168.6.7
+      - WEBPASSWORD=1234
+    volumes:
+      - pihole_etc_pihole:/etc/pihole:nocopy
+      - pihole_etc_dnsmasq.d:/etc/dnsmasq.d:nocopy
+
   portainer:
     restart: unless-stopped
     image: portainer/portainer
@@ -183,7 +215,7 @@ services:
   postfix:
     restart: unless-stopped
     build: postfix
-    hostname: qnap
+    hostname: qnap-postfix
     dns: 8.8.8.8
     ports:
       - 25:25
