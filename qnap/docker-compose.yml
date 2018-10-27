@@ -2,6 +2,7 @@ version: "2.2"
 # Remain on v2 for https://github.com/docker/compose/issues/4513
 
 # Ports
+#    53 postfix
 #   993 dovecot
 #  8008 portainer         http://192.168.6.7:8008/
 # 59080 apache2           http://192.168.6.7:59080/
@@ -65,6 +66,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/portainer
+      o: bind
+
+  postfix_creds:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/postfix_creds
       o: bind
 
   vmail:
@@ -171,3 +179,13 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer:/data
+
+  postfix:
+    restart: unless-stopped
+    build: postfix
+    hostname: qnap
+    dns: 8.8.8.8
+    ports:
+      - 25:25
+    volumes:
+      - postfix_creds:/postfix_creds
