@@ -3,11 +3,9 @@ version: "2.2"
 
 # Ports
 #    25 postfix           smtp
-##    53 pihole            dns
 #   993 dovecot           imap
 #  8008 portainer         http://192.168.6.7:8008/
 # 59080 nginx             http://192.168.6.7:59080/
-## 59081 pihole            http://192.168.6.7:59081/admin/index.php
 # 59443 nginx             https://192.168.6.7:59443/
 # 59154 musik             http://192.168.6.7:59154/
 # 59155 kinder-filme      http://192.168.6.7:59155/
@@ -69,20 +67,6 @@ volumes:
       type: none
       device: /share/Musik
       o: bind
-
-#  pihole_etc_pihole:
-#    driver: local
-#    driver_opts:
-#      type: none
-#      device: /share/linux/data/pihole/etc_pihole
-#      o: bind
-#
-#  pihole_etc_dnsmasq.d:
-#    driver: local
-#    driver_opts:
-#      type: none
-#      device: /share/linux/data/pihole/etc_dnsmasq.d
-#      o: bind
 
   portainer:
     driver: local
@@ -208,22 +192,6 @@ services:
 #      - letsencrypt_www:/var/letsencrypt
     depends_on:
       - apache2
-
-#  pihole:
-#    restart: 'no'
-#    build: pihole
-#    hostname: qnap-pihole
-#    ports:
-#      - 53:53/tcp
-#      - 53:53/udp
-#      - 59081:80
-##      - 443:443
-#    environment:
-#      - ServerIP=192.168.6.7
-#      - WEBPASSWORD=1234
-#    volumes:
-#      - pihole_etc_pihole:/etc/pihole:nocopy
-#      - pihole_etc_dnsmasq.d:/etc/dnsmasq.d:nocopy
 
   portainer:
     restart: unless-stopped
