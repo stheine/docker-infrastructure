@@ -22,4 +22,4 @@ COPY docker_container_profile /root/.profile
 # CMD ["/bin/bash", "-l"]
 
 EXPOSE 80 443
-#VOLUME /etc/nginx/certs
+VOLUME /etc/letsencrypt /var/letsencrypt

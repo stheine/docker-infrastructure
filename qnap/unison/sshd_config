@@ -1,0 +1,16 @@
+Port                            1499
+Protocol                        2
+HostKey                         /var/sshd_certs/host
+
+# LogLevel                        DEBUG
+
+PermitRootLogin                 yes
+PermitUserEnvironment           yes
+
+ChallengeResponseAuthentication no
+PasswordAuthentication          no
+
+PrintMotd                       no
+
+# ForceCommand                    /bin/date
+# ForceCommand                    /unison.sh

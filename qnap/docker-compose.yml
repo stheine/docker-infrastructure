@@ -47,6 +47,13 @@ volumes:
       device: /share/linux/data/letsencrypt
       o: bind
 
+  letsencrypt_www:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/letsencrypt_www
+      o: bind
+
   media_kinder-cds:
     driver: local
     driver_opts:
@@ -82,11 +89,25 @@ volumes:
       device: /share/linux/data/postfix_creds
       o: bind
 
+  sshd_certs:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/sshd_certs
+      o: bind
+
   strom:
     driver: local
     driver_opts:
       type: none
       device: /share/linux/data/strom
+      o: bind
+
+  unison:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/unison
       o: bind
 
   vito:
@@ -181,15 +202,13 @@ services:
   nginx:
     restart: unless-stopped
     build: nginx
-#    image: nginx
     hostname: qnap-nginx
     ports:
       - 59080:80
       - 59443:443
     volumes:
-      - ./mysite.template:/etc/nginx/conf.d/mysite.template
-#      - letsencrypt:/etc/letsencrypt
-#      - letsencrypt_www:/var/letsencrypt
+      - letsencrypt:/etc/letsencrypt
+      - letsencrypt_www:/var/letsencrypt
     depends_on:
       - apache2
 
@@ -211,3 +230,14 @@ services:
       - 25:25
     volumes:
       - postfix_creds:/postfix_creds
+
+  unison:
+    restart: unless-stopped
+    build: unison
+    hostname: qnap-unison
+    ports:
+      - 1499:1499
+    volumes:
+      - media_musik:/var/musik:nocopy
+      - sshd_certs:/var/sshd_certs:nocopy
+      - unison:/root/.unison:nocopy
