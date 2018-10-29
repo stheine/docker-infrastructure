@@ -1,0 +1,89 @@
+https://github.com/Apollon77/smartmeter-obis
+http://www.schatenseite.de/2016/05/30/smart-message-language-stromzahler-auslesen/
+den leseteil (SFH309FA->GPIO 15 RXD) nutzen von:
+https://github.com/openv/openv/wiki/Bauanleitung-RaspberryPi
+https://raspberry.tips/raspberrypi-tutorials/smartmeter-stromzaehler-mit-dem-raspberry-pi-auslesen-und-aufzeichnen/
+
+
+sudo stty -F /dev/ttyAMA0 1:0:8bd:0:3:1c:7f:15:4:5:1:0:11:13:1a:0:12:f:17:16:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0
+
+sudo apt-get -y install minicom
+
+sudo minicom -s
+
+$ cat /etc/minicom/minirc.dfl
+# Machine-generated file - use "minicom -s" to change parameters.
+pu port             /dev/ttyAMA0
+pu baudrate         9600
+pu bits             8
+pu parity           N
+pu stopbits         1
+
+
+ln -s /mnt/mybook_data/linux/docker_strom /home/pirate/docker
+
+
+
+{
+  "name": "monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "monitor.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "serialport": "^6.2.0",
+    "smartmeter-obis": "^1.1.2"
+  }
+}
+
+
+
+
+
+var SmartmeterObis = require('smartmeter-obis');
+
+var options = {
+    'protocol': "SmlProtocol",
+    'transport': "SerialRequestResponseTransport",
+    'transportSerialPort': "/dev/ttyAMA0",
+    'transportSerialBaudrate': 9600,
+    'transportSerialDataBits': 8,
+    'transportSerialStopBits': 1,
+    'transportSerialParity': 'none',
+    'protocolD0WakeupCharacters': 40,
+    'protocolD0DeviceAddress': '',
+    'requestInterval': 10,
+    'obisNameLanguage': 'en',
+    'obisFallbackMedium': 6
+};
+
+function displayData(err, obisResult) {
+    if (err) {
+        // handle error
+        // if you want to cancel the processing because of this error call smTransport.stop() before returning
+        // else processing continues
+        return;
+    }
+    for (var obisId in obisResult) {
+        console.log(
+            obisResult[obisId].idToString() + ': ' +
+            SmartmeterObis.ObisNames.resolveObisName(obisResult[obisId], options.obisNameLanguage).obisName + ' = ' +
+            obisResult[obisId].valueToString()
+        );
+    }
+
+}
+
+var smTransport = SmartmeterObis.init(options, displayData);
+
+smTransport.process();
+
+setTimeout(smTransport.stop, 60000);
+
+
+
+

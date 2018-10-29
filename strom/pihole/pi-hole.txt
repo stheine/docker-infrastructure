@@ -1,0 +1,5 @@
+https://hub.docker.com/r/diginc/pi-hole/
+
+https://discourse.pi-hole.net/t/pi-hole-und-fritzbox-setup-anleitung/7313
+
+http://192.168.6.6/admin/

@@ -1,0 +1,85 @@
+version: "2.2"
+# Remain on v2 for https://github.com/docker/compose/issues/4513
+
+volumes:
+  # TODO when switching to qnap
+  # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
+  # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
+
+  portainer:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.6.22,nolock,rw
+      device: :/nfs/Data/linux/portainer-strom
+
+  pihole_etc_pihole:
+    driver: local
+    driver_opts:
+      type: none
+      device: /docker-data/pihole/etc_pihole
+      o: bind
+
+  pihole_etc_dnsmasq.d:
+    driver: local
+    driver_opts:
+      type: none
+      device: /docker-data/pihole/etc_dnsmasq.d
+      o: bind
+
+  strom:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.6.22,nolock,rw
+      device: :/nfs/Data/linux/strom
+
+networks:
+  backend:
+    driver: bridge
+
+services:
+  pihole:
+    restart: unless-stopped
+    build: pihole
+    hostname: pi3-pihole
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 80:80
+      - 443:443
+    environment:
+      - ServerIP=192.168.6.6
+      - WEBPASSWORD=1234
+    volumes:
+      - pihole_etc_pihole:/etc/pihole:nocopy
+      - pihole_etc_dnsmasq.d:/etc/dnsmasq.d:nocopy
+
+  portainer:
+    restart: unless-stopped
+    image: portainer/portainer
+    ports:
+      - 8008:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data:nocopy
+
+  strom:
+    restart: unless-stopped
+    build:
+      context: strom
+      args:
+        - CACHE_DATE=2018-04-18
+    ports:
+      - 9083:9083
+    cap_add:
+      - SYS_RAWIO
+    devices:
+      - /dev/ttyAMA0:/dev/ttyAMA0
+    networks:
+      - backend
+    volumes:
+      - strom:/var/strom:nocopy
+#    links:
+#      - postfix
+#      - pigpiod

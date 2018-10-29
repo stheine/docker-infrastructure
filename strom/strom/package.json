@@ -1,0 +1,21 @@
+{
+  "name": "monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "monitor.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "check-types": "^7.3.0",
+    "es6-promisify": "^6.0.0",
+    "fs-extra": "^5.0.0",
+    "lodash": "^4.17.5",
+    "rrdtool": "0.1.1",
+    "moment": "2.22.2",
+    "serialport": "^6.2.0",
+    "smartmeter-obis": "^1.1.2"
+  }
+}
