@@ -1,1 +1,1 @@
-# jalousie docker setup
+# docker setup for the `jalousie` raspi
