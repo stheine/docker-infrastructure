@@ -2,3 +2,4 @@
 
 - [qnap](qnap/)
 - [strom](strom/)
+- [jalousie](jalousie/)

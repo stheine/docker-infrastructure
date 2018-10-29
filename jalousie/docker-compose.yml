@@ -1,0 +1,186 @@
+version: "3.2"
+
+volumes:
+  # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
+  # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
+
+#  jalousie_mybook_nfs:
+#    driver: local
+#    driver_opts:
+#      type: nfs
+#      o: addr=192.168.6.22,nolock,rw
+#      device: :/nfs/Data/linux/jalousie
+#  jalousie_qnap_nfs: # I can't get the nfsvers=3 to work
+#    driver: local
+#    driver_opts:
+#      type: nfs
+#      o: addr=192.168.6.7,nfsvers=3
+#      device: /linux/data/jalousie
+
+  jalousie:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/jalousie
+      o: bind
+
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.6.22,nolock,rw
+      device: :/nfs/Data/linux/letsencrypt
+
+  letsencrypt_www:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.6.22,nolock,rw
+      device: :/nfs/Data/linux/letsencrypt_www
+
+#  nas_fritzbox:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /mnt/fritz_nas_hd
+#      o: bind
+##    driver: cifs
+##    driver_opts:
+##      share: fritz.nas/fritz.nas/Fritz_NAS_HD
+
+  portainer:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.6.22,nolock,rw
+      device: :/nfs/Data/linux/portainer
+
+  postfix_creds:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=192.168.6.22,nolock,ro
+      device: :/nfs/Data/linux/postfix_creds
+
+  strom:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/strom
+      o: bind
+
+#  twonkyserver:
+#    driver: local
+#    driver_opts:
+#      type: nfs
+#      o: addr=192.168.6.22,nolock,rw
+#      device: :/nfs/Data/linux/twonkyserver
+
+  vito:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/vito
+      o: bind
+
+networks:
+  backend:
+    driver: bridge
+
+services:
+  portainer:
+    restart: unless-stopped
+    image: portainer/portainer
+    ports:
+      - 8008:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data:nocopy
+
+  certbot:
+    # Note: This container is started with /bin/true. This is just a dummy to prevent it from doing anything.
+    #       The real action is called by cron '/mnt/mybook_data/linux/docker/certbot/renew.sh'
+    restart: "no"
+    build: certbot
+#    command: /bin/true
+    volumes:
+      - letsencrypt:/etc/letsencrypt:nocopy
+      - letsencrypt_www:/var/letsencrypt
+
+  pigpiod:
+    restart: unless-stopped
+    build: pigpiod
+    cap_add:
+      - SYS_RAWIO
+    devices:
+      - /dev/mem:/dev/mem
+      - /dev/vcio:/dev/vcio
+    networks:
+      - backend
+    ports:
+      - 8888:8888
+
+  jalousie:
+    restart: unless-stopped
+    build:
+      context: jalousie
+      args:
+        - CACHE_DATE=2018-01-20-a
+    ports:
+      - 9124:9124
+    networks:
+      - backend
+    volumes:
+      - jalousie:/var/jalousie:nocopy
+      - strom:/var/strom:nocopy
+      - vito:/var/vito:nocopy,ro
+    links:
+      - postfix
+      - pigpiod
+
+  vito:
+    restart: unless-stopped
+    build: vito
+    networks:
+      - backend
+    volumes:
+      - vito:/var/vito:nocopy
+    links:
+      - postfix
+      - vcontrold
+
+  postfix:
+    restart: unless-stopped
+    build: postfix
+    ports:
+      - "25:25"
+    networks:
+      - backend
+    volumes:
+      - postfix_creds:/postfix_creds:nocopy
+
+  vcontrold:
+    restart: unless-stopped
+    build: vcontrold
+    ports:
+      - 3002:3002
+    cap_add:
+      - SYS_RAWIO
+    devices:
+      - /dev/ttyAMA0:/dev/ttyAMA0
+    networks:
+      - backend
+
+#  twonky:
+#    restart: unless-stopped
+#    build: twonky
+#    # Note: 'network_mode: host' is required for twonky to receive multicast traffic
+#    #       to detect the upnp server.
+#    network_mode: host
+#    ports:
+#      - 1030:1030/udp
+#      - 1900:1900/udp
+#      - 9000:9000
+#    volumes:
+#      - nas_fritzbox:/mnt/nas_fritzbox:nocopy
+#      - twonkyserver:/var/twonky/twonkyserver:nocopy

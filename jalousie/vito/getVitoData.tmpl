@@ -1,0 +1,68 @@
+if [ "$E14" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C14:$E14" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E15" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C15:$E15" >>/var/vito/error.log
+  exit 1;
+fi
+
+/vito/checkError.sh "$R14" "$9" "$R15"
+
+if [ "$E1" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C1:$E1" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E2" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C2:$E2" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E3" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C3:$E3" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E4" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C4:$E4" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E5" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C5:$E5" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E6" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C6:$E6" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E7" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C7:$E7" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E8" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C8:$E8" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E9" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C9:$E9" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E10" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C10:$E10" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E11" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C11:$E11" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E12" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C12:$E12" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E13" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C13:$E13" >>/var/vito/error.log
+  exit 1;
+fi
+
+/opt/rrdtool/bin/rrdtool update /var/vito/vito.rrd "N:$1:$2:$3:$4:$5:$6:$7:$8:$9:$10:$11:$13"
+
+echo "$1" > /var/vito/_tempAussen.dat
+echo "$9" > /var/vito/_brennerVerbrauch.dat

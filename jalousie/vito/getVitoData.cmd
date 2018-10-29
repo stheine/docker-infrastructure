@@ -1,0 +1,15 @@
+getTempAussen
+getTempKessel
+getTempPufferOben
+getTempPufferUnten
+getTempWarmwasser
+getTempFlamme
+getBrennerStunden
+getBrennerStarts
+getBrennerVerbrauch
+getKesselLeistung
+getLambda
+unit off
+getStatusZirkulation
+getError01
+getSystemTime

@@ -1,0 +1,27 @@
+export ESC=`echo "\\033"`
+BOLDRED="$ESC[1;31m"
+BGBLUE="$ESC[48;5;4m$ESC[38;5;7m"
+INVERSE="$ESC[7m"
+FAILEDX='\342\234\227'
+NORMAL="$ESC[0m"
+
+
+function set_ps1
+{
+  LAST_RESULT=$? # Must come first!
+
+  PS1=""
+
+  # If the last command failed, print a red X.
+  if [ $LAST_RESULT != 0 ]
+  then
+    PS1+="\[$BOLDRED\]$FAILEDX($LAST_RESULT)\[$NORMAL\] "
+  fi
+
+  PS1+="\[$BGBLUE\]docker\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] # "
+}
+PROMPT_COMMAND='set_ps1'
+
+alias ll='ls -l'
+set -o vi
+

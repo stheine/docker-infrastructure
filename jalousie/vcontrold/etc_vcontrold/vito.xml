@@ -1,0 +1,1078 @@
+<vito>
+  <devices>
+    <device ID="2033" name="VBC550P" protocol="P300" />
+  </devices>
+  <commands>
+
+<!-- Bestaetigt Stefan -->
+
+    <command name='getDevType' protocmd='getaddr' >
+      <addr>00F8</addr>
+      <len>2</len>
+      <unit>DT</unit>
+      <description>Device Type der Steuerung</description>
+    </command>
+
+    <command name='getSystemTime' protocmd='getaddr' >
+      <addr>088E</addr>
+      <len>8</len>
+      <unit>TI</unit>
+      <description>Systemzeit</description>
+    </command>
+
+    <command name='getError01' protocmd='getaddr' >
+      <addr>7507</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 1</description>
+    </command>
+    <command name='getError02' protocmd='getaddr' >
+      <addr>7510</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 2</description>
+    </command>
+    <command name='getError03' protocmd='getaddr' >
+      <addr>7519</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 3</description>
+    </command>
+    <command name='getError04' protocmd='getaddr' >
+      <addr>7522</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 4</description>
+    </command>
+    <command name='getError05' protocmd='getaddr' >
+      <addr>752B</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 5</description>
+    </command>
+    <command name='getError06' protocmd='getaddr' >
+      <addr>7534</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 6</description>
+    </command>
+    <command name='getError07' protocmd='getaddr' >
+      <addr>753D</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 7</description>
+    </command>
+    <command name='getError08' protocmd='getaddr' >
+      <addr>7546</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 8</description>
+    </command>
+    <command name='getError09' protocmd='getaddr' >
+      <addr>754F</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 9</description>
+    </command>
+    <command name='getError10' protocmd='getaddr' >
+      <addr>7558</addr>
+      <len>9</len>
+      <unit>ES</unit>
+      <description>Fehlerhistory Eintrag 10</description>
+    </command>
+
+    <command name='getTempAussen' protocmd='getaddr' >
+      <addr>5525</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Aussentemperatur</description>
+    </command>
+    <command name='getTempKessel' protocmd='getaddr' >
+      <addr>0B12</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Kesseltemperatur</description>
+    </command>
+    <command name='getTempPufferOben' protocmd='getaddr' >
+      <addr>0810</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Puffertemperatur oben</description>
+    </command>
+    <command name='getTempPufferUnten' protocmd='getaddr' >
+      <addr>0812</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Puffertemperatur unten</description>
+    </command>
+    <command name='getTempWarmwasser' protocmd='getaddr' >
+      <addr>0814</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Warmwassertemperatur</description>
+    </command>
+    <command name='getWarmwasserSoll' protocmd='getaddr' >
+      <addr>6500</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Sollwert Warmwassertemperatur</description>
+    </command>
+    <command name='getTempFlamme' protocmd='getaddr' >
+      <addr>0B14</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Flammtemperatur</description>
+    </command>
+
+    <command name='getKesselLeistung' protocmd='getaddr' >
+      <addr>A305</addr>
+      <len>1</len>
+      <unit>PC1</unit>
+      <description>Kesselleistung</description>
+    </command>
+    <command name='getBrennerStunden' protocmd='getaddr' >
+      <addr>08A7</addr>
+      <len>4</len>
+      <unit>HS</unit>
+      <description></description>
+    </command>
+    <command name='getBrennerStarts' protocmd='getaddr' >
+      <addr>088A</addr>
+      <len>4</len>
+      <unit>CO</unit>
+      <description>Anzahl Brennerstarts</description>
+    </command>
+    <command name='getBrennerVerbrauch' protocmd='getaddr' >
+      <addr>08B0</addr>
+      <len>4</len>
+      <unit>BKG</unit>
+      <description></description>
+    </command>
+
+    <command name='getSolarInfo' protocmd='getaddr' >
+      <addr>7754</addr>
+      <len>1</len>
+      <unit>E_SI</unit>
+      <description></description>
+    </command>
+
+    <command name='getBetriebsmodusHK1' protocmd='getaddr' >
+      <addr>2323</addr>
+      <len>1</len>
+      <unit>E_BA4</unit>
+      <description>Betriebsmodus HK1</description>
+    </command>
+    <command name='getStatusZirkulation' protocmd='getaddr' >
+      <addr>0846</addr>
+      <len>1</len>
+      <unit>E_ST</unit>
+      <description>Status der Zirkulationspumpe</description>
+    </command>
+
+<!-- Test -->
+
+    <command name='getLambda' protocmd='getaddr' >
+      <addr>0B18</addr>
+      <len>1</len>
+      <unit>PC2</unit>
+      <description>Lambdasonde Sauerstoff vielleicht</description>
+    </command>
+
+<!-- Wahrscheinlich -->
+
+    <command name='getStatusSLP' protocmd='getaddr' >
+      <addr>0845</addr>
+      <len>1</len>
+      <unit>E_ST</unit>
+      <description>Status der Speicherladepumpe</description>
+    </command>
+
+    <command name='getXXX' protocmd='getaddr' >
+      <addr>a302</addr>
+      <len>1</len>
+      <unit>E_APP</unit>
+      <description></description>
+    </command>
+
+    <command name='getYYY' protocmd='getaddr' >
+      <addr>0B1C</addr>
+      <len>1</len>
+      <unit>PC1</unit>
+      <description></description>
+    </command>
+
+<!-- wert zu niedrig
+    <command name='getTempPufferSoll' protocmd='getaddr' >
+      <addr>6600</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Puffertemperatur oben</description>
+    </command>
+ -->
+
+<!-- gelegentliche peaks ohne klaren zusammenhang    <command name='getBetriebsart' protocmd='getaddr' >
+      <addr>2301</addr>
+      <len>1</len>
+      <unit>E_BA5</unit>
+      <description>Betriebsart A1M1</description>
+    </command>
+    <command name='getBetriebsart2' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>1</len>
+      <unit>E_BA5</unit>
+      <description>Betriebsart HK1</description>
+    </command> -->
+
+<!--    <command name='getValueLeistung' protocmd='getaddr' >
+      <addr>A38F</addr>
+      <len>1</len>
+      <unit>PC1</unit>
+      <description></description>
+    </command>
+    <command name='getStatusLeistung' protocmd='getaddr' >
+      <addr>A38F</addr>
+      <len>1</len>
+      <unit>E_ST</unit>
+      <description></description>
+    </command> -->
+
+    <command name='getTempVorlaufHK1_1' protocmd='getaddr' >
+      <addr>0808</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Vorlauftemperatur HK1</description>
+    </command>
+
+    <command name='getTempVorlaufHK1' protocmd='getaddr' >
+      <addr>2900</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Vorlauftemperatur HK1</description>
+    </command>
+    <command name='getPumpenmodusHK1' protocmd='getaddr' >
+      <addr>2906</addr>
+      <len>1</len>
+      <unit>E_HKP</unit>
+      <description>Pumpenmodus HK1</description>
+    </command>
+
+    <command name='getTempStatusA' protocmd='getaddr' >
+      <addr>083A</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command>
+    <command name='getTempStatusPufferOben' protocmd='getaddr' >
+      <addr>083B</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command>
+    <command name='getTempStatusPufferUnten' protocmd='getaddr' >
+      <addr>083C</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command>
+    <command name='getTempStatusSTS' protocmd='getaddr' >
+      <addr>083D</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command>
+    <command name='getTempStatusVL_M1' protocmd='getaddr' >
+      <addr>083E</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command>
+<!-- HK2?    <command name='getTempStatusVL_M2' protocmd='getaddr' >
+      <addr>083F</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempStatusSTSolar' protocmd='getaddr' >
+      <addr>0840</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command> -->
+    <command name='getTempStatusREF' protocmd='getaddr' >
+      <addr>0841</addr>
+      <len>1</len>
+      <unit>E_TS</unit>
+      <description></description>
+    </command>
+    <command name='getStatusHKP_M2' protocmd='getaddr' >
+      <addr>0842</addr>
+      <len>1</len>
+      <unit>E_ST</unit>
+      <description></description>
+    </command>
+    <command name='getStatusOutSSM' protocmd='getaddr' >
+      <addr>0847</addr>
+      <len>1</len>
+      <unit>E_ST</unit>
+      <description></description>
+    </command>
+    <command name='getStatusOutM2Auf' protocmd='getaddr' >
+      <addr>0849</addr>
+      <len>1</len>
+      <unit>E_ST</unit>
+      <description></description>
+    </command>
+
+    <command name='getTempRaumHK1' protocmd='getaddr' >
+      <addr>0896</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Raumtemperatur HK1</description>
+    </command>
+    <command name='getTempRaumHK2' protocmd='getaddr' >
+      <addr>0898</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Raumtemperatur HK2</description>
+    </command>
+
+<!-- Original -->
+
+
+
+<!-- keine ahnung   <command name='getTempA' protocmd='getaddr' >
+      <addr>080E</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Aussentemperatur</description>
+    </command> -->
+<!-- keine ahnung    <command name='getTempVLM1Tiefpass' protocmd='getaddr' >
+      <addr>0816</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command> -->
+<!-- irgendein sollwert?    <command name='getTempVLM2Tiefpass' protocmd='getaddr' >
+      <addr>0818</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command> -->
+<!-- irgendein sollwert?   <command name='getTempSTSSolTiefpass' protocmd='getaddr' >
+      <addr>081A</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command> -->
+<!-- ?? 0   <command name='getTempBoiler' protocmd='getaddr' >
+      <addr>0B00</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempFlowHK1' protocmd='getaddr' >
+      <addr>2544</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getStundenBrenner' protocmd='getaddr' >
+      <addr>0886</addr>
+      <len>4</len>
+      <unit>HS</unit>
+      <description>Betriebsstunden Brenner</description>
+    </command> -->
+<!--    <command name='getBrennerStarts' protocmd='getaddr' >
+      <addr>08A3</addr>
+      <len>4</len>
+      <unit>CO</unit>
+      <description></description>
+    </command> -->
+    <command name='setSystemTime' protocmd='setaddr' >
+      <addr>088E</addr>
+      <len>8</len>
+      <unit>TI</unit>
+      <description>Ermittle die Systemzeit</description>
+    </command>
+<!--    <command name='getSachnummer' protocmd='getaddr' >
+      <addr>08E0</addr>
+      <len>16</len>
+      <unit>TEXT</unit>
+      <description></description>
+    </command> -->
+
+
+    <command name='setBetriebsart' protocmd='setaddr' >
+      <addr>2301</addr>
+      <len>1</len>
+      <unit>E_BA5</unit>
+      <description>Betriebsart A1M1</description>
+    </command>
+    <command name='getTempPartyA1M1' protocmd='getaddr' >
+      <addr>2308</addr>
+      <len>1</len>
+      <unit>T1U</unit>
+      <description>Ermittle die Solltemperatur für den Partybetrieb des ersten Heizkreises</description>
+    </command>
+    <command name='setTempPartyA1M1' protocmd='setaddr' >
+      <addr>2308</addr>
+      <len>1</len>
+      <unit>T1U</unit>
+      <description>Ermittle die Solltemperatur für den Partybetrieb des ersten Heizkreises</description>
+    </command>
+    <command name='setGwgBetriebsartA1M1' protocmd='setaddr' >
+      <addr>2323</addr>
+      <len>1</len>
+      <unit>E_BA4</unit>
+      <description></description>
+    </command>
+    <command name='getFrostWarnungA1M1' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>1</len>
+      <unit>B_FW</unit>
+      <description>Ermittle den Status der Frostwarnung des Heizkreises A1M1</description>
+    </command>
+    <command name='getPumpenBefehlA1M1' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>1</len>
+      <unit>E_HKP</unit>
+      <description>Ermittle den Heizkreispumpenbefehl des Heizkreises A1M1</description>
+    </command>
+    <command name='getRaumTempSollA1M1' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Ermittle die Raumsolltemperatur des Heizkreises A1M1</description>
+    </command>
+    <command name='getRaumaufschaltungA1M1' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>1</len>
+      <unit>E_STAN</unit>
+      <description>Ermittle den Zustand der Raumaufschaltung für den Heizkreis A1M1</description>
+    </command>
+    <command name='getTempSollVL_A1M1' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Ermittle die Solltemperatur für den Vorlauf des Heizkreises A1M1</description>
+    </command>
+    <command name='getFreigabeWW_A1M1' protocmd='getaddr' >
+      <addr>2500</addr>
+      <len>1</len>
+      <unit>E_WWF</unit>
+      <description>Ermittle die Warmwasserfreigabe des Heizkreises A1M1</description>
+    </command>
+    <command name='getMischerPosIstM1' protocmd='getaddr' >
+      <addr>254C</addr>
+      <len>1</len>
+      <unit>PC</unit>
+      <description>Ermittle Mischerposition M1</description>
+    </command>
+    <command name='getBetriebsartM2' protocmd='getaddr' >
+      <addr>3301</addr>
+      <len>1</len>
+      <unit>E_BA2</unit>
+      <description>Betriebsart M2</description>
+    </command>
+    <command name='setBetriebsartM2' protocmd='setaddr' >
+      <addr>3301</addr>
+      <len>1</len>
+      <unit>E_BA2</unit>
+      <description>Betriebsart M2</description>
+    </command>
+    <command name='getTempPartyM2' protocmd='getaddr' >
+      <addr>3308</addr>
+      <len>1</len>
+      <unit>T1U</unit>
+      <description>Ermittle die Solltemperatur für den Partybetrieb des zweiten Heizkreises</description>
+    </command>
+    <command name='setTempPartyM2' protocmd='setaddr' >
+      <addr>3308</addr>
+      <len>1</len>
+      <unit>T1U</unit>
+      <description>Ermittle die Solltemperatur für den Partybetrieb des zweiten Heizkreises</description>
+    </command>
+    <command name='getBetriebsartBedM2' protocmd='getaddr' >
+      <addr>3320</addr>
+      <len>1</len>
+      <unit>E_BA3</unit>
+      <description>Ermittle die eingestellte Betriebsart für den zweiten Heizkreis</description>
+    </command>
+    <command name='setBetriebsartBedM2' protocmd='setaddr' >
+      <addr>3320</addr>
+      <len>1</len>
+      <unit>E_BA3</unit>
+      <description>Ermittle die eingestellte Betriebsart für den zweiten Heizkreis</description>
+    </command>
+    <command name='getGwgBetriebsartM2' protocmd='getaddr' >
+      <addr>3323</addr>
+      <len>1</len>
+      <unit>E_BA4</unit>
+      <description></description>
+    </command>
+    <command name='setGwgBetriebsartM2' protocmd='setaddr' >
+      <addr>3323</addr>
+      <len>1</len>
+      <unit>E_BA4</unit>
+      <description></description>
+    </command>
+    <command name='getBetriebsartHK_M2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>1</len>
+      <unit>E_BA</unit>
+      <description>Ermittle die Betriebsart des zweiten Heizkrieses</description>
+    </command>
+    <command name='getFrostWarnungM2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>1</len>
+      <unit>B_FW</unit>
+      <description>Ermittle den Status der Frostwarnung des Heizkreises M2</description>
+    </command>
+    <command name='getPumpenBefehlM2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>1</len>
+      <unit>E_HKP</unit>
+      <description>Ermittle den Heizkreispumpenbefehl des Heizkreises M2</description>
+    </command>
+    <command name='getRaumTempSollM2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Ermittle die Raumsolltemperatur des Heizkreises M2</description>
+    </command>
+    <command name='getRaumaufschaltungM2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>1</len>
+      <unit>E_STAN</unit>
+      <description>Ermittle den Zustand der Raumaufschaltung für den Heizkreis M2</description>
+    </command>
+    <command name='getTempSollVL_M2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Ermittle die Solltemperatur für den Vorlauf des Heizkreises M2</description>
+    </command>
+    <command name='getFreigabeWW_M2' protocmd='getaddr' >
+      <addr>3500</addr>
+      <len>1</len>
+      <unit>E_WWF</unit>
+      <description>Ermittle die Warmwasserfreigabe des Heizkreises M2</description>
+    </command>
+    <command name='getTempSollVL_M2' protocmd='getaddr' >
+      <addr>3544</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description>Ermittle die Vorlaufsolltemperatur M2 in Grad</description>
+    </command>
+    <command name='getMischerPosM2' protocmd='getaddr' >
+      <addr>354C</addr>
+      <len>1</len>
+      <unit>PC</unit>
+      <description>Ermittle Mischerposition M2</description>
+    </command>
+    <command name='getTempKSoll' protocmd='getaddr' >
+      <addr>555A</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command>
+    <command name='getTempVLSoll' protocmd='getaddr' >
+      <addr>5600</addr>
+      <len>2</len>
+      <unit>TD</unit>
+      <description></description>
+    </command>
+
+<!-- Timer -->
+
+    <command name='getTimerMontagM1WW' protocmd='getaddr' >
+      <addr>2080</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMontagM1WW' protocmd='setaddr' >
+      <addr>2080</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDienstagM1WW' protocmd='getaddr' >
+      <addr>2088</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDienstagM1WW' protocmd='setaddr' >
+      <addr>2088</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMittwochM1WW' protocmd='getaddr' >
+      <addr>2090</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMittwochM1WW' protocmd='setaddr' >
+      <addr>2090</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDonnerstagM1WW' protocmd='getaddr' >
+      <addr>2098</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDonnerstagM1WW' protocmd='setaddr' >
+      <addr>2098</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerFreitagM1WW' protocmd='getaddr' >
+      <addr>20A0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerFreitagM1WW' protocmd='setaddr' >
+      <addr>20A0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSamstagM1WW' protocmd='getaddr' >
+      <addr>20A8</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSamstagM1WW' protocmd='setaddr' >
+      <addr>20A8</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSonntagM1WW' protocmd='getaddr' >
+      <addr>20B0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSonntagM1WW' protocmd='setaddr' >
+      <addr>20B0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMontagM1ZP' protocmd='getaddr' >
+      <addr>2100</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMontagM1ZP' protocmd='setaddr' >
+      <addr>2100</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDienstagM1ZP' protocmd='getaddr' >
+      <addr>2108</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDienstagM1ZP' protocmd='setaddr' >
+      <addr>2108</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMittwochM1ZP' protocmd='getaddr' >
+      <addr>2110</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMittwochM1ZP' protocmd='setaddr' >
+      <addr>2110</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDonnerstagM1ZP' protocmd='getaddr' >
+      <addr>2118</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDonnerstagM1ZP' protocmd='setaddr' >
+      <addr>2118</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerFreitagM1ZP' protocmd='getaddr' >
+      <addr>2120</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerFreitagM1ZP' protocmd='setaddr' >
+      <addr>2120</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSamstagM1ZP' protocmd='getaddr' >
+      <addr>2128</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSamstagM1ZP' protocmd='setaddr' >
+      <addr>2128</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSonntagM1ZP' protocmd='getaddr' >
+      <addr>2130</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSonntagM1ZP' protocmd='setaddr' >
+      <addr>2130</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMontagFT' protocmd='getaddr' >
+      <addr>2180</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMontagFT' protocmd='setaddr' >
+      <addr>2180</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDienstagFT' protocmd='getaddr' >
+      <addr>2188</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDienstagFT' protocmd='setaddr' >
+      <addr>2188</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMittwochFT' protocmd='getaddr' >
+      <addr>2190</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMittwochFT' protocmd='setaddr' >
+      <addr>2190</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDonnerstagFT' protocmd='getaddr' >
+      <addr>2198</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDonnerstagFT' protocmd='setaddr' >
+      <addr>2198</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerFreitagFT' protocmd='getaddr' >
+      <addr>21A0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerFreitagFT' protocmd='setaddr' >
+      <addr>21A0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSamstagFT' protocmd='getaddr' >
+      <addr>21A8</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSamstagFT' protocmd='setaddr' >
+      <addr>21A8</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSonntagFT' protocmd='getaddr' >
+      <addr>21B0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSonntagFT' protocmd='setaddr' >
+      <addr>21B0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+
+    <command name='getTimerMontagM2WW' protocmd='getaddr' >
+      <addr>3080</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMontagM2WW' protocmd='setaddr' >
+      <addr>3080</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDienstagM2WW' protocmd='getaddr' >
+      <addr>3088</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDienstagM2WW' protocmd='setaddr' >
+      <addr>3088</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMittwochM2WW' protocmd='getaddr' >
+      <addr>3090</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMittwochM2WW' protocmd='setaddr' >
+      <addr>3090</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDonnerstagM2WW' protocmd='getaddr' >
+      <addr>3098</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDonnerstagM2WW' protocmd='setaddr' >
+      <addr>3098</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerFreitagM2WW' protocmd='getaddr' >
+      <addr>30A0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerFreitagM2WW' protocmd='setaddr' >
+      <addr>30A0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSamstagM2WW' protocmd='getaddr' >
+      <addr>30A8</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSamstagM2WW' protocmd='setaddr' >
+      <addr>30A8</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSonntagM2WW' protocmd='getaddr' >
+      <addr>30B0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSonntagM2WW' protocmd='setaddr' >
+      <addr>30B0</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMontagM2ZP' protocmd='getaddr' >
+      <addr>3100</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMontagM2ZP' protocmd='setaddr' >
+      <addr>3100</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDienstagM2ZP' protocmd='getaddr' >
+      <addr>3108</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDienstagM2ZP' protocmd='setaddr' >
+      <addr>3108</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerMittwochM2ZP' protocmd='getaddr' >
+      <addr>3110</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerMittwochM2ZP' protocmd='setaddr' >
+      <addr>3110</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerDonnerstagM2ZP' protocmd='getaddr' >
+      <addr>3118</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerDonnerstagM2ZP' protocmd='setaddr' >
+      <addr>3118</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerFreitagM2ZP' protocmd='getaddr' >
+      <addr>3120</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerFreitagM2ZP' protocmd='setaddr' >
+      <addr>3120</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSamstagM2ZP' protocmd='getaddr' >
+      <addr>3128</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSamstagM2ZP' protocmd='setaddr' >
+      <addr>3128</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='getTimerSonntagM2ZP' protocmd='getaddr' >
+      <addr>3130</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+    <command name='setTimerSonntagM2ZP' protocmd='setaddr' >
+      <addr>3130</addr>
+      <len>8</len>
+      <unit>CT</unit>
+      <description></description>
+    </command>
+
+<!--    <command name='getSachnummer' protocmd='getaddr' >
+      <addr>A03D</addr>
+      <len>7</len>
+      <unit>TEXT</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempK1' protocmd='getaddr' >
+      <addr>A202</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!-- solar    <command name='getTempSollK1' protocmd='getaddr' >
+      <addr>A226</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempK2' protocmd='getaddr' >
+      <addr>A242</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!-- solar    <command name='getTempSollK2' protocmd='getaddr' >
+      <addr>A266</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempK3' protocmd='getaddr' >
+      <addr>A282</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!-- solar    <command name='getTempSollK3' protocmd='getaddr' >
+      <addr>A2A6</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempK4' protocmd='getaddr' >
+      <addr>A2C2</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!-- solar    <command name='getTempSollK4' protocmd='getaddr' >
+      <addr>A2E6</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+
+<!--    <command name='getTempK' protocmd='getaddr' >
+      <addr>A309</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+<!--    <command name='getTempVLA1' protocmd='getaddr' >
+      <addr>A393</addr>
+      <len>2</len>
+      <unit>TM</unit>
+      <description></description>
+    </command> -->
+  </commands>
+</vito>
