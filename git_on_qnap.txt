@@ -1,0 +1,11 @@
+https://www.reddit.com/r/qnap/comments/97d3lw/install_git_on_qnap/
+
+one solution I found that may or may not be an official solution, is to install entware, and then install git through entware.
+  https://entware.net/
+QNAP Club has a qpkg of it available for download, or you can add their repo to your AppCenter
+  https://www.qnapclub.eu/en/howto/1
+  https://www.qnapclub.eu/en/qpkg/556
+Once you've installed it, you can run
+  opkg update
+  opkg install git
+  opkg install git-http # for cloning repos via http instead of ssh
