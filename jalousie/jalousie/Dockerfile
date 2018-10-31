@@ -1,4 +1,5 @@
 FROM node:8-alpine
+# Note pigpio npm fails to install on node:10
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
