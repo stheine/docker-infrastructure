@@ -1,4 +1,4 @@
-FROM arm32v6/alpine:3.6
+FROM arm32v6/alpine:3.8
 
 # ##############################################################################
 # Install all the base packages needed for the following installs

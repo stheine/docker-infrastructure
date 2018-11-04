@@ -1,4 +1,4 @@
-FROM arm32v6/alpine:3.6
+FROM arm32v6/alpine:3.8
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -27,9 +27,9 @@ RUN \
     linux-headers \
     make \
     musl-dev && \
-  wget https://github.com/openv/vcontrold/releases/download/v0.98.4/vcontrold_0.98.4.orig.tar.gz && \
-  tar xf vcontrold_0.98.4.orig.tar.gz && \
-  cd vcontrold-0.98.4 && \
+  wget https://github.com/openv/vcontrold/releases/download/v0.98.6/vcontrold_0.98.6.orig.tar.gz && \
+  tar xf vcontrold_0.98.6.orig.tar.gz && \
+  cd vcontrold-0.98.6 && \
   mkdir build && \
   cd build && \
   cmake -DMANPAGES=OFF .. && \
