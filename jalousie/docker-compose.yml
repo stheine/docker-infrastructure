@@ -4,19 +4,6 @@ volumes:
   # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
   # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
 
-#  jalousie_mybook_nfs:
-#    driver: local
-#    driver_opts:
-#      type: nfs
-#      o: addr=192.168.6.22,nolock,rw
-#      device: :/nfs/Data/linux/jalousie
-#  jalousie_qnap_nfs: # I can't get the nfsvers=3 to work
-#    driver: local
-#    driver_opts:
-#      type: nfs
-#      o: addr=192.168.6.7,nfsvers=3
-#      device: /linux/data/jalousie
-
   jalousie:
     driver: local
     driver_opts:
@@ -37,16 +24,6 @@ volumes:
       type: nfs
       o: addr=192.168.6.22,nolock,rw
       device: :/nfs/Data/linux/letsencrypt_www
-
-#  nas_fritzbox:
-#    driver: local
-#    driver_opts:
-#      type: none
-#      device: /mnt/fritz_nas_hd
-#      o: bind
-##    driver: cifs
-##    driver_opts:
-##      share: fritz.nas/fritz.nas/Fritz_NAS_HD
 
   portainer:
     driver: local
