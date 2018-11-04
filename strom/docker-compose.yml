@@ -2,16 +2,12 @@ version: "2.2"
 # Remain on v2 for https://github.com/docker/compose/issues/4513
 
 volumes:
-  # TODO when switching to qnap
-  # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
-  # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
-
   portainer:
     driver: local
     driver_opts:
-      type: nfs
-      o: addr=192.168.6.22,nolock,rw
-      device: :/nfs/Data/linux/portainer-strom
+      type: none
+      device: /docker-data/portainer
+      o: bind
 
   pihole_etc_pihole:
     driver: local
@@ -30,9 +26,9 @@ volumes:
   strom:
     driver: local
     driver_opts:
-      type: nfs
-      o: addr=192.168.6.22,nolock,rw
-      device: :/nfs/Data/linux/strom
+      type: none
+      device: /mnt/qnap_linux/data/strom
+      o: bind
 
 networks:
   backend:
