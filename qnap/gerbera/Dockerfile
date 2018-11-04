@@ -68,9 +68,7 @@ ARG CACHE_DATE=2018-10-06
 ## latest
 ##  git clone https://github.com/gerbera/gerbera.git && \
 RUN \
-  wget https://github.com/gerbera/gerbera/archive/v1.2.0.zip && \
-  unzip v1.2.0.zip && \
-  mv gerbera-1.2.0 gerbera && \
+  git clone https://github.com/gerbera/gerbera.git && \
   cat gerbera/scripts/install-pupnp18.sh  | sed "s/^\.\/bootstrap.*make install\\\\$/.\/bootstrap \&\& .\/configure \$extraFlags --enable-ipv6 --enable-reuseaddr \&\& make CFLAGS='-D_LARGE_FILE_SOURCE -D_FILE_OFFSET_BITS=64' LDFLAGS='-pthread -lpthread' \&\& sudo make install\\\\/" > /tmp/install-pupnp18.sh && \
   chmod 755 /tmp/install-pupnp18.sh && \
   mv /tmp/install-pupnp18.sh gerbera/scripts/install-pupnp18.sh && \
