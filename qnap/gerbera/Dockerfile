@@ -59,7 +59,7 @@ RUN \
     libpostproc-dev
 
 WORKDIR /source
-ARG CACHE_DATE=2018-10-06
+ARG CACHE_DATE=2018-11-06
 
 ## 1.2.0
 ##  wget https://github.com/gerbera/gerbera/archive/v1.2.0.zip && \
