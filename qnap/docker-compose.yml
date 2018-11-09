@@ -82,6 +82,20 @@ volumes:
       device: /share/Musik
       o: bind
 
+  mediawiki-database:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/mediawiki-database
+      o: bind
+
+  mediawiki-images:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/mediawiki-images
+      o: bind
+
   portainer:
     driver: local
     driver_opts:
@@ -212,6 +226,27 @@ services:
     volumes:
       - jalousie_source:/source/jalousie
 
+  mediawiki:
+    build: mediawiki
+    restart: unless-stopped
+    depends_on:
+      - mediawiki-database
+    volumes:
+      - mediawiki-images:/var/www/html/images
+      - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php
+
+  mediawiki-database:
+    image: yobasystems/alpine-mariadb:armhf
+    restart: unless-stopped
+    environment:
+      # @see https://phabricator.wikimedia.org/source/mediawiki/browse/master/includes/DefaultSettings.php
+      MYSQL_DATABASE: my_wiki
+      MYSQL_USER: wikiuser
+      MYSQL_PASSWORD: example
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mediawiki-database:/var/lib/mysql
+
   nginx:
     restart: unless-stopped
     build: nginx
@@ -224,6 +259,7 @@ services:
       - letsencrypt_www:/var/letsencrypt
     depends_on:
       - apache2
+      - mediawiki
 
   portainer:
     restart: unless-stopped
