@@ -288,7 +288,7 @@ services:
     build: postfix
     hostname: qnap-postfix
     ports:
-      - 25:25
+      - "25:25"
     volumes:
       - postfix_creds:/postfix_creds
 

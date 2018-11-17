@@ -60,3 +60,5 @@ EXPOSE 25
 VOLUME /postfix_creds
 
 # echo -e "testing email\n\nsent on: $(date)" | mailx -r technik@heine7.de -s "test cli email $(date)" stefan@heine7.de
+
+# echo "Subject: sendmail test" | sendmail -v stefan@heine7.de
