@@ -54,7 +54,7 @@ const handleData = async function(err, obisResult) {
 
           await fsExtra.writeJson('/var/strom/strom.json', {[rrdName]: rrdValue});
 
-          console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ${rrdValue}W`);
+//          console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ${rrdValue}W`);
           break;
 
         case '1-0:0.0.9*255':         // Device ID
