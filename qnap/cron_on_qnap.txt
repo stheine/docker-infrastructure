@@ -1,0 +1,9 @@
+https://www.techandme.se/qnap-and-cron/
+
+https://wiki.qnap.com/wiki/Add_items_to_crontab
+
+https://www.tech-knowhow.com/2015/07/howto-edit-crontab-on-qnap-and-keep-the-changes-after-a-reboot/
+
+echo "0 10 1,16 * * /share/linux/docker/qnap/certbot/renew.sh" >> /etc/config/crontab
+crontab /etc/config/crontab
+# /etc/init.d/crond.sh restart
