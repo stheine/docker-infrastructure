@@ -28,4 +28,4 @@ PROMPT_COMMAND='set_ps1'
 
 alias ll='ls -l'
 set -o vi
-export PATH=/share/linux/tools/busybox/:$PATH:/share/CACHEDEV1_DATA/.qpkg/container-station/bin/
+export PATH=/share/linux/tools/busybox/:$PATH:/share/CACHEDEV1_DATA/.qpkg/container-station/bin/:/share/CACHEDEV1_DATA/.qpkg/Entware/bin/
