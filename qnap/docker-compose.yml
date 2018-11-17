@@ -177,6 +177,16 @@ services:
     healthcheck:
       test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
 
+  certbot:
+    # Note: This container is started with /bin/true. This is just a dummy to prevent it from doing anything.
+    #       The real action is called by cron '/root/docker/certbot/renew.sh'
+    restart: "no"
+    build: certbot
+    command: /bin/true
+    volumes:
+      - letsencrypt:/etc/letsencrypt:nocopy
+      - letsencrypt_www:/var/letsencrypt
+
   dovecot:
     restart: unless-stopped
     build: dovecot
