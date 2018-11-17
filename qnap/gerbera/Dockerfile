@@ -59,7 +59,7 @@ RUN \
     libpostproc-dev
 
 WORKDIR /source
-ARG CACHE_DATE=2018-11-06
+ARG CACHE_DATE=2018-11-10
 
 ## 1.2.0
 ##  wget https://github.com/gerbera/gerbera/archive/v1.2.0.zip && \
@@ -69,7 +69,11 @@ ARG CACHE_DATE=2018-11-06
 ##  git clone https://github.com/gerbera/gerbera.git && \
 RUN \
   git clone https://github.com/gerbera/gerbera.git && \
-  cat gerbera/scripts/install-pupnp18.sh  | sed "s/^\.\/bootstrap.*make install\\\\$/.\/bootstrap \&\& .\/configure \$extraFlags --enable-ipv6 --enable-reuseaddr \&\& make CFLAGS='-D_LARGE_FILE_SOURCE -D_FILE_OFFSET_BITS=64' LDFLAGS='-pthread -lpthread' \&\& sudo make install\\\\/" > /tmp/install-pupnp18.sh && \
+  cat gerbera/scripts/install-pupnp18.sh | \
+    sed \
+      -e "s/^\.\/bootstrap.*make install\\\\$/.\/bootstrap \&\& .\/configure \$extraFlags --enable-ipv6 --enable-reuseaddr \&\& make CFLAGS='-D_LARGE_FILE_SOURCE -D_FILE_OFFSET_BITS=64' LDFLAGS='-pthread -lpthread' \&\& sudo make install\\\\/" \
+      -e "s/1\.8\.3/1.8.4/g" \
+      > /tmp/install-pupnp18.sh && \
   chmod 755 /tmp/install-pupnp18.sh && \
   mv /tmp/install-pupnp18.sh gerbera/scripts/install-pupnp18.sh && \
   mkdir build && \
