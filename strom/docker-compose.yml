@@ -66,6 +66,7 @@ services:
       context: strom
       args:
         - CACHE_DATE=2018-04-18
+    hostname: raspi-strom
     ports:
       - 9083:9083
     cap_add:

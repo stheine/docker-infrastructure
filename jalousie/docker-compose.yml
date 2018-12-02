@@ -63,6 +63,7 @@ services:
   pigpiod:
     restart: unless-stopped
     build: pigpiod
+    hostname: raspi-pigpiod
     cap_add:
       - SYS_RAWIO
     devices:
@@ -79,6 +80,7 @@ services:
       context: jalousie
       args:
         - CACHE_DATE=2018-01-20-a
+    hostname: raspi-jalousie
     ports:
       - 9124:9124
     networks:
@@ -94,6 +96,7 @@ services:
   vito:
     restart: unless-stopped
     build: vito
+    hostname: raspi-vito
     networks:
       - backend
     volumes:
@@ -105,6 +108,7 @@ services:
   postfix:
     restart: unless-stopped
     build: postfix
+    hostname: raspi-postfix
     ports:
       - "25:25"
     networks:
@@ -115,6 +119,7 @@ services:
   vcontrold:
     restart: unless-stopped
     build: vcontrold
+    hostname: raspi-vcontrold
     ports:
       - 3002:3002
     cap_add:
