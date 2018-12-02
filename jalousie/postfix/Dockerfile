@@ -33,6 +33,7 @@ RUN \
   mkdir /etc/postfix/creds && \
   echo "pirate@pi-docker	stefan@heine7.de" >> /etc/postfix/generic && \
   echo "root@pi-docker	stefan@heine7.de" >> /etc/postfix/generic && \
+  echo "root@raspi-vito	technik@heine7.de" >> /etc/postfix/generic && \
   postmap /etc/postfix/generic
 
 COPY docker_container_profile /root/.profile

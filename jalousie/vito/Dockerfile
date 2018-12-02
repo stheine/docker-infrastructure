@@ -69,7 +69,9 @@ RUN \
 RUN \
   apk add \
     mailx \
-    ssmtp
+    shadow \
+    ssmtp && \
+  chfn -f 'Vito'
 
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
