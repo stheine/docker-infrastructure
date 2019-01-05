@@ -32,13 +32,6 @@ volumes:
       device: /mnt/qnap_linux/data/strom
       o: bind
 
-#  twonkyserver:
-#    driver: local
-#    driver_opts:
-#      type: nfs
-#      o: addr=192.168.6.22,nolock,rw
-#      device: :/nfs/Data/linux/twonkyserver
-
   vito:
     driver: local
     driver_opts:
@@ -128,17 +121,3 @@ services:
       - /dev/ttyAMA0:/dev/ttyAMA0
     networks:
       - backend
-
-#  twonky:
-#    restart: unless-stopped
-#    build: twonky
-#    # Note: 'network_mode: host' is required for twonky to receive multicast traffic
-#    #       to detect the upnp server.
-#    network_mode: host
-#    ports:
-#      - 1030:1030/udp
-#      - 1900:1900/udp
-#      - 9000:9000
-#    volumes:
-#      - nas_fritzbox:/mnt/nas_fritzbox:nocopy
-#      - twonkyserver:/var/twonky/twonkyserver:nocopy
