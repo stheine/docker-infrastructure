@@ -14,16 +14,16 @@ volumes:
   portainer:
     driver: local
     driver_opts:
-      type: nfs
-      o: addr=192.168.6.22,nolock,rw
-      device: :/nfs/Data/linux/portainer
+      type: none
+      device: /docker-data/portainer
+      o: bind
 
   postfix_creds:
     driver: local
     driver_opts:
-      type: nfs
-      o: addr=192.168.6.22,nolock,ro
-      device: :/nfs/Data/linux/postfix_creds
+      type: none
+      device: /mnt/qnap_linux/data/postfix_creds
+      o: bind
 
   strom:
     driver: local
