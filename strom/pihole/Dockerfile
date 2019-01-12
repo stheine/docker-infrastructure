@@ -1,4 +1,4 @@
-FROM pihole/pihole:4.1_armhf
+FROM pihole/pihole:4.1.1_armhf
 
 COPY docker_container_profile /root/.profile
 EXPOSE 53 80 443
