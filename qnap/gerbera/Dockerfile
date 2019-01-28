@@ -1,4 +1,5 @@
-FROM armv7/armhf-ubuntu:xenial
+# bionic = 18.04
+FROM ubuntu:bionic
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -11,6 +12,7 @@ RUN \
   apt-get install -y \
     apt-utils && \
   apt-get install -y \
+    locales \
     sudo \
     tzdata \
     unzip \
@@ -26,7 +28,7 @@ ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # ##############################################################################
-# Install and run from https://github.com/gerbera/gerbera
+# Install build environment
 
 RUN \
   apt-get install -y \
@@ -38,6 +40,16 @@ RUN \
     git \
     libtool \
     make
+
+# Update cmake to >= 3.8
+WORKDIR /source
+RUN \
+  wget https://github.com/Kitware/CMake/releases/download/v3.13.3/cmake-3.13.3.tar.gz && \
+  tar xf cmake-3.13.3.tar.gz && \
+  cd cmake-3.13.3 && \
+  cmake . && \
+  make && \
+  make install
 
 RUN \
   apt-get install -y \
@@ -58,21 +70,26 @@ RUN \
     libswresample-dev \
     libpostproc-dev
 
-WORKDIR /source
-ARG CACHE_DATE=2018-11-10
+# ##############################################################################
+# Install and run from https://github.com/gerbera/gerbera
 
-## 1.2.0
-##  wget https://github.com/gerbera/gerbera/archive/v1.2.0.zip && \
-##  unzip v1.2.0.zip && \
-##  mv gerbera-1.2.0 gerbera && \
-## latest
-##  git clone https://github.com/gerbera/gerbera.git && \
+WORKDIR /source
+ARG CACHE_DATE=2019-01-28
+
+# 1.3.0
+#  wget https://github.com/gerbera/gerbera/archive/v1.3.0.zip && \
+#  unzip v1.3.0.zip && \
+#  mv gerbera-1.3.0 gerbera && \
+# latest
+#  git clone https://github.com/gerbera/gerbera.git && \
+
 RUN \
-  git clone https://github.com/gerbera/gerbera.git && \
+  wget https://github.com/gerbera/gerbera/archive/v1.3.0.zip && \
+  unzip v1.3.0.zip && \
+  mv gerbera-1.3.0 gerbera && \
   cat gerbera/scripts/install-pupnp18.sh | \
     sed \
-      -e "s/^\.\/bootstrap.*make install\\\\$/.\/bootstrap \&\& .\/configure \$extraFlags --enable-ipv6 --enable-reuseaddr \&\& make CFLAGS='-D_LARGE_FILE_SOURCE -D_FILE_OFFSET_BITS=64' LDFLAGS='-pthread -lpthread' \&\& sudo make install\\\\/" \
-      -e "s/1\.8\.3/1.8.4/g" \
+      -e "s/make \&\&/make CFLAGS='-D_LARGE_FILE_SOURCE -D_FILE_OFFSET_BITS=64' LDFLAGS='-pthread -lpthread' \&\&/" \
       > /tmp/install-pupnp18.sh && \
   chmod 755 /tmp/install-pupnp18.sh && \
   mv /tmp/install-pupnp18.sh gerbera/scripts/install-pupnp18.sh && \
@@ -85,12 +102,14 @@ RUN \
   make -j4 && \
   sudo make install
 
+WORKDIR /
+
 COPY docker_container_profile /root/.profile
 COPY config/ /etc/gerbera/config/
-
-EXPOSE 1030/udp 1900/udp 9000/tcp
-VOLUME /gerbera_home /mnt/musik
 
 COPY gerbera.sh /
 CMD /gerbera.sh
 #CMD ["/bin/bash", "-l"]
+
+EXPOSE 1030/udp 1900/udp 9000/tcp
+VOLUME /gerbera_home /mnt/musik
