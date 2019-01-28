@@ -11,8 +11,16 @@ version: "2.2"
 # 59155 kinder-filme      http://192.168.6.7:59155/
 # 59156 kinder-cds        http://192.168.6.7:59156/
 # 59157 fotos             http://192.168.6.7:59157/
+# 59158 filme             http://192.168.6.7:59158/
 
 volumes:
+  gerbera-filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/gerberaFilme
+      o: bind
+
   gerbera-fotos:
     driver: local
     driver_opts:
@@ -67,6 +75,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/letsencrypt_www
+      o: bind
+
+  media_filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/Filme
       o: bind
 
   media_fotos:
@@ -214,6 +229,17 @@ services:
 
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
+  gerbera-filme:
+    restart: unless-stopped
+    build: gerbera
+    hostname: qnap-filme
+    network_mode: host
+    environment:
+      - CONFIG=59158-filme
+    volumes:
+      - media_filme:/media:ro
+      - gerbera-filme:/gerbera_home
+
   gerbera-fotos:
     restart: unless-stopped
     build: gerbera
