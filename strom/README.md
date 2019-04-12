@@ -4,15 +4,11 @@
 
 ### Hypriot
 
-download hypriot from https://blog.hypriot.com/downloads/
-
-write to SD card
-
-boot raspi
-
-ssh to system
-
-pirate / hypriot
+- download hypriot from https://blog.hypriot.com/downloads/
+- write to SD card
+- boot raspi
+- ssh to system
+- pirate / hypriot
 
 ### Enable UART / Serial interface
 
@@ -40,7 +36,6 @@ curl -L "https://packagecloud.io/Hypriot/rpi/gpgkey" 2> /dev/null | sudo apt-key
 sudo apt update
 sudo apt upgrade
 sudo apt install -y nfs-common vim
-
 
 # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
 # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
@@ -93,7 +88,7 @@ docker-compose up -d
 
 - http://192.168.6.6/admin/index.php
 - Login
-- <pw>
+- &lt;pw&gt;
 - Settings
 - DNS
 - Upstream: `OpenDNS`
@@ -103,8 +98,10 @@ docker-compose up -d
 - IP: `192.168.6.1`
 - domain name: `fritz.box`
 
+### Configure FritzBox
+
 - http://192.168.6.1
-- <pw>
+- &lt;pw&gt;
 - Internet/ Zugangsdaten/ DNS-Server
 - enable `Andere DNSv4-Server verwenden`
 - Bevorzugt: `192.168.6.6`
@@ -117,7 +114,7 @@ docker-compose up -d
 
 - http://192.168.6.6:8008/#/init/admin
 - admin
-- <pw>
+- &lt;pw&gt;
 - Create user
 - Local
 - Connect
