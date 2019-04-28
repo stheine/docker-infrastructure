@@ -23,10 +23,17 @@ chmod 600 /root/.ssh/authorized_keys
 
 /usr/sbin/sshd -D &
 
-if [ $? != 0 ]; then echo "Failed to start sshd"; exit 1; fi
+if [ $? != 0 ]; then
+  echo "Failed to start sshd"
+  exit 1
+fi
 
-sleep 1
-# echo "sshd started"
+while [ ! -f /var/run/sshd.pid ]; do
+  echo "Waiting for sshd startup"
+  sleep 1
+done
+
+echo "sshd started"
 
 # Monitor the process
 while kill -0 "`cat /var/run/sshd.pid`"; do
