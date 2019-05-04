@@ -1,3 +1,21 @@
+#  1 getTempAussen
+#  2 getTempKessel
+#  3 getTempPufferOben
+#  4 getTempPufferUnten
+#  5 getTempWarmwasser
+#  6 getTempFlamme
+#  7 getBrennerStunden
+#  8 getBrennerStarts
+#  9 getBrennerVerbrauch
+# 10 getKesselLeistung
+# 11 getLambda
+# 12 unit off
+# 13 getStatusZirkulation
+# 14 getError01
+# 15 getSystemTime
+
+# Pruefen auf Vito Fehlerzustand
+
 if [ "$E14" != "OK" ]; then
   echo `date` " es ist ein Fehler aufgetreten: $C14:$E14" >>/var/vito/error.log
   exit 1;
@@ -8,6 +26,8 @@ if [ "$E15" != "OK" ]; then
 fi
 
 /vito/checkError.sh "$R14" "$9" "$R15"
+
+# Speichern der Trenddaten
 
 if [ "$E1" != "OK" ]; then
   echo `date` " es ist ein Fehler aufgetreten: $C1:$E1" >>/var/vito/error.log
@@ -63,6 +83,8 @@ if [ "$E13" != "OK" ]; then
 fi
 
 /opt/rrdtool/bin/rrdtool update /var/vito/vito.rrd "N:$1:$2:$3:$4:$5:$6:$7:$8:$9:$10:$11:$13"
+
+# Aktuelle Daten fuer andere Anwendungen zur Verfuegung stellen
 
 echo "$1" > /var/vito/_tempAussen.dat
 echo "$9" > /var/vito/_brennerVerbrauch.dat

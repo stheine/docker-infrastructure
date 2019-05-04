@@ -80,6 +80,7 @@ COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 RUN \
   apk add \
+    bc \
     coreutils
 
 COPY \
