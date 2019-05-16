@@ -16,4 +16,9 @@ RUN \
   wget https://extdist.wmflabs.org/dist/extensions/WikiCategoryTagCloud-REL1_32-2f7aa5c.tar.gz && \
   tar -xzf WikiCategoryTagCloud-REL1_32-2f7aa5c.tar.gz -C /var/www/html/extensions
 
+# https://www.mediawiki.org/wiki/Special:ExtensionDistributor?extdistname=VisualEditor
+RUN \
+  wget https://extdist.wmflabs.org/dist/extensions/VisualEditor-REL1_32-e82e120.tar.gz && \
+  tar -xzf VisualEditor-REL1_32-e82e120.tar.gz -C /var/www/html/extensions
+
 COPY docker_container_profile /root/.profile

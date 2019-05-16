@@ -351,6 +351,7 @@ services:
     restart: unless-stopped
     depends_on:
       - mediawiki-database
+      - mediawiki-parsoid
     volumes:
       - mediawiki-images:/var/www/html/images
       - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php
@@ -366,6 +367,13 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
       - mediawiki-database:/var/lib/mysql
+
+  mediawiki-parsoid:
+    build: mediawiki-parsoid
+    restart: unless-stopped
+    environment:
+      PARSOID_DOMAIN_heine7: https://heine7.de/wiki/api.php
+      PARSOID_HOME: /app/parsoid
 
   nginx:
     restart: unless-stopped

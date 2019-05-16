@@ -148,3 +148,27 @@ $wgConfirmAccountRequestFormItems = array(
 # -----------------------------------------------------------------------------
 # https://www.mediawiki.org/wiki/Extension:WikiCategoryTagCloud
 wfLoadExtension('WikiCategoryTagCloud');
+
+# -----------------------------------------------------------------------------
+# https://www.mediawiki.org/wiki/Extension:VisualEditor
+wfLoadExtension( 'VisualEditor' );
+
+// Enable by default for everybody
+$wgDefaultUserOptions['visualeditor-enable'] = 1;
+
+// Optional: Set VisualEditor as the default for anonymous users
+// otherwise they will have to switch to VE
+// $wgDefaultUserOptions['visualeditor-editor'] = "visualeditor";
+
+// Don't allow users to disable it
+$wgHiddenPrefs[] = 'visualeditor-enable';
+
+// OPTIONAL: Enable VisualEditor's experimental code features
+// #$wgDefaultUserOptions['visualeditor-enable-experimental'] = 1;
+
+$wgVirtualRestConfig['modules']['parsoid'] = array(
+  // URL to the Parsoid instance
+  'url' => 'http://mediawiki-parsoid:8000',
+  // Parsoid "domain"
+  'domain' => 'heine7'
+);
