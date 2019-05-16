@@ -1,4 +1,4 @@
-FROM armv7/armhf-ubuntu:xenial
+FROM debian:stretch-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -10,8 +10,10 @@ RUN \
   apt-get update && \
   apt-get install -y \
     apt-utils && \
+  apt-get upgrade -y && \
   apt-get install -y \
     dnsutils \
+    locales \
     sudo \
     tzdata \
     unzip \
@@ -20,7 +22,9 @@ RUN \
     xz-utils && \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
-  locale-gen en_US.UTF-8
+  sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && \
+  locale-gen && \
+  dpkg-reconfigure locales
 
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
