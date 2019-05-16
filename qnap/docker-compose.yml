@@ -141,6 +141,13 @@ volumes:
       device: /share/linux/data/mediawiki-database
       o: bind
 
+  mediawiki-database-backup:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/mediawiki-database-backup
+      o: bind
+
   mediawiki-images:
     driver: local
     driver_opts:
@@ -367,6 +374,15 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
       - mediawiki-database:/var/lib/mysql
+
+  mediawiki-database-backup:
+    build: mediawiki-database-backup
+    volumes:
+      - mediawiki-database-backup:/backup
+      - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup
+    depends_on:
+      - mediawiki-database
+      - postfix
 
   mediawiki-parsoid:
     build: mediawiki-parsoid
