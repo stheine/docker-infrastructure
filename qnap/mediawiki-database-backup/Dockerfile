@@ -43,7 +43,7 @@ RUN \
   apt-get install -y \
     mailutils \
     ssmtp && \
-  chfn -f 'AutoMySqlBackup'
+  chfn -f 'mediawiki-database-backup'
 
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
@@ -54,7 +54,8 @@ COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 RUN \
   echo '0 0 * * * /usr/sbin/automysqlbackup' | /usr/bin/crontab -
 
+COPY postbackup.sh /
+
 COPY docker_container_profile /root/.profile
 # CMD ["/bin/bash", "-l"]
 CMD ["/usr/sbin/cron", "-f"]
-

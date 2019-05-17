@@ -379,6 +379,7 @@ services:
     build: mediawiki-database-backup
     volumes:
       - mediawiki-database-backup:/backup
+      - mediawiki-images:/mediawiki-images
       - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup
     depends_on:
       - mediawiki-database
