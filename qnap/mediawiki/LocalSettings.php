@@ -172,3 +172,13 @@ $wgVirtualRestConfig['modules']['parsoid'] = array(
   // Parsoid "domain"
   'domain' => 'heine7'
 );
+
+// Make the VisualEditor the default for red links (create new page)
+// https://www.mediawiki.org/w/index.php?title=Topic:R9u1ujwknjqxgoxb&topic_showPostId=ufx6qvy2nyikpvwq#flow-post-ufx6qvy2nyikpvwq
+$wgHooks['HtmlPageLinkRendererBegin'][] = function ( $linkRenderer, $target, &$text, &$extraAttribs, &$query, &$ret ) {
+  $title = Title::newFromLinkTarget( $target );
+  if ( !$title->isKnown() ) {
+    $query['veaction'] = 'edit';
+    $query['action'] = 'view'; // Prevent MediaWiki from overriding veaction
+  }
+};
