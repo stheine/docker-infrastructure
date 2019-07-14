@@ -1,24 +1,59 @@
-FROM mediawiki:1.32
+# Upgrade:
+# - new version in FROM
+# - update all the extensions URLs
+# - Build new version
+#   docker-compose up -d --build mediawiki
+# - run upgrade script TODO
+#   docker-compose exec mediawiki /usr/local/bin/php /var/www/html/maintenance/update.php
+
+FROM mediawiki:1.33
 
 RUN \
   apt-get update && \
-  apt-get install -y wget
+  apt-get install -y \
+    vim \
+    wget
+
+# Performance tuning via puppet
+# https://www.mediawiki.org/wiki/Manual:Performance_tuning
+
+# RUN \
+#   apt-get install -y puppet
+
+# https://dom.as/2007/01/26/mediawiki-performance-tuning/
+# RUN \
+#   pecl install APC
+
+
+
+# Install Addons/Extensions
 
 WORKDIR /addons
 
-# https://www.mediawiki.org/wiki/Special:ExtensionDistributor?extdistname=ConfirmAccount
+# https://www.mediawiki.org/wiki/Extension:ConfirmAccount
+ARG CONFIRM_ACCOUNT_URL=ConfirmAccount-REL1_33-cacb682.tar.gz
 RUN \
-  wget https://extdist.wmflabs.org/dist/extensions/ConfirmAccount-REL1_32-0ccceb9.tar.gz && \
-  tar -xzf ConfirmAccount-REL1_32-0ccceb9.tar.gz -C /var/www/html/extensions
+  wget https://extdist.wmflabs.org/dist/extensions/$CONFIRM_ACCOUNT_URL && \
+  tar -xzf $CONFIRM_ACCOUNT_URL -C /var/www/html/extensions
 
-# https://www.mediawiki.org/wiki/Special:ExtensionDistributor?extdistname=WikiCategoryTagCloud
+# https://www.mediawiki.org/wiki/Extension:WikiCategoryTagCloud
+ARG CATEGORY_CLOUD_URL=WikiCategoryTagCloud-REL1_33-6460123.tar.gz
 RUN \
-  wget https://extdist.wmflabs.org/dist/extensions/WikiCategoryTagCloud-REL1_32-2f7aa5c.tar.gz && \
-  tar -xzf WikiCategoryTagCloud-REL1_32-2f7aa5c.tar.gz -C /var/www/html/extensions
+  wget https://extdist.wmflabs.org/dist/extensions/$CATEGORY_CLOUD_URL && \
+  tar -xzf $CATEGORY_CLOUD_URL -C /var/www/html/extensions
 
-# https://www.mediawiki.org/wiki/Special:ExtensionDistributor?extdistname=VisualEditor
+# https://www.mediawiki.org/wiki/Extension:VisualEditor
+ARG VISUAL_EDITOR_URL=VisualEditor-REL1_33-8c9c37e.tar.gz
 RUN \
-  wget https://extdist.wmflabs.org/dist/extensions/VisualEditor-REL1_32-e82e120.tar.gz && \
-  tar -xzf VisualEditor-REL1_32-e82e120.tar.gz -C /var/www/html/extensions
+  wget https://extdist.wmflabs.org/dist/extensions/$VISUAL_EDITOR_URL && \
+  tar -xzf $VISUAL_EDITOR_URL -C /var/www/html/extensions
+
+# https://www.mediawiki.org/wiki/Extension:CategoryTree
+ARG CATEGORY_TREE_URL=CategoryTree-REL1_33-ece3dc2.tar.gz
+RUN \
+  wget https://extdist.wmflabs.org/dist/extensions/$CATEGORY_TREE_URL && \
+  tar -xzf $CATEGORY_TREE_URL -C /var/www/html/extensions
+
+
 
 COPY docker_container_profile /root/.profile

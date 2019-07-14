@@ -150,8 +150,12 @@ $wgConfirmAccountRequestFormItems = array(
 wfLoadExtension('WikiCategoryTagCloud');
 
 # -----------------------------------------------------------------------------
+# https://www.mediawiki.org/wiki/Extension:CategoryTree
+wfLoadExtension('CategoryTree');
+
+# -----------------------------------------------------------------------------
 # https://www.mediawiki.org/wiki/Extension:VisualEditor
-wfLoadExtension( 'VisualEditor' );
+wfLoadExtension('VisualEditor');
 
 // Enable by default for everybody
 $wgDefaultUserOptions['visualeditor-enable'] = 1;
