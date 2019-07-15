@@ -4,7 +4,7 @@
 ## Basic commands missing
 
 ### add-apt-repository
-apt-get install -y software-properties-common
+apt install -y software-properties-common
 
 ### less
 apt install -y less
@@ -14,6 +14,9 @@ apt install -y man
 
 ### netstat
 apt install -y net-tools
+
+### nslookup
+apt install -y dnsutils
 
 ### ping
 apt install -y iputils-ping
