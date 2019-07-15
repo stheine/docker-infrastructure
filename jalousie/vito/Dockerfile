@@ -1,4 +1,4 @@
-FROM arm32v6/alpine:3.8
+FROM arm32v6/alpine:3.10
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -70,7 +70,9 @@ RUN \
   apk add \
     mailx \
     shadow \
-    ssmtp && \
+    ssmtp
+RUN \
+  echo "auth	sufficient	pam_rootok.so" > /etc/pam.d/chfn && \
   chfn -f 'Vito'
 
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf

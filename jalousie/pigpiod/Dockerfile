@@ -20,14 +20,15 @@ WORKDIR /source
 # ##############################################################################
 # Install pigpio from http://abyz.me.uk/rpi/pigpio/index.html
 
+ARG PIGPIO_VERSION=69
 RUN \
   apk add \
     gcc \
     make \
     musl-dev && \
-  wget abyz.co.uk/rpi/pigpio/pigpio.zip && \
-  unzip pigpio.zip && \
-  cd PIGPIO && \
+  wget https://github.com/joan2937/pigpio/archive/V$PIGPIO_VERSION.zip && \
+  unzip V$PIGPIO_VERSION.zip && \
+  cd pigpio-$PIGPIO_VERSION && \
   /bin/cat Makefile | sed 's/ldconfig//' > Makefile.tmp && \
   mv Makefile.tmp Makefile && \
   make && \
