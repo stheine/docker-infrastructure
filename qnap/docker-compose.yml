@@ -386,8 +386,8 @@ services:
       - postfix
 
   mediawiki-parsoid:
-    build: mediawiki-parsoid
     restart: unless-stopped
+    build: mediawiki-parsoid
     environment:
       PARSOID_DOMAIN_heine7: https://heine7.de/wiki/api.php
       PARSOID_HOME: /app/parsoid
