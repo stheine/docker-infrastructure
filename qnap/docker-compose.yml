@@ -359,6 +359,7 @@ services:
     depends_on:
       - mediawiki-database
       - mediawiki-parsoid
+      - nginx
     volumes:
       - mediawiki-images:/var/www/html/images
       - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php
@@ -404,7 +405,6 @@ services:
       - letsencrypt_www:/var/letsencrypt
     depends_on:
       - apache2
-      - mediawiki
 
   portainer:
     restart: unless-stopped
