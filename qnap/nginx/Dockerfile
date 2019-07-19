@@ -14,9 +14,10 @@ RUN \
     vim
 
 # ##############################################################################
-# Configure and run nginx
-
-COPY nginx.conf /etc/nginx/
+# Run nginx.
+# Configuration by volume in /etc/nginx/nginx.conf 
+# Re-read configuration:
+#   docker-compose kill -s HUP nginx
 
 COPY docker_container_profile /root/.profile
 # CMD ["/bin/bash", "-l"]
