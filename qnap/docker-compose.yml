@@ -319,6 +319,7 @@ services:
     network_mode: host
     environment:
       - CONFIG=59154-musik
+#      - EXTRA_PARAMETERS=--debug
     volumes:
       - media_musik:/media:ro
       - gerbera-musik:/gerbera_home

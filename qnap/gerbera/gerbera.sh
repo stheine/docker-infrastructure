@@ -1,3 +1,3 @@
 #!/bin/bash
 
-/usr/local/bin/gerbera --config /etc/gerbera/config/${CONFIG}/config.xml
+/usr/local/bin/gerbera --config /etc/gerbera/config/${CONFIG}/config.xml $EXTRA_PARAMETERS
