@@ -376,6 +376,7 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
       - mediawiki-database:/var/lib/mysql
+      - mediawiki-database-backup:/database-restore
 
   mediawiki-database-backup:
     build: mediawiki-database-backup
@@ -391,7 +392,7 @@ services:
     restart: unless-stopped
     build: mediawiki-parsoid
     environment:
-      PARSOID_DOMAIN_heine7: https://heine7.de/wiki/api.php
+      PARSOID_DOMAIN_heine7: https://wiki.heine7.de/api.php
       PARSOID_HOME: /app/parsoid
 
   nginx:
