@@ -1,5 +1,7 @@
 FROM node:10-stretch
 
+# Loosely based on https://hub.docker.com/r/thenets/parsoid/dockerfile
+
 # ##############################################################################
 # Install all the base packages needed for the following installs
 # Set up timezone
@@ -33,12 +35,18 @@ ENV LC_ALL en_US.UTF-8
 # ##############################################################################
 # Install parsoid
 
+RUN \
+  apt-get remove -y ca-certificates && \
+  apt-get install -y ca-certificates
+
+ENV PARSOID_VERSION=v0.10.0
+
 WORKDIR /app
 
 RUN \
   adduser --system --uid 1002 --disabled-password --shell /bin/bash parsoid && \
   git clone \
-    --branch master \
+    --branch ${PARSOID_VERSION} \
     --single-branch \
     --depth 1 \
     --quiet \

@@ -57,3 +57,8 @@ RUN \
 
 
 COPY docker_container_profile /root/.profile
+
+
+# Required for 32-bit systems (Error 500 from parsoid/ Visual Editor)
+RUN \
+  docker-php-ext-install bcmath
