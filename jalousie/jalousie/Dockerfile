@@ -39,6 +39,7 @@ RUN \
 # ##############################################################################
 # Install rrdtool from https://github.com/oetiker/rrdtool-1.x
 
+ARG RRDTOOL_VERSION=1.7.2
 RUN \
   apk add \
     g++ \
@@ -49,9 +50,9 @@ RUN \
     pango-dev \
     pcre-dev \
     perl-dev && \
-  wget https://github.com/oetiker/rrdtool-1.x/releases/download/v1.7.0/rrdtool-1.7.0.tar.gz && \
-  tar xf rrdtool-1.7.0.tar.gz && \
-  cd rrdtool-1.7.0 && \
+  wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
+  tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
+  cd rrdtool-$RRDTOOL_VERSION && \
   ./configure --prefix=/opt/rrdtool && \
   /bin/cat src/Makefile | sed 's/^LIBS = $/LIBS = -lintl/' > src/Makefile.tmp && \
   mv src/Makefile.tmp src/Makefile && \
