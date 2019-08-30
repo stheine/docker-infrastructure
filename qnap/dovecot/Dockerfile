@@ -28,6 +28,7 @@ ENV LC_ALL en_US.UTF-8
 
 # ##############################################################################
 # Configure and run dovecot
+# https://github.com/dovecot/core/releases
 
 RUN \
   apt-get install -y \
@@ -41,10 +42,11 @@ RUN \
 
 WORKDIR /source
 
+ARG DOVECOT_VERSION=2.3.7.2
 RUN \
-  wget https://github.com/dovecot/core/archive/2.3.3.tar.gz && \
-  tar xf 2.3.3.tar.gz && \
-  cd core-2.3.3 && \
+  wget https://github.com/dovecot/core/archive/$DOVECOT_VERSION.tar.gz && \
+  tar xf $DOVECOT_VERSION.tar.gz && \
+  cd core-$DOVECOT_VERSION && \
   ./autogen.sh && \
   ./configure --enable-maintainer-mode --with-ssl=openssl && \
   make && \
