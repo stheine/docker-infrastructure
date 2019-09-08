@@ -53,38 +53,31 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer:/data:nocopy
 
-  pigpiod:
-    restart: unless-stopped
-    build: pigpiod
-    hostname: raspi-pigpiod
-    cap_add:
-      - SYS_RAWIO
-    devices:
-      - /dev/mem:/dev/mem
-      - /dev/vcio:/dev/vcio
-    networks:
-      - backend
-    ports:
-      - 8888:8888
-
   jalousie:
     restart: unless-stopped
     build:
       context: jalousie
       args:
-        - CACHE_DATE=2018-01-20-a
+        - CACHE_DATE=2019-07-27
     hostname: raspi-jalousie
-    ports:
-      - 9124:9124
+#        ports:
+#      - 9124:9124
     networks:
       - backend
+    cap_add:
+      - SYS_RAWIO
+    privileged: true
+    devices:
+#      - /dev/i2c-1:/dev/i2c-1
+#      - /dev/gpiomem:/dev/gpiomem
+      - /dev/mem:/dev/mem
     volumes:
       - jalousie:/var/jalousie:nocopy
       - strom:/var/strom:nocopy
       - vito:/var/vito:nocopy,ro
+      - ./jalousie/jalousie:/jalousie
     links:
       - postfix
-      - pigpiod
 
   vito:
     restart: unless-stopped
