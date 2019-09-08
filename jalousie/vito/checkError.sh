@@ -135,13 +135,13 @@ EOF
     touch --date="`date --iso-8601 --date '2 days'`" /var/vito/_uhrzeitFalsch.reportedPlus2
   fi
 else
-  if [ -f /var/vito/_uhrzeitFalsch.now ]
-  then
-    rm /var/vito/_uhrzeitFalsch.now
-  fi
-  if [ -f /var/vito/_uhrzeitFalsch.reportedPlus2 ]
-  then
-    rm /var/vito/_uhrzeitFalsch.reportedPlus2
+  if ([ $zeitDiff -gt -55 ] && [ $zeitDiff -lt 55 ]); then
+    if [ -f /var/vito/_uhrzeitFalsch.now ]; then
+      rm /var/vito/_uhrzeitFalsch.now
+    fi
+    if [ -f /var/vito/_uhrzeitFalsch.reportedPlus2 ]; then
+      rm /var/vito/_uhrzeitFalsch.reportedPlus2
+    fi
   fi
 fi
 
