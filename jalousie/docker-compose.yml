@@ -60,8 +60,8 @@ services:
       args:
         - CACHE_DATE=2019-07-27
     hostname: raspi-jalousie
-#        ports:
-#      - 9124:9124
+    ports:
+      - 9124:9124
     networks:
       - backend
     cap_add:

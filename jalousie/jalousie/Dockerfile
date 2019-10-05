@@ -109,5 +109,5 @@ WORKDIR /jalousie
 CMD ["/usr/local/bin/node", "/jalousie/lib/jalousie.js"]
 # CMD ["/bin/bash", "-l"]
 
-# EXPOSE 9124
+EXPOSE 9124
 # VOLUME /var/jalousie /var/strom /var/vito
