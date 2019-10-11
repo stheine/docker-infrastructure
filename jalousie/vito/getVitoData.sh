@@ -3,8 +3,7 @@
 # based on  http://openv.wikispaces.com/Datenauswertung+mit+RRDB
 
 mkdir /var/lock/vito-getData.sh 2>/dev/null
-if [ $? != 0 ]
-then
+if [ $? != 0 ]; then
   exit 1
 fi
 

@@ -114,11 +114,14 @@ fi
 
 # Uhrzeit Einstellung prüfen
 
-vitoZeit=`echo "$3" | awk -F ' ' '{print $1$2"-"$3"-"$4" "$6":"$7":"$8}'`
-vitoZeitSeconds=`date --date "$vitoZeit" +%s`
 systemZeit=`date +'%Y-%m-%d %H:%M:%S'`
 systemZeitSeconds=`date +%s`
+vitoZeit=`echo "$3" | awk -F ' ' '{print $1$2"-"$3"-"$4" "$6":"$7":"$8}'`
+vitoZeitSeconds=`date --date "$vitoZeit" +%s`
 zeitDiff=`expr $systemZeitSeconds - $vitoZeitSeconds`
+
+echo "systemZeit=$systemZeit   vitoZeit=$vitoZeit   zeitDiff=$zeitDiff"
+
 if ([ $zeitDiff -lt -60 ] || [ $zeitDiff -gt 60 ]); then
   touch --date="`date --iso-8601`" /var/vito/_uhrzeitFalsch.now
   if ([ ! -f /var/vito/_uhrzeitFalsch.reportedPlus2 ] || \
@@ -135,7 +138,7 @@ EOF
     touch --date="`date --iso-8601 --date '2 days'`" /var/vito/_uhrzeitFalsch.reportedPlus2
   fi
 else
-  if ([ $zeitDiff -gt -55 ] && [ $zeitDiff -lt 55 ]); then
+  if (([ $zeitDiff -lt 0 ] && [ $zeitDiff -gt -55 ]) || ([ $zeitDiff -gt 0 ] && [ $zeitDiff -lt 55 ])); then
     if [ -f /var/vito/_uhrzeitFalsch.now ]; then
       rm /var/vito/_uhrzeitFalsch.now
     fi

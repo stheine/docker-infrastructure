@@ -1,11 +1,9 @@
 #!/bin/sh
 
 LOCKED=0
-while [ $LOCKED = 0 ]
-do
+while [ $LOCKED = 0 ]; do
   mkdir /var/lock/vclientLock 2>/dev/null
-  if [ $? = 0 ]
-  then
+  if [ $? = 0 ]; then
     LOCKED=1
   else
     sleep 1
