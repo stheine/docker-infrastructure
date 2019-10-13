@@ -155,6 +155,20 @@ volumes:
       device: /share/linux/data/mediawiki-images
       o: bind
 
+  mosquitto-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/mosquitto/data
+      o: bind
+
+  mosquitto-log:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/mosquitto/log
+      o: bind
+
   portainer:
     driver: local
     driver_opts:
@@ -394,6 +408,18 @@ services:
     environment:
       PARSOID_DOMAIN_heine7: https://wiki.heine7.de/api.php
       PARSOID_HOME: /app/parsoid
+
+  mosquitto:
+    restart: unless-stopped
+    image: eclipse-mosquitto
+    hostname: qnap-mosquitto
+    ports:
+      - 1883:1883
+      - 9001:9001
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
   nginx:
     restart: unless-stopped
