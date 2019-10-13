@@ -32,7 +32,7 @@ WORKDIR /certbot
 
 # This command is just to invalidate the cache and force docker to rebuild the app from here on
 # docker-compose build --build-arg CACHE_DATE_JS="$(date)" certbot
-ARG CACHE_DATE_JS=2019-07-19
+ARG CACHE_DATE_JS=2019-10-13
 
 RUN \
   wget https://dl.eff.org/certbot-auto && \
