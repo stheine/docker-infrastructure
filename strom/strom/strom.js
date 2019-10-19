@@ -15,8 +15,9 @@ const rrdtool        = require('./rrdtool');
 // ###########################################################################
 // Globals
 
-let mqttClient;
-let smTransport;
+let   mqttClient;
+let   smTransport;
+const status = {};
 
 // ###########################################################################
 // Logging
@@ -119,7 +120,9 @@ process.on('SIGTERM', () => stopProcess());
             rrdName = 'momentanLeistung';
             rrdValue = obisResult[obisId].getValue(0).value;
 
-            await fsExtra.writeJson('/var/strom/strom.json', {[rrdName]: rrdValue});
+            status[rrdName] = rrdValue;
+
+            await fsExtra.writeJson('/var/strom/strom.json', status);
 
   //          log.info(`${rrdValue}W`);
             break;
@@ -207,6 +210,12 @@ process.on('SIGTERM', () => stopProcess());
           reactivePower: message.ENERGY.ReactivePower,
           total:         message.ENERGY.Total,
         };
+
+        status.apparentPower = message.ENERGY.ApparentPower;
+        status.power         = message.ENERGY.Power;
+        status.reactivePower = message.ENERGY.ReactivePower;
+
+        await fsExtra.writeJson('/var/strom/strom.json', status);
 
         // Update values into rrd database
         log.info('rrd', rrdUpdates);
