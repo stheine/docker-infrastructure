@@ -1,27 +1,36 @@
-FROM node:8-alpine
+# Node 8 only, since smartmeter-obis required serialport and that only supports node 8.
+FROM node:8-stretch
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
 # Set up timezone
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN \
-  apk update && \
-  apk add \
-    bash \
-    ca-certificates \
-    g++ \
-    gcc \
-    git \
-    linux-headers \
-    make \
-    python \
+  apt-get update && \
+  apt-get install -y \
+    apt-utils && \
+  apt-get upgrade -y && \
+  apt-get install -y \
+    dnsutils \
+    locales \
+    sudo \
     tzdata \
-    udev \
+    unzip \
     vim \
-    wget && \
+    wget \
+    xz-utils && \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
-  apk del tzdata
+  sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && \
+  locale-gen && \
+  dpkg-reconfigure locales && \
+  /sbin/ldconfig
+
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
 
 WORKDIR /source
 
@@ -29,19 +38,19 @@ WORKDIR /source
 # Install rrdtool from https://github.com/oetiker/rrdtool-1.x
 
 RUN \
-  apk add \
+  apt-get install -y \
+    g++ \
     groff \
+    libpango1.0-dev \
     libpng-dev \
     libxml2-dev \
-    pango-dev \
-    pcre-dev \
-    perl-dev && \
-  wget https://github.com/oetiker/rrdtool-1.x/releases/download/v1.7.0/rrdtool-1.7.0.tar.gz && \
-  tar xf rrdtool-1.7.0.tar.gz && \
-  cd rrdtool-1.7.0 && \
+    make
+ARG RRDTOOL_VERSION=1.7.2
+RUN \
+  wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
+  tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
+  cd rrdtool-$RRDTOOL_VERSION && \
   ./configure --prefix=/opt/rrdtool && \
-  /bin/cat src/Makefile | sed 's/^LIBS = $/LIBS = -lintl/' > src/Makefile.tmp && \
-  mv src/Makefile.tmp src/Makefile && \
   make && \
   make install && \
   ln -s /opt/rrdtool/include/rrd.h /usr/include/ && \
@@ -50,35 +59,30 @@ RUN \
   ln -s /opt/rrdtool/lib/librrd.so.8.1.0 /usr/lib/
 
 # ##############################################################################
-# Install and run app
+# Install and run strom app
 
-# This command is just to invalidate the cache and force docker to rebuild the app from here on
-# docker-compose build --build-arg CACHE_DATE_JS="$(date)" strom
-#ARG CACHE_DATE_JS=2018-04-18
+WORKDIR /root
 
-# TODO
-
-# ##############################################################################
-# Setting for development environment
 RUN \
-  npm install --global \
-    eslint-cli && \
-  git config --global user.email "stheine@arcor.de" && \
-  git config --global user.name "Stefan Heine" && \
-  git config --global core.pager "more"
+  apt-get install -y \
+    git \
+    python && \
+  /sbin/ldconfig
 
-# ##############################################################################
+COPY vimrc .vimrc
+RUN \
+  apt-get install -y \
+    curl && \
+  npm install --global eslint-cli eslint_d npm && \
+  mkdir -p .vim/autoload .vim/bundle && \
+  curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
+  cd .vim/bundle && \
+  git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
+  git config --global user.email stheine@arcor.de && \
+  git config --global user.name 'Stefan Heine'
+ENV TZ Europe/Berlin
 
-# WORKDIR /
-
-# RUN \
-#   git clone https://github.com/Apollon77/smartmeter-obis.git
-
-# WORKDIR /smartmeter-obis
-
-# RUN \
-#   npm install serialport --build-from-source --unsafe-perm && \
-#   npm install
+COPY docker_container_profile /root/.profile
 
 WORKDIR /strom
 
@@ -87,15 +91,12 @@ COPY create_rrd.sh package.json /strom/
 RUN \
   npm install
 
-COPY strom.js /strom/
-
-COPY vimrc /root/.vimrc
-COPY docker_container_profile /root/.profile
-# CMD ["/bin/bash", "-l"]
+COPY eslintrc .eslintrc
+COPY rrdtool.js strom.js /strom/
 
 ENV PATH="/opt/rrdtool/bin:${PATH}"
 RUN ln -s /opt/rrdtool/bin/rrdtool /usr/local/bin/
 CMD ["/usr/local/bin/node", "/strom/strom.js"]
+# CMD ["/bin/bash", "-l"]
 
-# EXPOSE 9083
 VOLUME /var/strom
