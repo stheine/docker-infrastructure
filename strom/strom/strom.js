@@ -158,8 +158,6 @@ process.on('SIGTERM', () => stopProcess());
       await rrdtool.update('/var/strom/strom.rrd', rrdUpdates);
     } catch(errHandleData) {
       log.error('handleData(): Exception', errHandleData);
-
-      smTransport.stop();
     }
   };
 
