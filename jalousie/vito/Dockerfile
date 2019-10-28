@@ -78,6 +78,12 @@ RUN \
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 # ##############################################################################
+# Install mosquitto client to publish MQTT messages
+RUN \
+  apk add \
+    mosquitto-clients
+
+# ##############################################################################
 # Install and run vito tasks
 
 RUN \

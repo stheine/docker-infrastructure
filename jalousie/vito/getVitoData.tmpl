@@ -14,6 +14,11 @@
 # 14 getError01
 # 15 getSystemTime
 
+# $1..$n   Rückgabewert gewandelt in Gleitkommazahl
+# $R1..$Rn Rückgabewert ungewandelt (Text)
+# $C1..$Cn aufgerufenes Kommando
+# $E1..$En Fehlermeldung pro Kommando
+
 # Pruefen auf Vito Fehlerzustand
 
 if [ "$E14" != "OK" ]; then
@@ -25,7 +30,11 @@ if [ "$E15" != "OK" ]; then
   exit 1;
 fi
 
-/vito/checkError.sh "$R14" "$9" "$R15"
+ERROR01="$R14"
+BRENNER_VERBRAUCH="$9"
+SYSTEM_TIME="$R15"
+
+/vito/checkError.sh "$ERROR01" "$BRENNER_VERBRAUCH" "$SYSTEM_TIME"
 
 # Speichern der Trenddaten
 
@@ -82,9 +91,42 @@ if [ "$E13" != "OK" ]; then
   exit 1;
 fi
 
-/opt/rrdtool/bin/rrdtool update /var/vito/vito.rrd "N:$1:$2:$3:$4:$5:$6:$7:$8:$9:$10:$11:$13"
+#  1 getTempAussen
+#  2 getTempKessel
+#  3 getTempPufferOben
+#  4 getTempPufferUnten
+#  5 getTempWarmwasser
+#  6 getTempFlamme
+#  7 getBrennerStunden
+#  8 getBrennerStarts
+#  9 getBrennerVerbrauch
+# 10 getKesselLeistung
+# 11 getLambda
+# 12 unit off
+# 13 getStatusZirkulation
+# 14 getError01
+# 15 getSystemTime
+
+TEMP_AUSSEN="$1"
+TEMP_KESSEL="$2"
+TEMP_PUFFER_OBEN="$3"
+TEMP_PUFFER_UNTEN="$4"
+TEMP_WARMWASSER="$5"
+TEMP_FLAMME="$6"
+BRENNER_STUNDEN="$7"
+BRENNER_STARTS="$8"
+BRENNER_VERBRAUCH="$9"
+KESSEL_LEISTUNG="$10"
+LAMBDA="$11"
+STATUS_ZIRKULATION="$13"
+
+/opt/rrdtool/bin/rrdtool update /var/vito/vito.rrd \
+  "N:$TEMP_AUSSEN:$TEMP_KESSEL:$TEMP_PUFFER_OBEN:$TEMP_PUFFER_UNTEN:$TEMP_WARMWASSER:$TEMP_FLAMME:$BRENNER_STUNDEN:$BRENNER_STARTS:$BRENNER_VERBRAUCH:$KESSEL_LEISTUNG:$LAMBDA:$STATUS_ZIRKULATION"
 
 # Aktuelle Daten fuer andere Anwendungen zur Verfuegung stellen
 
-echo "$1" > /var/vito/_tempAussen.dat
-echo "$9" > /var/vito/_brennerVerbrauch.dat
+echo "$TEMP_AUSSEN" > /var/vito/_tempAussen.dat
+echo "$BRENNER_VERBRAUCH" > /var/vito/_brennerVerbrauch.dat
+
+/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/temperatur/aussen -m "$TEMP_AUSSEN"
+/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/kessel/verbrauch -m "$BRENNER_VERBRAUCH"

@@ -14,23 +14,24 @@ LAST_ERROR_RAW=`echo "$1" | grep -v -e '^$' -e ':'`
 # F5 20 15 10 06 02 13 30 40
 CODE=`echo "$LAST_ERROR_RAW" | awk '{ print $1 }'`
 if [ -n "$CODE" ]; then
+  /usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/system/fehler -m "$CODE"
+
   if [ $CODE != "00" ]; then
     DATE=`echo "$LAST_ERROR_RAW" | awk '{ print $2$3"-"$4"-"$5" "$7":"$8":"$9 }'`
     touch --date="$DATE" /var/vito/_lastError.time
 
     if [ /var/vito/_lastError.reported -ot /var/vito/_lastError.time ]; then
-      STOERUNG=`echo "$LAST_ERROR_RAW" | awk '{ print $1 }'`
-#      echo "Störung $STOERUNG: $DATE"
+#      echo "Störung $CODE: $DATE"
       /usr/sbin/sendmail -t <<-EOF
 From: vito <technik@heine7.de>
 To: stefan@heine7.de
-Subject: Heizung Störung ($STOERUNG)
+Subject: Heizung Störung ($CODE)
 Content-Type: text/html; charset=UTF-8
 
-Störung $STOERUNG: $DATE
+Störung $CODE: $DATE
 EOF
 
-      echo "$STOERUNG: $DATE" >> /var/vito/vitoStoerungen.log
+      echo "$CODE: $DATE" >> /var/vito/vitoStoerungen.log
 
       touch /var/vito/_lastError.reported
     #else
@@ -38,6 +39,8 @@ EOF
     fi
   fi
 else
+  /usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/system/fehler -m "999"
+
   /usr/sbin/sendmail -t <<-EOF
 From: vito <technik@heine7.de>
 To: stefan@heine7.de
@@ -55,6 +58,9 @@ fi
 VERBRAUCH_KG=`echo "$2" | sed -e 's/\.000000//'`
 LETZTE_LEERUNG_KG=`cat /var/vito/_ascheGeleert.log | tail -1 | awk '{print $2}'`
 VERBRAUCH_SEITDEM=`expr $VERBRAUCH_KG - $LETZTE_LEERUNG_KG`
+
+/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/kessel/verbrauchSeitLeerung -m "$VERBRAUCH_SEITDEM"
+
 if ([ "$VERBRAUCH_SEITDEM" -gt 500 ] && [ "$VERBRAUCH_SEITDEM" -lt 510 ]) || \
     [ "$VERBRAUCH_SEITDEM" -gt 580 ]
 then
@@ -121,6 +127,8 @@ vitoZeitSeconds=`date --date "$vitoZeit" +%s`
 zeitDiff=`expr $systemZeitSeconds - $vitoZeitSeconds`
 
 echo "systemZeit=$systemZeit   vitoZeit=$vitoZeit   zeitDiff=$zeitDiff"
+
+/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/system/zeitDiff -m "$zeitDiff"
 
 if ([ $zeitDiff -lt -60 ] || [ $zeitDiff -gt 60 ]); then
   touch --date="`date --iso-8601`" /var/vito/_uhrzeitFalsch.now
