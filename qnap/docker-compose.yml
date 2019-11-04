@@ -421,6 +421,16 @@ services:
       - mosquitto-log:/mosquitto/log
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
+  mqtt2rrd:
+    restart: unless-stopped
+    build: mqtt2rrd
+    hostname: qnap-mqtt2rrd
+    volumes:
+      - jalousie:/var/jalousie
+      - strom:/var/strom
+      - vito:/var/vito
+      - ./mqtt2rrd/app:/app
+
   nginx:
     restart: unless-stopped
     build: nginx
