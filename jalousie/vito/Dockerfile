@@ -95,7 +95,6 @@ COPY \
   ascheGeleert.sh \
   ascheGeleert.cmd \
   checkAccess.sh \
-  checkError.sh \
   getVitoData.sh \
   getVitoData.cmd \
   getVitoData.tmpl \

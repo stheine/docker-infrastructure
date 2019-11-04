@@ -1,3 +1,7 @@
+#!/bin/sh
+
+# Holen der Rueckgabewerte
+
 #  1 getTempAussen
 #  2 getTempKessel
 #  3 getTempPufferOben
@@ -19,24 +23,24 @@
 # $C1..$Cn aufgerufenes Kommando
 # $E1..$En Fehlermeldung pro Kommando
 
-# Pruefen auf Vito Fehlerzustand
-
-if [ "$E14" != "OK" ]; then
-  echo `date` " es ist ein Fehler aufgetreten: $C14:$E14" >>/var/vito/error.log
-  exit 1;
-fi
-if [ "$E15" != "OK" ]; then
-  echo `date` " es ist ein Fehler aufgetreten: $C15:$E15" >>/var/vito/error.log
-  exit 1;
-fi
-
-ERROR01="$R14"
+TEMP_AUSSEN="$1"
+TEMP_KESSEL="$2"
+TEMP_PUFFER_OBEN="$3"
+TEMP_PUFFER_UNTEN="$4"
+TEMP_WARMWASSER="$5"
+TEMP_FLAMME="$6"
+BRENNER_STUNDEN="$7"
+BRENNER_STARTS="$8"
 BRENNER_VERBRAUCH="$9"
+KESSEL_LEISTUNG="$10"
+LAMBDA="$11"
+STATUS_ZIRKULATION="$13"
+ERROR01="$R14"
 SYSTEM_TIME="$R15"
 
-/vito/checkError.sh "$ERROR01" "$BRENNER_VERBRAUCH" "$SYSTEM_TIME"
 
-# Speichern der Trenddaten
+
+# Pruefen auf Fehler beim Holen der Daten
 
 if [ "$E1" != "OK" ]; then
   echo `date` " es ist ein Fehler aufgetreten: $C1:$E1" >>/var/vito/error.log
@@ -90,43 +94,194 @@ if [ "$E13" != "OK" ]; then
   echo `date` " es ist ein Fehler aufgetreten: $C13:$E13" >>/var/vito/error.log
   exit 1;
 fi
+if [ "$E14" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C14:$E14" >>/var/vito/error.log
+  exit 1;
+fi
+if [ "$E15" != "OK" ]; then
+  echo `date` " es ist ein Fehler aufgetreten: $C15:$E15" >>/var/vito/error.log
+  exit 1;
+fi
 
-#  1 getTempAussen
-#  2 getTempKessel
-#  3 getTempPufferOben
-#  4 getTempPufferUnten
-#  5 getTempWarmwasser
-#  6 getTempFlamme
-#  7 getBrennerStunden
-#  8 getBrennerStarts
-#  9 getBrennerVerbrauch
-# 10 getKesselLeistung
-# 11 getLambda
-# 12 unit off
-# 13 getStatusZirkulation
-# 14 getError01
-# 15 getSystemTime
 
-TEMP_AUSSEN="$1"
-TEMP_KESSEL="$2"
-TEMP_PUFFER_OBEN="$3"
-TEMP_PUFFER_UNTEN="$4"
-TEMP_WARMWASSER="$5"
-TEMP_FLAMME="$6"
-BRENNER_STUNDEN="$7"
-BRENNER_STARTS="$8"
-BRENNER_VERBRAUCH="$9"
-KESSEL_LEISTUNG="$10"
-LAMBDA="$11"
-STATUS_ZIRKULATION="$13"
 
-/opt/rrdtool/bin/rrdtool update /var/vito/vito.rrd \
-  "N:$TEMP_AUSSEN:$TEMP_KESSEL:$TEMP_PUFFER_OBEN:$TEMP_PUFFER_UNTEN:$TEMP_WARMWASSER:$TEMP_FLAMME:$BRENNER_STUNDEN:$BRENNER_STARTS:$BRENNER_VERBRAUCH:$KESSEL_LEISTUNG:$LAMBDA:$STATUS_ZIRKULATION"
+# Locking, damit script nur einmal laeuft
 
-# Aktuelle Daten fuer andere Anwendungen zur Verfuegung stellen
+mkdir /var/lock/getVitoData.sh 2>/dev/null
+if [ $? != 0 ]; then
+  exit 1
+fi
 
-echo "$TEMP_AUSSEN" > /var/vito/_tempAussen.dat
-echo "$BRENNER_VERBRAUCH" > /var/vito/_brennerVerbrauch.dat
 
-/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/temperatur/aussen -m "$TEMP_AUSSEN"
-/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/kessel/verbrauch -m "$BRENNER_VERBRAUCH"
+
+# Letzten Fehlereintrag prüfen
+
+LAST_ERROR_RAW=`echo "$ERROR01" | grep -v -e '^$' -e ':'`
+# F5 20 15 10 06 02 13 30 40
+CODE=`echo "$LAST_ERROR_RAW" | awk '{ print \$1 }'`
+if [ -n "$CODE" ]; then
+  if [ $CODE != "00" ]; then
+    DATE=`echo "$LAST_ERROR_RAW" | awk '{ print \$2\$3"-"\$4"-"\$5" "\$7":"\$8":"\$9 }'`
+    touch --date="$DATE" /var/vito/_lastError.time
+
+    if [ /var/vito/_lastError.reported -ot /var/vito/_lastError.time ]; then
+      /usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/FEHLER -m "$CODE"
+
+#      echo "Störung $CODE: $DATE"
+      /usr/sbin/sendmail -t <<-EOF
+From: vito <technik@heine7.de>
+To: stefan@heine7.de
+Subject: Heizung Störung ($CODE)
+Content-Type: text/html; charset=UTF-8
+
+Störung $CODE: $DATE
+EOF
+
+      echo "$CODE: $DATE" >> /var/vito/vitoStoerungen.log
+
+      touch /var/vito/_lastError.reported
+    #else
+    #  echo "Already reported"
+    fi
+  fi
+else
+  /usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/FEHLER -m "999"
+
+  /usr/sbin/sendmail -t <<-EOF
+From: vito <technik@heine7.de>
+To: stefan@heine7.de
+Subject: Vito nicht erreichbar
+Content-Type: text/html; charset=UTF-8
+
+Vito nicht erreichbar
+EOF
+fi
+
+
+
+# Check Asche Verbrauch - Leerung noetig?
+
+VERBRAUCH_KG=`echo "$BRENNER_VERBRAUCH" | sed -e 's/\.000000//'`
+LETZTE_LEERUNG_KG=`cat /var/vito/_ascheGeleert.log | tail -1 | awk '{print \$2}'`
+VERBRAUCH_SEITDEM=`expr $VERBRAUCH_KG - $LETZTE_LEERUNG_KG`
+
+if ([ "$VERBRAUCH_SEITDEM" -gt 500 ] && [ "$VERBRAUCH_SEITDEM" -lt 510 ]) || \
+    [ "$VERBRAUCH_SEITDEM" -gt 580 ]
+then
+  touch --date="`date --iso-8601`" /var/vito/_lastAsche.now
+  if [ /var/vito/_lastAsche.reportedPlus2 -ot /var/vito/_lastAsche.now ]
+  then
+    /usr/sbin/sendmail -t <<-EOF
+From: vito <technik@heine7.de>
+To: stefan@heine7.de
+Subject: Asche leeren
+Content-Type: text/html; charset=UTF-8
+
+<p>
+Verbrauch seit letzter Leerung: $VERBRAUCH_SEITDEM kg
+<br />
+Asche leeren.
+</p>
+<p>
+<a href='https://heine7.de/vito/ascheGeleert.sh'>Asche geleert</a>
+</p>
+EOF
+    touch --date="`date --iso-8601 --date '2 days'`" /var/vito/_lastAsche.reportedPlus2
+  fi
+fi
+
+
+
+# Check Asche Verbrauch - Speicher leer?
+
+VERBRAUCH_KG=`echo "$BRENNER_VERBRAUCH" | sed -e 's/\.000000//'`
+SPEICHER_KG=`cat /var/vito/_pelletsSpeicher.log | awk '{print \$2}' | paste -sd+ | bc`
+VORRAT=`expr $SPEICHER_KG - $VERBRAUCH_KG`
+if ([ "$VORRAT" -lt 200 ]); then
+  touch --date="`date --iso-8601`" /var/vito/_lastSpeicher.now
+  if [ /var/vito/_lastSpeicher.reportedPlus2 -ot /var/vito/_lastSpeicher.now ]
+  then
+    /usr/sbin/sendmail -t <<-EOF
+From: vito <technik@heine7.de>
+To: stefan@heine7.de
+Subject: Speicher bald leer
+Content-Type: text/html; charset=UTF-8
+
+<p>
+Der Pelletsspeicher enhält nur noch etwa $VORRAT kg
+<br />
+Nachschub bestellen.
+</p>
+<p>
+<a href='https://heine7.de/vito/pelletsNachschub.sh'>Pellets Nachschub</a>
+</p>
+EOF
+    touch --date="`date --iso-8601 --date '2 days'`" /var/vito/_lastSpeicher.reportedPlus2
+  fi
+fi
+
+
+
+# Uhrzeit Einstellung prüfen
+
+systemZeit=`date +'%Y-%m-%d %H:%M:%S'`
+systemZeitSeconds=`date +%s`
+vitoZeit=`echo "$SYSTEM_TIME" | awk -F ' ' '{print \$1\$2"-"\$3"-"\$4" "\$6":"\$7":"\$8}'`
+vitoZeitSeconds=`date --date "$vitoZeit" +%s`
+zeitDiff=`expr $systemZeitSeconds - $vitoZeitSeconds`
+
+echo "systemZeit=$systemZeit   vitoZeit=$vitoZeit   zeitDiff=$zeitDiff"
+
+if ([ $zeitDiff -lt -60 ] || [ $zeitDiff -gt 60 ]); then
+  touch --date="`date --iso-8601`" /var/vito/_uhrzeitFalsch.now
+  if ([ ! -f /var/vito/_uhrzeitFalsch.reportedPlus2 ] || \
+      [ /var/vito/_uhrzeitFalsch.reportedPlus2 -ot /var/vito/_uhrzeitFalsch.now ])
+  then
+    /usr/sbin/sendmail -t <<-EOF
+From: vito <technik@heine7.de>
+To: stefan@heine7.de
+Subject: Vito Uhrzeit falsch
+Content-Type: text/html; charset=UTF-8
+
+Vito Uhrzeit geht falsch um $zeitDiff Sekunden<p>vito: $vitoZeit<br>system: $systemZeit
+EOF
+    touch --date="`date --iso-8601 --date '2 days'`" /var/vito/_uhrzeitFalsch.reportedPlus2
+  fi
+else
+  if (([ $zeitDiff -lt 0 ] && [ $zeitDiff -gt -55 ]) || ([ $zeitDiff -gt 0 ] && [ $zeitDiff -lt 55 ])); then
+    if [ -f /var/vito/_uhrzeitFalsch.now ]; then
+      rm /var/vito/_uhrzeitFalsch.now
+    fi
+    if [ -f /var/vito/_uhrzeitFalsch.reportedPlus2 ]; then
+      rm /var/vito/_uhrzeitFalsch.reportedPlus2
+    fi
+  fi
+fi
+
+
+
+# Publish der Daten ueber mqtt
+
+/usr/bin/mosquitto_pub -h 192.168.6.7 -t Vito/tele/SENSOR -m "{
+  \"zeitDiff\":\"$zeitDiff\",
+  \"verbrauchSeitLeerung\":\"$VERBRAUCH_SEITDEM\",
+  \"vorrat\":\"$VORRAT\",
+  \"tempAussen\":\"$TEMP_AUSSEN\",
+  \"tempKessel\":\"$TEMP_KESSEL\",
+  \"tempPufferOben\":\"$TEMP_PUFFER_OBEN\",
+  \"tempPufferUnten\":\"$TEMP_PUFFER_UNTEN\",
+  \"tempWarmwasser\":\"$TEMP_WARMWASSER\",
+  \"tempFlamme\":\"$TEMP_FLAMME\",
+  \"brennerStarts\":\"$BRENNER_STARTS\",
+  \"brennerStunden\":\"$BRENNER_STUNDEN\",
+  \"brennerVerbrauch\":\"$BRENNER_VERBRAUCH\",
+  \"kesselLeistung\":\"$KESSEL_LEISTUNG\",
+  \"lambda\":\"$LAMBDA\",
+  \"statusZirkulation\":\"$STATUS_ZIRKULATION\"
+}"
+
+
+
+# Lock freigeben
+
+rmdir /var/lock/getVitoData.sh
