@@ -90,5 +90,5 @@ WORKDIR /app
 # RUN \
 #   npm install
 
-# CMD ["/usr/local/bin/node", "/jalousie/lib/jalousie.js"]
-CMD ["/bin/bash", "-l"]
+CMD ["/usr/local/bin/node", "/app/mqtt2rrd.js"]
+# CMD ["/bin/bash", "-l"]
