@@ -71,6 +71,68 @@ process.on('SIGTERM', () => stopProcess());
   log.info(`Startup --------------------------------------------------`);
 
   // #########################################################################
+  // MQTT
+
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
+
+  mqttClient.on('message', async(topic, messageBuffer) => {
+    let message;
+
+    try {
+      message = JSON.parse(messageBuffer.toString());
+    } catch(err) {
+      log.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
+
+      return;
+    }
+
+    switch(topic) {
+      case 'PowSolar/tele/SENSOR': {
+        // message = {
+        //   Time: '2019-10-14T15:53:49',
+        //   ENERGY: {
+        //     TotalStartTime: '2019-10-08T16:24:23',
+        //     Total:          0.008,
+        //     Yesterday:      0.000,
+        //     Today:          0.000,
+        //     Period:         0,
+        //     Power:          0,
+        //     ApparentPower:  0,
+        //     ReactivePower:  0,
+        //     Factor:         0.00,
+        //     Voltage:        0,
+        //     Current:        0.000,
+        //   },
+        // }
+
+        const rrdUpdates = {
+          power: message.ENERGY.Power,
+          total: message.ENERGY.Total,
+        };
+
+        status.power         = message.ENERGY.Power;
+
+        await fsExtra.writeJson('/var/strom/strom.json', status);
+
+        // Update values into rrd database
+        log.info('rrd', rrdUpdates);
+
+        await rrdtool.update('/var/strom/solar.rrd', rrdUpdates);
+        break;
+      }
+
+      default:
+        log.warn(`Unhandled mqtt topic '${topic}'`);
+        break;
+    }
+  });
+
+//  await mqttClient.subscribe('PowSolar/stat/POWER');   // Button oder per cmnd/PowSolar/power ' '
+//  await mqttClient.subscribe('PowSolar/stat/STATUS8'); // Angefordert per cmnd/PowSolar/STATUS '8'
+//  await mqttClient.subscribe('PowSolar/tele/#');
+  await mqttClient.subscribe('PowSolar/tele/SENSOR');  // Automatisch, interval
+
+  // #########################################################################
   // SmartmeterObis
 
   const smOptions = {
@@ -142,6 +204,8 @@ process.on('SIGTERM', () => stopProcess());
 
         if(rrdName) {
           rrdUpdates[rrdName] = rrdValue;
+
+          await mqttClient.publish(`Stromzaehler/tele/${rrdName}`, String(rrdValue));
         }
 
     //    log.info(
@@ -166,70 +230,4 @@ process.on('SIGTERM', () => stopProcess());
   smTransport.process();
 
   // setTimeout(smTransport.stop, 60000);
-
-  // #########################################################################
-  // MQTT
-
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
-
-  mqttClient.on('message', async(topic, messageBuffer) => {
-    let message;
-
-    try {
-      message = JSON.parse(messageBuffer.toString());
-    } catch(err) {
-      log.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
-
-      return;
-    }
-
-    switch(topic) {
-      case 'tele/PowSolar/SENSOR': {
-        // message = {
-        //   Time: '2019-10-14T15:53:49',
-        //   ENERGY: {
-        //     TotalStartTime: '2019-10-08T16:24:23',
-        //     Total:          0.008,
-        //     Yesterday:      0.000,
-        //     Today:          0.000,
-        //     Period:         0,
-        //     Power:          0,
-        //     ApparentPower:  0,
-        //     ReactivePower:  0,
-        //     Factor:         0.00,
-        //     Voltage:        0,
-        //     Current:        0.000,
-        //   },
-        // }
-
-        const rrdUpdates = {
-          apparentPower: message.ENERGY.ApparentPower,
-          power:         message.ENERGY.Power,
-          reactivePower: message.ENERGY.ReactivePower,
-          total:         message.ENERGY.Total,
-        };
-
-        status.apparentPower = message.ENERGY.ApparentPower;
-        status.power         = message.ENERGY.Power;
-        status.reactivePower = message.ENERGY.ReactivePower;
-
-        await fsExtra.writeJson('/var/strom/strom.json', status);
-
-        // Update values into rrd database
-        log.info('rrd', rrdUpdates);
-
-        await rrdtool.update('/var/strom/solar.rrd', rrdUpdates);
-        break;
-      }
-
-      default:
-        log.warn(`Unhandled mqtt topic '${topic}'`);
-        break;
-    }
-  });
-
-//  await mqttClient.subscribe('stat/PowSolar/POWER');   // Button oder per cmnd/PowSolar/power ' '
-//  await mqttClient.subscribe('stat/PowSolar/STATUS8'); // Angefordert per cmnd/PowSolar/STATUS '8'
-//  await mqttClient.subscribe('tele/PowSolar/#');
-  await mqttClient.subscribe('tele/PowSolar/SENSOR');  // Automatisch, interval
 })();
