@@ -35,30 +35,6 @@ ENV LC_ALL en_US.UTF-8
 WORKDIR /source
 
 # ##############################################################################
-# Install rrdtool from https://github.com/oetiker/rrdtool-1.x
-
-RUN \
-  apt-get install -y \
-    g++ \
-    groff \
-    libpango1.0-dev \
-    libpng-dev \
-    libxml2-dev \
-    make
-ARG RRDTOOL_VERSION=1.7.2
-RUN \
-  wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
-  tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
-  cd rrdtool-$RRDTOOL_VERSION && \
-  ./configure --prefix=/opt/rrdtool && \
-  make && \
-  make install && \
-  ln -s /opt/rrdtool/include/rrd.h /usr/include/ && \
-  ln -s /opt/rrdtool/lib/librrd.so /usr/lib/ && \
-  ln -s /opt/rrdtool/lib/librrd.so.8 /usr/lib/ && \
-  ln -s /opt/rrdtool/lib/librrd.so.8.1.0 /usr/lib/
-
-# ##############################################################################
 # Install and run strom app
 
 WORKDIR /root
@@ -86,17 +62,13 @@ COPY docker_container_profile /root/.profile
 
 WORKDIR /strom
 
-COPY create_rrd.sh package.json /strom/
+COPY package.json /strom/
 
 RUN \
   npm install
 
 COPY eslintrc .eslintrc
-COPY rrdtool.js strom.js /strom/
+COPY strom.js /strom/
 
-ENV PATH="/opt/rrdtool/bin:${PATH}"
-RUN ln -s /opt/rrdtool/bin/rrdtool /usr/local/bin/
 CMD ["/usr/local/bin/node", "/strom/strom.js"]
 # CMD ["/bin/bash", "-l"]
-
-VOLUME /var/strom

@@ -10,19 +10,16 @@ const moment         = require('moment');
 const mqtt           = require('async-mqtt');
 const smartmeterObis = require('smartmeter-obis');
 
-const rrdtool        = require('./rrdtool');
-
 // ###########################################################################
 // Globals
 
-let   mqttClient;
-let   smTransport;
-const status = {};
+let mqttClient;
+let smTransport;
 
 // ###########################################################################
 // Logging
 
-const log = {
+const logger = {
   info(msg, params) {
     if(params) {
       console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg, params);
@@ -56,7 +53,7 @@ const stopProcess = async function() {
 
   await mqttClient.end();
 
-  log.info(`Shutdown -------------------------------------------------`);
+  logger.info(`Shutdown -------------------------------------------------`);
 };
 
 process.on('SIGTERM', () => stopProcess());
@@ -65,72 +62,31 @@ process.on('SIGTERM', () => stopProcess());
 // Main (async)
 
 (async() => {
+  // Globals
+  let einspeisung = 0;
+
   // #########################################################################
   // Startup
 
-  log.info(`Startup --------------------------------------------------`);
+  logger.info(`Startup --------------------------------------------------`);
 
   // #########################################################################
   // MQTT
 
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
 
+  // Subscribe to Solar data to get feed-in
   mqttClient.on('message', async(topic, messageBuffer) => {
-    let message;
-
     try {
-      message = JSON.parse(messageBuffer.toString());
+      const message = JSON.parse(messageBuffer.toString());
+
+      einspeisung = message.ENERGY.Power;
     } catch(err) {
-      log.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
-
-      return;
-    }
-
-    switch(topic) {
-      case 'PowSolar/tele/SENSOR': {
-        // message = {
-        //   Time: '2019-10-14T15:53:49',
-        //   ENERGY: {
-        //     TotalStartTime: '2019-10-08T16:24:23',
-        //     Total:          0.008,
-        //     Yesterday:      0.000,
-        //     Today:          0.000,
-        //     Period:         0,
-        //     Power:          0,
-        //     ApparentPower:  0,
-        //     ReactivePower:  0,
-        //     Factor:         0.00,
-        //     Voltage:        0,
-        //     Current:        0.000,
-        //   },
-        // }
-
-        const rrdUpdates = {
-          power: message.ENERGY.Power,
-          total: message.ENERGY.Total,
-        };
-
-        status.power         = message.ENERGY.Power;
-
-        await fsExtra.writeJson('/var/strom/strom.json', status);
-
-        // Update values into rrd database
-        log.info('rrd', rrdUpdates);
-
-        await rrdtool.update('/var/strom/solar.rrd', rrdUpdates);
-        break;
-      }
-
-      default:
-        log.warn(`Unhandled mqtt topic '${topic}'`);
-        break;
+      logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
     }
   });
 
-//  await mqttClient.subscribe('PowSolar/stat/POWER');   // Button oder per cmnd/PowSolar/power ' '
-//  await mqttClient.subscribe('PowSolar/stat/STATUS8'); // Angefordert per cmnd/PowSolar/STATUS '8'
-//  await mqttClient.subscribe('PowSolar/tele/#');
-  await mqttClient.subscribe('PowSolar/tele/SENSOR');  // Automatisch, interval
+  await mqttClient.subscribe('PowSolar/tele/SENSOR');
 
   // #########################################################################
   // SmartmeterObis
@@ -152,7 +108,7 @@ process.on('SIGTERM', () => stopProcess());
   const handleData = async function(err, obisResult) {
     try {
       if(err) {
-        log.error('handleData(): Error received', err);
+        logger.error('handleData(): Error received', err);
         // handle error
 
         await stopProcess();
@@ -160,33 +116,28 @@ process.on('SIGTERM', () => stopProcess());
         return;
       }
 
-      const rrdUpdates = {};
+      const data = {};
 
       for(const obisId of Object.keys(obisResult)) {
         const obisName = smartmeterObis.ObisNames.resolveObisName(
           obisResult[obisId],
           smOptions.obisNameLanguage
         ).obisName;
-        let   rrdName;
-        let   rrdValue;
+        let   name;
+        let   value;
 
         switch(obisId) {
           case '1-0:1.8.0*255':         // Zählerstand 1 Summe Wirkarbeit Bezug + (Total)
             check.assert.equal(obisResult[obisId].getValueLength(), 1);
-            rrdName = 'gesamtLeistung';
-            rrdValue = obisResult[obisId].getValue(0).value;
+            data.gesamtLeistung = obisResult[obisId].getValue(0).value;
             break;
 
           case '1-0:16.7.0*255':        // Momentanwert Gesamtwirkleistung (Total)
             check.assert.equal(obisResult[obisId].getValueLength(), 1);
-            rrdName = 'momentanLeistung';
-            rrdValue = obisResult[obisId].getValue(0).value;
+            data.zaehlerLeistung  = obisResult[obisId].getValue(0).value;
+            data.momentanLeistung = obisResult[obisId].getValue(0).value + einspeisung;
 
-            status[rrdName] = rrdValue;
-
-            await fsExtra.writeJson('/var/strom/strom.json', status);
-
-  //          log.info(`${rrdValue}W`);
+  //          logger.info(`${value}W`);
             break;
 
           case '1-0:0.0.9*255':         // Device ID
@@ -198,30 +149,24 @@ process.on('SIGTERM', () => stopProcess());
             break;
 
           default:
-            log.error(`Unhandled obisId ${obisResult[obisId].idToString()}: ${obisName}`);
+            logger.error(`Unhandled obisId ${obisResult[obisId].idToString()}: ${obisName}`);
             break;
         }
 
-        if(rrdName) {
-          rrdUpdates[rrdName] = rrdValue;
-
-          await mqttClient.publish(`Stromzaehler/tele/${rrdName}`, String(rrdValue));
-        }
-
-    //    log.info(
+    //    logger.info(
     //      obisResult[obisId].idToString() + ': ' +
     //      obisName + ' = ' +
     //      obisResult[obisId].valueToString() + ' / ' +
-    //      rrdName + ' = ' + rrdValue
+    //      name + ' = ' + value
     //    );
       }
 
-      // Update values into rrd database
-      log.info('rrd', rrdUpdates);
+      // Publish data to mqtt
+      logger.info('mqtt', data);
 
-      await rrdtool.update('/var/strom/strom.rrd', rrdUpdates);
+      await mqttClient.publish(`Stromzaehler/tele/SENSOR`, JSON.stringify(data));
     } catch(errHandleData) {
-      log.error('handleData(): Exception', errHandleData);
+      logger.error('handleData(): Exception', errHandleData);
     }
   };
 

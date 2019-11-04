@@ -23,13 +23,6 @@ volumes:
       device: /docker-data/pihole/etc_dnsmasq.d
       o: bind
 
-  strom:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/strom
-      o: bind
-
 networks:
   backend:
     driver: bridge
@@ -38,7 +31,7 @@ services:
   pihole:
     restart: unless-stopped
     build: pihole
-    hostname: pi3-pihole
+    hostname: strom-pihole
     dns:
       - 127.0.0.1
       - 1.1.1.1
@@ -69,7 +62,7 @@ services:
       context: strom
       args:
         - CACHE_DATE=2018-04-18
-    hostname: raspi-strom
+    hostname: strom-strom
     ports:
       - 9083:9083
     cap_add:
@@ -78,8 +71,3 @@ services:
       - /dev/ttyAMA0:/dev/ttyAMA0
     networks:
       - backend
-    volumes:
-      - strom:/var/strom:nocopy
-#    links:
-#      - postfix
-#      - pigpiod
