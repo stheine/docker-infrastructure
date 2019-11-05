@@ -39,12 +39,10 @@ const logger = {
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     try {
-      let message;
+      const message = JSON.parse(messageBuffer.toString());
 
       switch(topic) {
         case 'PowSolar/tele/SENSOR':
-          message = JSON.parse(messageBuffer.toString());
-
           await rrdtool.update('/var/strom/solar.rrd', {
             power: message.ENERGY.Power,
             total: message.ENERGY.Total,
@@ -52,8 +50,6 @@ const logger = {
           break;
 
         case 'Stromzaehler/tele/SENSOR':
-          message = JSON.parse(messageBuffer.toString());
-
           await rrdtool.update('/var/strom/strom.rrd', {
             gesamtLeistung:   message.gesamtLeistung,
             momentanLeistung: message.momentanLeistung,
@@ -62,8 +58,6 @@ const logger = {
           break;
 
         case 'Vito/tele/SENSOR':
-          message = JSON.parse(messageBuffer.toString());
-
           await rrdtool.update('/var/vito/vito.rrd', {
             tempAussen:        message.tempAussen,
             tempKessel:        message.tempKessel,
@@ -81,7 +75,7 @@ const logger = {
           break;
 
         default:
-          logger.error(`Unhandled topic '${topic}': ${messageBuffer.toString()}`);
+          logger.error(`Unhandled topic '${topic}'`, message);
           break;
       }
     } catch(err) {
@@ -91,5 +85,5 @@ const logger = {
 
   await mqttClient.subscribe('PowSolar/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
-  await mqttClient.subscribe('Vito/tele/#');
+  await mqttClient.subscribe('Vito/tele/SENSOR');
 })();
