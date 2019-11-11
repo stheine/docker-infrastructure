@@ -5,7 +5,6 @@ version: "2.2"
 #    25 postfix           smtp
 #   993 dovecot           imap
 #  8008 portainer         http://192.168.6.7:8008/
-# 53000 grafana           http://192.168.6.7:53000/
 # 59080 nginx             http://192.168.6.7:59080/
 # 59443 nginx             https://192.168.6.7:59443/
 # 59154 musik             http://192.168.6.7:59154/
@@ -55,20 +54,6 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/gerberaMusik
-      o: bind
-
-  grafana-storage:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/grafana-storage
-      o: bind
-
-  influxdb:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/influxdb
       o: bind
 
   jalousie:
@@ -260,16 +245,6 @@ services:
       - letsencrypt:/etc/letsencrypt:nocopy
       - letsencrypt_www:/var/letsencrypt
 
-  collectd:
-    restart: unless-stopped
-    build: collectd
-    hostname: qnap-collectd
-    depends_on:
-      - influxdb
-    volumes:
-      - ./collectd/collectd.conf:/etc/collectd/collectd.conf:ro
-      - collectd-data:/var/lib/collectd
-
   dovecot:
     restart: unless-stopped
     build: dovecot
@@ -337,30 +312,6 @@ services:
     volumes:
       - media_musik:/media:ro
       - gerbera-musik:/gerbera_home
-
-  grafana:
-    restart: unless-stopped
-    image: grafana/grafana
-    ports:
-      - 53000:3000
-    depends_on:
-      - influxdb
-    environment:
-      GF_SERVER_ROOT_URL: http://192.168.6.7:53000
-      GF_SECURITY_ADMIN_PASSWORD: 1234
-    volumes:
-      - grafana-storage:/var/lib/grafana
-
-  influxdb:
-    restart: unless-stopped
-    image: influxdb
-    # ports:
-    #   - 8086:8086
-    #   - 25826:25826/udp
-    volumes:
-      - influxdb:/var/lib/influxdb
-      - ./influxdb/influxdb.conf:/etc/influxdb/influxdb.conf:ro
-      - ./influxdb/types.db:/usr/share/collectd/types.db:ro
 
   js-dev:
     restart: "no"
