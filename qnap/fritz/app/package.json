@@ -1,0 +1,25 @@
+{
+  "name": "fritz",
+  "version": "0.0.0",
+  "description": "Get data from Fritz!Box and send to mqtt",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "async-mqtt": "^2.4.2",
+    "fritz-callmonitor": "^3.1.5",
+    "lodash": "^4.17.15",
+    "millisecond": "^0.1.2",
+    "moment": "^2.24.0",
+    "tr-064-async": "^1.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.6.0",
+    "eslint-config-es": "^3.16.4",
+    "eslint-plugin-json": "^2.0.1",
+    "eslint-plugin-mocha": "^6.2.1"
+  }
+}

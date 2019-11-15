@@ -21,6 +21,13 @@ volumes:
       device: /share/linux/data/collectd-data
       o: bind
 
+  fritz:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/fritz
+      o: bind
+
   gerbera-filme:
     driver: local
     driver_opts:
@@ -227,6 +234,7 @@ services:
     build: apache2
     hostname: qnap-apache2
     volumes:
+      - fritz:/var/fritz
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
@@ -254,6 +262,14 @@ services:
     volumes:
       - letsencrypt:/usr/local/etc/letsencrypt:nocopy
       - vmail:/home/vmail:nocopy
+
+  fritz:
+    restart: unless-stopped
+    build: fritz
+    hostname: qnap-fritz
+    volumes:
+      - ./fritz/app:/app
+      - fritz:/var/fritz
 
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
@@ -377,6 +393,7 @@ services:
     build: mqtt2rrd
     hostname: qnap-mqtt2rrd
     volumes:
+      - fritz:/var/fritz
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
