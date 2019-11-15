@@ -9,6 +9,14 @@ const moment  = require('moment');
 
 const rrdtool = require('./rrdtool');
 
+// ###########################################################################
+// Globals
+
+let mqttClient;
+
+// ###########################################################################
+// Logging
+
 const logger = {
   info(msg, params) {
     if(params) {
@@ -33,6 +41,21 @@ const logger = {
   },
 };
 
+// ###########################################################################
+// Process handling
+
+const stopProcess = async function() {
+  await mqttClient.end();
+  mqttClient = undefined;
+
+  logger.info(`Shutdown -------------------------------------------------`);
+};
+
+process.on('SIGTERM', () => stopProcess());
+
+// ###########################################################################
+// Main (async)
+
 (async() => {
   // #########################################################################
   // Startup
@@ -42,20 +65,28 @@ const logger = {
   // #########################################################################
   // Handle shutdown
   process.on('SIGTERM', async() => {
-    await mqttClient.end();
-
-    logger.info(`Shutdown -------------------------------------------------`);
+    await stopProcess();
   });
 
   // #########################################################################
   // Init MQTT connection
-  const mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     try {
       const message = JSON.parse(messageBuffer.toString());
 
       switch(topic) {
+        case 'FritzBox/tele/SENSOR':
+          await rrdtool.update('/var/fritz/fritz.rrd', {
+            upTime:            message.upTime,
+            downstreamMax:     message.downstreamMaxBitRate,
+            upstreamMax:       message.upstreamMaxBitRate,
+            downstreamCurrent: message.downstreamCurrent,
+            upstreamCurrent:   message.upstreamCurrent,
+          });
+          break;
+
         case 'PowSolar/tele/SENSOR':
           await rrdtool.update('/var/strom/solar.rrd', {
             power: message.ENERGY.Power,
@@ -97,6 +128,7 @@ const logger = {
     }
   });
 
+  await mqttClient.subscribe('FritzBox/tele/SENSOR');
   await mqttClient.subscribe('PowSolar/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
