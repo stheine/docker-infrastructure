@@ -70,13 +70,6 @@ volumes:
       device: /share/linux/data/jalousie
       o: bind
 
-  jalousie_source:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/docker/jalousie/jalousie/jalousie
-      o: bind
-
   letsencrypt:
     driver: local
     driver_opts:
@@ -328,12 +321,6 @@ services:
     volumes:
       - media_musik:/media:ro
       - gerbera-musik:/gerbera_home
-
-  js-dev:
-    restart: "no"
-    build: js-dev
-    volumes:
-      - jalousie_source:/source/jalousie
 
   mediawiki:
     build: mediawiki
