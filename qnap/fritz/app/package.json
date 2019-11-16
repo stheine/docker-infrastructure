@@ -14,7 +14,10 @@
     "lodash": "^4.17.15",
     "millisecond": "^0.1.2",
     "moment": "^2.24.0",
-    "tr-064-async": "^1.0.0"
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.8",
+    "tr-064-async": "^1.0.0",
+    "xml-js": "^1.6.11"
   },
   "devDependencies": {
     "eslint": "^6.6.0",

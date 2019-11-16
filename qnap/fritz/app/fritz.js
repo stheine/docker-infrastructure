@@ -3,7 +3,7 @@
 'use strict';
 
 /* eslint-disable new-cap */
-/* eslint-disable no-console */
+/* eslint-disable no-underscore-dangle */
 
 const _                        = require('lodash');
 const {CallMonitor, EventKind} = require('fritz-callmonitor');
@@ -11,6 +11,8 @@ const Fritzbox                 = require('tr-064-async');
 const millisecond              = require('millisecond');
 const moment                   = require('moment');
 const mqtt                     = require('async-mqtt');
+const request                  = require('request-promise-native');
+const xmlJs                    = require('xml-js');
 
 const tr064Options             = require('/var/fritz/tr064Options');
 
@@ -18,13 +20,17 @@ const tr064Options             = require('/var/fritz/tr064Options');
 // Globals
 
 let callMonitor;
-let interval;
 let mqttClient;
+let phonebook;
+let phonebookRefreshDate;
+let phonebookInterval;
+let stateInterval;
 
 // ###########################################################################
 // Logging
 
 const logger = {
+  /* eslint-disable no-console */
   info(msg, params) {
     if(params) {
       console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg, params);
@@ -46,13 +52,15 @@ const logger = {
       console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg);
     }
   },
+  /* eslint-enable no-console */
 };
 
 // ###########################################################################
 // Process handling
 
 const stopProcess = async function() {
-  clearInterval(interval);
+  clearInterval(phonebookInterval);
+  clearInterval(stateInterval);
 
   callMonitor.end();
   callMonitor = undefined;
@@ -61,6 +69,57 @@ const stopProcess = async function() {
   mqttClient = undefined;
 
   logger.info(`Shutdown -------------------------------------------------`);
+};
+
+// ###########################################################################
+// Refresh phonebook
+const refreshPhonebook = async function(fritzbox) {
+  const service = fritzbox.services['urn:dslforum-org:service:X_AVM-DE_OnTel:1'];
+
+  const phonebookList = await service.actions.GetPhonebookList();
+  const newPhonebook = {};
+
+  for(const NewPhonebookID of phonebookList.NewPhonebookList.split(',')) {
+    const phonebookData = await service.actions.GetPhonebook({NewPhonebookID});
+    const {NewPhonebookURL} = phonebookData;
+
+    const phonebookXml = await request(NewPhonebookURL + (phonebookRefreshDate ? phonebookRefreshDate.unix() : ''));
+
+    const phonebookRaw = xmlJs.xml2js(phonebookXml, {compact: true});
+
+    if(phonebookRaw.phonebooks.phonebook._comment === ' not modified ') {
+      // Not modified
+      continue;
+    }
+
+    if(!_.isArray(phonebookRaw.phonebooks.phonebook.contact)) {
+      // No enties in phonebook
+      continue;
+    }
+
+    for(const contact of phonebookRaw.phonebooks.phonebook.contact) {
+      const name = contact.person.realName._text;
+
+      if(_.isArray(contact.telephony.number)) {
+        for(const number of contact.telephony.number) {
+          newPhonebook[number._text.replace(/[\s/]/g, '')] = name;
+        }
+      } else {
+        newPhonebook[contact.telephony.number._text.replace(/[\s/]/g, '')] = name;
+      }
+    }
+  }
+
+  if(_.isEmpty(newPhonebook)) {
+    return;
+  }
+
+  phonebookRefreshDate = moment();
+
+  phonebook = newPhonebook;
+
+  logger.info('Phonebook refreshed');
+//  logger.info(phonebook);
 };
 
 process.on('SIGTERM', () => stopProcess());
@@ -86,43 +145,85 @@ process.on('SIGTERM', () => stopProcess());
   callMonitor.on('phone', async data => {
     logger.info(data);
 
+    let callee;
+    let calleeName;
+    let payload;
+    let topic;
+
+    if(data.callee || data.phoneNumber) {
+      callee = (data.callee || data.phoneNumber).replace(/#$/, '').replace(/\s/g, '');
+
+      if(phonebook[callee]) {
+        calleeName = phonebook[callee];
+      } else {
+        const calleeWithoutLeadingZero = callee.replace(/^(?:\+49|0049|0+)/, '');
+        const phonebookEntries = _.filter(phonebook, (name, number) => number.endsWith(calleeWithoutLeadingZero));
+
+        if(_.keys(phonebookEntries).length > 1) {
+          logger.warn(`Multiple phonebook entries for '${callee}/${calleeWithoutLeadingZero}'`, phonebookEntries);
+        }
+
+        if(_.keys(phonebookEntries).length) {
+          calleeName = phonebookEntries[_.first(_.keys(phonebookEntries))].name;
+        }
+      }
+
+      if(calleeName) {
+        logger.info(`Mapped '${callee}' to '${calleeName}'`);
+      }
+    }
+
     // Gets called on every phone event
     switch(data.kind) {
-      case EventKind.Ring:
-        await mqttClient.publish(`FritzBox/callMonitor/ring`, JSON.stringify({
+      case EventKind.Call:
+        topic = 'FritzBox/callMonitor/call';
+        payload = {
+          callee,
+          calleeName,
           caller:       data.caller,
-          callee:       data.callee,
           connectionId: data.connectionId,
-        }));
+          extension:    data.extension,
+        };
+        break;
+
+      case EventKind.Ring:
+        topic = 'FritzBox/callMonitor/ring';
+        payload = {
+          caller:       data.caller,
+          callee,
+          calleeName,
+          connectionId: data.connectionId,
+        };
         break;
 
       case EventKind.PickUp:
-        await mqttClient.publish(`FritzBox/callMonitor/ring`, JSON.stringify({
+        topic = 'FritzBox/callMonitor/ring';
+        payload = {
           caller:       data.phoneNumber,
           extension:    data.extension,
           connectionId: data.connectionId,
-        }));
+          callee,
+          calleeName,
+        };
         break;
 
       case EventKind.HangUp:
-        await mqttClient.publish(`FritzBox/callMonitor/hangUp`, JSON.stringify({
+        topic = 'FritzBox/callMonitor/hangUp';
+        payload = {
           callDuration: data.callDuration,
           connectionId: data.connectionId,
-        }));
-        break;
-
-      case EventKind.Call:
-        await mqttClient.publish(`FritzBox/callMonitor/call`, JSON.stringify({
-          callee:       data.callee,
-          caller:       data.caller,
-          connectionId: data.connectionId,
-        }));
+        };
         break;
 
       default:
-        console.error(`Unhandled EventKind=${data.kind}`);
-        break;
+        logger.error(`Unhandled EventKind=${data.kind}`);
+
+        return;
     }
+
+    logger.info('Publish to mqtt', {topic, payload});
+
+    await mqttClient.publish(topic, JSON.stringify(payload));
   });
 
 //  callMonitor.on('close', () => logger.info('Connection closed.'));
@@ -137,25 +238,28 @@ process.on('SIGTERM', () => stopProcess());
 
   await fritzbox.initTR064Device();
 
-  interval = setInterval(async() => {
+  await refreshPhonebook(fritzbox);
+  phonebookInterval = setInterval(async() => await refreshPhonebook(fritzbox), millisecond('1 hour'));
+
+  stateInterval = setInterval(async() => {
     let   service;
     let   data;
     const tele = {};
 
     service = fritzbox.services['urn:dslforum-org:service:DeviceInfo:1'];
     data    = await service.actions.GetInfo();
-//    console.log('DeviceInfo.getInfo', data);
+//    logger.info('DeviceInfo.getInfo', data);
     tele.upTime = data.NewUpTime;
 
     service = fritzbox.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
     data    = await service.actions.GetCommonLinkProperties();
-//    console.log('WANCommonInterfaceConfig.GetCommonLinkProperties', data);
+//    logger.info('WANCommonInterfaceConfig.GetCommonLinkProperties', data);
 // ???   tele.upstreamMaxBitRate   = data.NewLayer1UpstreamMaxBitRate;
 // ???   tele.downstreamMaxBitRate = data.NewLayer1DownstreamMaxBitRate;
     tele.physicalLinkStatus   = data.NewPhysicalLinkStatus;
 
 //    data = await service.actions.GetTotalBytesReceived());
-//    console.log('WANCommonInterfaceConfig.', data);
+//    logger.info('WANCommonInterfaceConfig.', data);
 
     data = await service.actions['X_AVM-DE_GetOnlineMonitor']({NewSyncGroupIndex: 0});
     // Max:
@@ -169,7 +273,7 @@ process.on('SIGTERM', () => stopProcess());
     //   upstream_high:      Newprio_high_bps:     '    0,  6039,  29313,...',
     //   upstream_normal:    Newprio_default_bps:  ' 1251,  1457,   1125,...',
     //   upstream_low:       Newprio_low_bps:      '    0,     0,      0,...',
-//    console.log('WANCommonInterfaceConfig.X_AVM-DE_GetOnlineMonitor', data);
+//    logger.info('WANCommonInterfaceConfig.X_AVM-DE_GetOnlineMonitor', data);
     tele.downstreamMaxBitRate = data.Newmax_ds;
     tele.upstreamMaxBitRate   = data.Newmax_us;
     tele.downstreamCurrent    = _.max(data.Newds_current_bps.split(','));
@@ -177,17 +281,17 @@ process.on('SIGTERM', () => stopProcess());
 
 //    service = fritzbox.services['urn:dslforum-org:service:WANIPConnection:1'];
 //    data = await service.actions.GetInfo();
-//    console.log('WANIPConnection.GetInfo', data);
+//    logger.info('WANIPConnection.GetInfo', data);
 //    data = await service.actions.GetStatusInfo();
-//    console.log('WANIPConnection.GetStatusInfo', data);
+//    logger.info('WANIPConnection.GetStatusInfo', data);
 
     service = fritzbox.services['urn:dslforum-org:service:LANEthernetInterfaceConfig:1'];
 //    data = await service.actions.GetInfo();
-//    console.log('LANEthernetInterfaceConfig.GetInfo', data);
+//    logger.info('LANEthernetInterfaceConfig.GetInfo', data);
 //    data = await service.actions.GetStatistics();
-//    console.log('LANEthernetInterfaceConfig.GetStatistics', data);
+//    logger.info('LANEthernetInterfaceConfig.GetStatistics', data);
 
-//    console.log('MQTT publish', tele);
+//    logger.info('MQTT publish', tele);
 
     await mqttClient.publish(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
   }, millisecond('20 seconds'));
