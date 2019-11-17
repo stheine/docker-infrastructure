@@ -9,11 +9,10 @@ const _                        = require('lodash');
 const {CallMonitor, EventKind} = require('fritz-callmonitor');
 const Fritzbox                 = require('tr-064-async');
 const millisecond              = require('millisecond');
-const moment                   = require('moment');
 const mqtt                     = require('async-mqtt');
-const request                  = require('request-promise-native');
-const xmlJs                    = require('xml-js');
 
+const logger                   = require('./logger');
+const phonebookUtils           = require('./phonebookUtils');
 const tr064Options             = require('/var/fritz/tr064Options');
 
 // ###########################################################################
@@ -21,39 +20,8 @@ const tr064Options             = require('/var/fritz/tr064Options');
 
 let callMonitor;
 let mqttClient;
-let phonebook;
-let phonebookRefreshDate;
 let phonebookInterval;
 let stateInterval;
-
-// ###########################################################################
-// Logging
-
-const logger = {
-  /* eslint-disable no-console */
-  info(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg);
-    }
-  },
-  warn(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg);
-    }
-  },
-  error(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg);
-    }
-  },
-  /* eslint-enable no-console */
-};
 
 // ###########################################################################
 // Process handling
@@ -71,57 +39,6 @@ const stopProcess = async function() {
   logger.info(`Shutdown -------------------------------------------------`);
 };
 
-// ###########################################################################
-// Refresh phonebook
-const refreshPhonebook = async function(fritzbox) {
-  const service = fritzbox.services['urn:dslforum-org:service:X_AVM-DE_OnTel:1'];
-
-  const phonebookList = await service.actions.GetPhonebookList();
-  const newPhonebook = {};
-
-  for(const NewPhonebookID of phonebookList.NewPhonebookList.split(',')) {
-    const phonebookData = await service.actions.GetPhonebook({NewPhonebookID});
-    const {NewPhonebookURL} = phonebookData;
-
-    const phonebookXml = await request(NewPhonebookURL + (phonebookRefreshDate ? phonebookRefreshDate.unix() : ''));
-
-    const phonebookRaw = xmlJs.xml2js(phonebookXml, {compact: true});
-
-    if(phonebookRaw.phonebooks.phonebook._comment === ' not modified ') {
-      // Not modified
-      continue;
-    }
-
-    if(!_.isArray(phonebookRaw.phonebooks.phonebook.contact)) {
-      // No enties in phonebook
-      continue;
-    }
-
-    for(const contact of phonebookRaw.phonebooks.phonebook.contact) {
-      const name = contact.person.realName._text;
-
-      if(_.isArray(contact.telephony.number)) {
-        for(const number of contact.telephony.number) {
-          newPhonebook[number._text.replace(/[\s/]/g, '')] = name;
-        }
-      } else {
-        newPhonebook[contact.telephony.number._text.replace(/[\s/]/g, '')] = name;
-      }
-    }
-  }
-
-  if(_.isEmpty(newPhonebook)) {
-    return;
-  }
-
-  phonebookRefreshDate = moment();
-
-  phonebook = newPhonebook;
-
-  logger.info('Phonebook refreshed');
-//  logger.info(phonebook);
-};
-
 process.on('SIGTERM', () => stopProcess());
 
 // ###########################################################################
@@ -133,6 +50,9 @@ process.on('SIGTERM', () => stopProcess());
 
   logger.info(`Startup --------------------------------------------------`);
 
+  let phonebook;
+  let phonebookRefreshDate;
+
   // #########################################################################
   // MQTT
 
@@ -143,7 +63,7 @@ process.on('SIGTERM', () => stopProcess());
   callMonitor = new CallMonitor('fritz.box', 1012);
 
   callMonitor.on('phone', async data => {
-    logger.info(data);
+//    logger.info('Incoming callMonitor event, raw', data);
 
     let callee;
     let calleeName;
@@ -151,31 +71,13 @@ process.on('SIGTERM', () => stopProcess());
     let topic;
 
     if(data.callee || data.phoneNumber) {
-      callee = (data.callee || data.phoneNumber).replace(/#$/, '').replace(/\s/g, '');
-
-      if(phonebook[callee]) {
-        calleeName = phonebook[callee];
-      } else {
-        const calleeWithoutLeadingZero = callee.replace(/^(?:\+49|0049|0+)/, '');
-        const phonebookEntries = _.filter(phonebook, (name, number) => number.endsWith(calleeWithoutLeadingZero));
-
-        if(_.keys(phonebookEntries).length > 1) {
-          logger.warn(`Multiple phonebook entries for '${callee}/${calleeWithoutLeadingZero}'`, phonebookEntries);
-        }
-
-        if(_.keys(phonebookEntries).length) {
-          calleeName = phonebookEntries[_.first(_.keys(phonebookEntries))].name;
-        }
-      }
-
-      if(calleeName) {
-        logger.info(`Mapped '${callee}' to '${calleeName}'`);
-      }
+      callee     = (data.callee || data.phoneNumber).replace(/#$/, '').replace(/\s/g, '');
+      calleeName = phonebookUtils.resolve({logger, phonebook, number: callee});
     }
 
     // Gets called on every phone event
     switch(data.kind) {
-      case EventKind.Call:
+      case EventKind.Call: // 0
         topic = 'FritzBox/callMonitor/call';
         payload = {
           callee,
@@ -186,7 +88,7 @@ process.on('SIGTERM', () => stopProcess());
         };
         break;
 
-      case EventKind.Ring:
+      case EventKind.Ring: // 1
         topic = 'FritzBox/callMonitor/ring';
         payload = {
           caller:       data.caller,
@@ -196,18 +98,17 @@ process.on('SIGTERM', () => stopProcess());
         };
         break;
 
-      case EventKind.PickUp:
+      case EventKind.PickUp: // 2
         topic = 'FritzBox/callMonitor/ring';
         payload = {
-          caller:       data.phoneNumber,
           extension:    data.extension,
-          connectionId: data.connectionId,
           callee,
           calleeName,
+          connectionId: data.connectionId,
         };
         break;
 
-      case EventKind.HangUp:
+      case EventKind.HangUp: // 4
         topic = 'FritzBox/callMonitor/hangUp';
         payload = {
           callDuration: data.callDuration,
@@ -238,8 +139,10 @@ process.on('SIGTERM', () => stopProcess());
 
   await fritzbox.initTR064Device();
 
-  await refreshPhonebook(fritzbox);
-  phonebookInterval = setInterval(async() => await refreshPhonebook(fritzbox), millisecond('1 hour'));
+  ({phonebook, phonebookRefreshDate} = await phonebookUtils.refresh({fritzbox, logger}));
+  phonebookInterval = setInterval(async() => {
+    ({phonebook, phonebookRefreshDate} = await phonebookUtils.refresh({fritzbox, logger, phonebookRefreshDate}));
+  }, millisecond('1 hour'));
 
   stateInterval = setInterval(async() => {
     let   service;
