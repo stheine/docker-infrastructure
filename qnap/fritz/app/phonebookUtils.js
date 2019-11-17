@@ -13,7 +13,7 @@ const xmlJs   = require('xml-js');
 // ###########################################################################
 // Refresh phonebook
 module.exports = {
-  async refresh({fritzbox, logger, modifiedSince}) {
+  async refresh({fritzbox, logger, phonebookRefreshDate}) {
     const service = fritzbox.services['urn:dslforum-org:service:X_AVM-DE_OnTel:1'];
 
     const phonebookList = await service.actions.GetPhonebookList();
@@ -23,7 +23,7 @@ module.exports = {
       const phonebookData = await service.actions.GetPhonebook({NewPhonebookID});
       const {NewPhonebookURL} = phonebookData;
 
-      const phonebookXml = await request(NewPhonebookURL + (modifiedSince ? modifiedSince.unix() : ''));
+      const phonebookXml = await request(NewPhonebookURL + (phonebookRefreshDate ? phonebookRefreshDate.unix() : ''));
 
       const phonebookRaw = xmlJs.xml2js(phonebookXml, {compact: true});
 
@@ -61,18 +61,19 @@ module.exports = {
   },
 
   resolve({logger, number, phonebook}) {
-    let name;
+    const resolveNumber = number.replace(/#$/, '').replace(/\s/g, '');
+    let   name;
 
-    if(phonebook[number]) {
-      name = phonebook[number];
+    if(phonebook[resolveNumber]) {
+      name = phonebook[resolveNumber];
       // logger.info(`Single match '${number}' to '${name}'`);
     } else {
-      const numberWithoutLeadingZero = number.replace(/^(?:\+49|0049|0+)/, '');
+      const numberWithoutLeadingZero = resolveNumber.replace(/^(?:\+49|0049|0+)/, '');
       const resolvedEntries = _.filter(phonebook, (phonebookName, phonebookNumber) =>
         phonebookNumber.endsWith(numberWithoutLeadingZero));
 
       if(_.keys(resolvedEntries).length > 1) {
-        logger.warn(`Multiple phonebook entries for '${number}/${numberWithoutLeadingZero}'`, resolvedEntries);
+        logger.warn(`Multiple phonebook entries for '${number}'`, resolvedEntries);
       }
 
       if(_.keys(resolvedEntries).length) {

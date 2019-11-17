@@ -63,25 +63,18 @@ process.on('SIGTERM', () => stopProcess());
   callMonitor = new CallMonitor('fritz.box', 1012);
 
   callMonitor.on('phone', async data => {
-//    logger.info('Incoming callMonitor event, raw', data);
+    logger.info('Incoming callMonitor event, raw', data);
 
-    let callee;
-    let calleeName;
     let payload;
     let topic;
-
-    if(data.callee || data.phoneNumber) {
-      callee     = (data.callee || data.phoneNumber).replace(/#$/, '').replace(/\s/g, '');
-      calleeName = phonebookUtils.resolve({logger, phonebook, number: callee});
-    }
 
     // Gets called on every phone event
     switch(data.kind) {
       case EventKind.Call: // 0
         topic = 'FritzBox/callMonitor/call';
         payload = {
-          callee,
-          calleeName,
+          callee:       data.callee,
+          calleeName:   phonebookUtils.resolve({logger, phonebook, number: data.callee}),
           caller:       data.caller,
           connectionId: data.connectionId,
           extension:    data.extension,
@@ -92,18 +85,18 @@ process.on('SIGTERM', () => stopProcess());
         topic = 'FritzBox/callMonitor/ring';
         payload = {
           caller:       data.caller,
-          callee,
-          calleeName,
+          callee:       data.callee,
+          callerName:   phonebookUtils.resolve({logger, phonebook, number: data.caller}),
           connectionId: data.connectionId,
         };
         break;
 
       case EventKind.PickUp: // 2
-        topic = 'FritzBox/callMonitor/ring';
+        topic = 'FritzBox/callMonitor/pickUp';
         payload = {
           extension:    data.extension,
-          callee,
-          calleeName,
+          callee:       data.phoneNumber,
+          calleeName:   phonebookUtils.resolve({logger, phonebook, number: data.phoneNumber}),
           connectionId: data.connectionId,
         };
         break;
