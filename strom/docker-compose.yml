@@ -23,6 +23,13 @@ volumes:
       device: /docker-data/pihole/etc_dnsmasq.d
       o: bind
 
+  strom:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/strom
+      o: bind
+
 networks:
   backend:
     driver: bridge
@@ -71,3 +78,6 @@ services:
       - /dev/ttyAMA0:/dev/ttyAMA0
     networks:
       - backend
+    volumes:
+      - ./strom/app:/app
+      - strom:/var/strom

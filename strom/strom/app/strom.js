@@ -10,38 +10,13 @@ const moment         = require('moment');
 const mqtt           = require('async-mqtt');
 const smartmeterObis = require('smartmeter-obis');
 
+const logger         = require('./logger');
+
 // ###########################################################################
 // Globals
 
 let mqttClient;
 let smTransport;
-
-// ###########################################################################
-// Logging
-
-const logger = {
-  info(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg);
-    }
-  },
-  warn(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg);
-    }
-  },
-  error(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg);
-    }
-  },
-};
 
 // ###########################################################################
 // Process handling
@@ -63,12 +38,20 @@ process.on('SIGTERM', () => stopProcess());
 
 (async() => {
   // Globals
-  let einspeisung = 0;
+  let solarLeistung = 0;
+  let zaehlerTimestamp;
 
   // #########################################################################
   // Startup
 
   logger.info(`Startup --------------------------------------------------`);
+
+  // #########################################################################
+  // Read static data
+
+  const status = await fsExtra.readJson('/var/strom/strom.json');
+
+  let {gesamtEinspeisung} = status;
 
   // #########################################################################
   // MQTT
@@ -80,7 +63,7 @@ process.on('SIGTERM', () => stopProcess());
     try {
       const message = JSON.parse(messageBuffer.toString());
 
-      einspeisung = message.ENERGY.Power;
+      solarLeistung = message.ENERGY.Power;
     } catch(err) {
       logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
     }
@@ -116,29 +99,43 @@ process.on('SIGTERM', () => stopProcess());
         return;
       }
 
-      const data = {};
+      const payload = {};
 
       for(const obisId of Object.keys(obisResult)) {
         const obisName = smartmeterObis.ObisNames.resolveObisName(
           obisResult[obisId],
-          smOptions.obisNameLanguage
+          smOptions.obisNameLanguage,
         ).obisName;
-        let   name;
-        let   value;
 
         switch(obisId) {
           case '1-0:1.8.0*255':         // Zählerstand 1 Summe Wirkarbeit Bezug + (Total)
             check.assert.equal(obisResult[obisId].getValueLength(), 1);
-            data.gesamtLeistung = obisResult[obisId].getValue(0).value;
+            payload.gesamtLeistung = obisResult[obisId].getValue(0).value;
             break;
 
-          case '1-0:16.7.0*255':        // Momentanwert Gesamtwirkleistung (Total)
+          case '1-0:16.7.0*255': {      // Momentanwert Gesamtwirkleistung (Total)
             check.assert.equal(obisResult[obisId].getValueLength(), 1);
-            data.zaehlerLeistung  = obisResult[obisId].getValue(0).value;
-            data.momentanLeistung = obisResult[obisId].getValue(0).value + einspeisung;
+
+            const zaehlerLeistung   = obisResult[obisId].getValue(0).value;
+
+            payload.zaehlerLeistung  = zaehlerLeistung;
+            payload.momentanLeistung = zaehlerLeistung + solarLeistung;
+
+            if(zaehlerLeistung < 0 && zaehlerTimestamp) {
+              const nowTimestamp = moment();
+
+                                // Leistung (W)    * differenzSeitLetzterMessung (ms)    (s)    (h)    (k)    positive
+              gesamtEinspeisung += zaehlerLeistung * (nowTimestamp - zaehlerTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
+
+              await fsExtra.writeJson('/var/strom/strom.json', {gesamtEinspeisung});
+            }
+            payload.gesamtEinspeisung = gesamtEinspeisung;
+
+            zaehlerTimestamp = moment();
 
   //          logger.info(`${value}W`);
             break;
+          }
 
           case '1-0:0.0.9*255':         // Device ID
           case '1-0:1.8.1*255':         // Zählerstand 1 Summe Wirkarbeit Bezug + (T1)
@@ -161,10 +158,10 @@ process.on('SIGTERM', () => stopProcess());
     //    );
       }
 
-      // Publish data to mqtt
-      logger.info('mqtt', data);
+      // Publish to mqtt
+      logger.info('mqtt', payload);
 
-      await mqttClient.publish(`Stromzaehler/tele/SENSOR`, JSON.stringify(data));
+      await mqttClient.publish(`Stromzaehler/tele/SENSOR`, JSON.stringify(payload));
     } catch(errHandleData) {
       logger.error('handleData(): Exception', errHandleData);
     }

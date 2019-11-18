@@ -41,14 +41,13 @@ WORKDIR /root
 
 RUN \
   apt-get install -y \
+    curl \
     git \
     python && \
   /sbin/ldconfig
 
 COPY vimrc .vimrc
 RUN \
-  apt-get install -y \
-    curl && \
   npm install --global eslint-cli eslint_d npm && \
   mkdir -p .vim/autoload .vim/bundle && \
   curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
@@ -60,15 +59,8 @@ ENV TZ Europe/Berlin
 
 COPY docker_container_profile /root/.profile
 
-WORKDIR /strom
+WORKDIR /app
 
-COPY package.json /strom/
-
-RUN \
-  npm install
-
-COPY eslintrc .eslintrc
-COPY strom.js /strom/
-
-CMD ["/usr/local/bin/node", "/strom/strom.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/local/bin/node", "/app/strom.js"]
 # CMD ["/bin/bash", "-l"]
