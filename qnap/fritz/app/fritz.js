@@ -51,7 +51,6 @@ process.on('SIGTERM', () => stopProcess());
   logger.info(`Startup --------------------------------------------------`);
 
   let phonebook;
-  let phonebookRefreshDate;
 
   // #########################################################################
   // MQTT
@@ -63,7 +62,7 @@ process.on('SIGTERM', () => stopProcess());
   callMonitor = new CallMonitor('fritz.box', 1012);
 
   callMonitor.on('phone', async data => {
-    logger.info('Incoming callMonitor event, raw', data);
+//    logger.info('Incoming callMonitor event, raw', data);
 
     let payload;
     let topic;
@@ -132,9 +131,13 @@ process.on('SIGTERM', () => stopProcess());
 
   await fritzbox.initTR064Device();
 
-  ({phonebook, phonebookRefreshDate} = await phonebookUtils.refresh({fritzbox, logger}));
+  phonebook = await phonebookUtils.refresh({fritzbox, logger});
   phonebookInterval = setInterval(async() => {
-    ({phonebook, phonebookRefreshDate} = await phonebookUtils.refresh({fritzbox, logger, phonebookRefreshDate}));
+    const refreshResult = await phonebookUtils.refresh({fritzbox, logger});
+
+    if(refreshResult) {
+      phonebook = refreshResult;
+    }
   }, millisecond('1 hour'));
 
   stateInterval = setInterval(async() => {

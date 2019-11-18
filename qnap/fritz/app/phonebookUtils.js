@@ -6,34 +6,31 @@
 /* eslint-disable no-underscore-dangle */
 
 const _       = require('lodash');
-const moment  = require('moment');
 const request = require('request-promise-native');
 const xmlJs   = require('xml-js');
 
-// ###########################################################################
-// Refresh phonebook
 module.exports = {
-  async refresh({fritzbox, logger, phonebookRefreshDate}) {
+  // ###########################################################################
+  // Refresh phonebook
+  async refresh({fritzbox, logger}) {
     const service = fritzbox.services['urn:dslforum-org:service:X_AVM-DE_OnTel:1'];
 
     const phonebookList = await service.actions.GetPhonebookList();
-    const phonebook = {};
+    const phonebook     = {};
 
     for(const NewPhonebookID of phonebookList.NewPhonebookList.split(',')) {
       const phonebookData = await service.actions.GetPhonebook({NewPhonebookID});
       const {NewPhonebookURL} = phonebookData;
 
-      const phonebookXml = await request(NewPhonebookURL + (phonebookRefreshDate ? phonebookRefreshDate.unix() : ''));
+      // logger.info(phonebookData);
 
+      const phonebookXml = await request(NewPhonebookURL);
       const phonebookRaw = xmlJs.xml2js(phonebookXml, {compact: true});
 
-      if(phonebookRaw.phonebooks.phonebook._comment === ' not modified ') {
-        // Not modified
-        continue;
-      }
+      // logger.info(phonebookRaw);
 
       if(!_.isArray(phonebookRaw.phonebooks.phonebook.contact)) {
-        // No enties in phonebook
+        // No entries in phonebook
         continue;
       }
 
@@ -51,15 +48,16 @@ module.exports = {
     }
 
     if(_.isEmpty(phonebook)) {
+      logger.warn('Phonebook is empty');
+
       return;
     }
 
-    logger.info('Phonebook refreshed');
-  //  logger.info(phonebook);
-
-    return {phonebookRefreshDate: moment(), phonebook};
+    return phonebook;
   },
 
+  // ###########################################################################
+  // Refresh phone number
   resolve({logger, number, phonebook}) {
     const resolveNumber = number.replace(/#$/, '').replace(/\s/g, '');
     let   name;
