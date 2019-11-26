@@ -11,6 +11,8 @@
   "dependencies": {
     "async-mqtt": "^2.4.2",
     "execa": "^3.2.0",
+    "fs-extra": "^8.1.0",
+    "graphviz": "0.0.9",
     "lodash": "^4.17.15",
     "moment": "^2.24.0"
   },

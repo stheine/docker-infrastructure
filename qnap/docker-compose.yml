@@ -384,6 +384,7 @@ services:
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
+      - www:/var/www
       - ./mqtt2rrd/app:/app
 
   nginx:

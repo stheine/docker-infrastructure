@@ -60,6 +60,13 @@ RUN \
 ENV PATH="/opt/rrdtool/bin:${PATH}"
 
 # ##############################################################################
+# Install graphwiz
+
+RUN \
+  apt-get install -y \
+    graphviz
+
+# ##############################################################################
 # Install and run jalousie app
 
 WORKDIR /root

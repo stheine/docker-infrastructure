@@ -4,10 +4,12 @@
 
 /* eslint-disable no-console */
 
-const mqtt    = require('async-mqtt');
-const moment  = require('moment');
+const fsExtra  = require('fs-extra');
+const graphviz = require('graphviz');
+const mqtt     = require('async-mqtt');
+const moment   = require('moment');
 
-const rrdtool = require('./rrdtool');
+const rrdtool  = require('./rrdtool');
 
 // ###########################################################################
 // Globals
@@ -73,8 +75,16 @@ process.on('SIGTERM', () => stopProcess());
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
 
   mqttClient.on('message', async(topic, messageBuffer) => {
+    const messageRaw = messageBuffer.toString();
+
     try {
-      const message = JSON.parse(messageBuffer.toString());
+      let message;
+
+      try {
+        message = JSON.parse(messageRaw);
+      } catch(err) {
+        // ignore
+      }
 
       switch(topic) {
         case 'FritzBox/tele/SENSOR':
@@ -89,16 +99,17 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'PowSolar/tele/SENSOR':
           await rrdtool.update('/var/strom/solar.rrd', {
-            power: message.ENERGY.Power,
-            total: message.ENERGY.Total,
+            power:             message.ENERGY.Power,
+            total:             message.ENERGY.Total,
           });
           break;
 
         case 'Stromzaehler/tele/SENSOR':
           await rrdtool.update('/var/strom/strom.rrd', {
-            gesamtLeistung:   message.gesamtLeistung,
-            momentanLeistung: message.momentanLeistung,
-            zaehlerLeistung:  message.zaehlerLeistung,
+            gesamtLeistung:    message.gesamtLeistung,
+            momentanLeistung:  message.momentanLeistung,
+            zaehlerLeistung:   message.zaehlerLeistung,
+            gesamtEinspeisung: message.gesamtEinspeisung,
           });
           break;
 
@@ -119,12 +130,27 @@ process.on('SIGTERM', () => stopProcess());
           });
           break;
 
+        case 'Zigbee/bridge/networkmap/graphviz':
+          // Trigger by mosquitto_pub -h 192.168.6.7 -t Zigbee/bridge/networkmap -m graphviz
+          await new Promise(resolve => {
+            graphviz.parse(messageRaw, graph => {
+              graph.render('png', async render => {
+                await fsExtra.writeFile('/var/www/zigbee/map.png', render);
+
+                logger.info('Updated map at https://heine7.de/zigbee/map.png');
+
+                resolve();
+              });
+            });
+          });
+          break;
+
         default:
           logger.error(`Unhandled topic '${topic}'`, message);
           break;
       }
     } catch(err) {
-      logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`, err);
+      logger.error(`Failed mqtt handling for '${topic}': ${messageRaw}`, err);
     }
   });
 
@@ -132,4 +158,5 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('PowSolar/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
+  await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
 })();
