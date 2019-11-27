@@ -1,5 +1,4 @@
-# Node 8 only, since smartmeter-obis required serialport and that only supports node 8.
-FROM node:8-stretch
+FROM node:12-stretch
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
