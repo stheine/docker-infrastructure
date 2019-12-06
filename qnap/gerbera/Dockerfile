@@ -83,10 +83,11 @@ ARG CACHE_DATE=2019-01-28
 # latest
 #  git clone https://github.com/gerbera/gerbera.git && \
 
+ARG GERBERA_VERSION=1.3.5
 RUN \
-  wget https://github.com/gerbera/gerbera/archive/v1.3.2.zip && \
-  unzip v1.3.2.zip && \
-  mv gerbera-1.3.2 gerbera && \
+  wget https://github.com/gerbera/gerbera/archive/v$GERBERA_VERSION.zip && \
+  unzip v$GERBERA_VERSION.zip && \
+  mv gerbera-$GERBERA_VERSION gerbera && \
   cat gerbera/scripts/install-pupnp18.sh | \
     sed \
       -e "s/make \&\&/make CFLAGS='-D_LARGE_FILE_SOURCE -D_FILE_OFFSET_BITS=64' LDFLAGS='-pthread -lpthread' \&\&/" \
