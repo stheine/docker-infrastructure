@@ -128,6 +128,8 @@ process.on('SIGTERM', () => stopProcess());
             lambda:            message.lambda,
             statusZirkulation: message.statusZirkulation,
           });
+
+          await fsExtra.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
           break;
 
         case 'Zigbee/bridge/networkmap/graphviz':
