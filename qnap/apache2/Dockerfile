@@ -46,6 +46,13 @@ RUN \
   ln -s /opt/rrdtool/lib/librrd.so.8.1.0 /usr/lib/
 
 # ##############################################################################
+# Install mosquitto client to publish MQTT messages
+RUN \
+  apk add \
+    inotify-tools \
+    mosquitto-clients
+
+# ##############################################################################
 # Configure and run apache2
 
 RUN \
