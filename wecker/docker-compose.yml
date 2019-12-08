@@ -1,0 +1,26 @@
+version: "3.2"
+
+networks:
+  backend:
+    driver: bridge
+
+services:
+  wecker:
+    restart: unless-stopped
+    build:
+      context: wecker
+    hostname: raspi-wecker
+    networks:
+      - backend
+    cap_add:
+      - SYS_RAWIO
+    privileged: true
+    devices:
+      - /dev/input:/dev/input
+#      - /dev/i2c-1:/dev/i2c-1
+#      - /dev/gpiomem:/dev/gpiomem
+      - /dev/mem:/dev/mem
+      - /dev/snd:/dev/snd
+
+    volumes:
+      - ./wecker/app:/app
