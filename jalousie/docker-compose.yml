@@ -124,7 +124,7 @@ services:
       - backend
 
   zigbee2mqtt:
-    image: koenkk/zigbee2mqtt
+    build: zigbee2mqtt
     volumes:
       - zigbee2mqtt:/app/data
     devices:
