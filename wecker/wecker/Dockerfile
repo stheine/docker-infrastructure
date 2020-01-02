@@ -1,5 +1,4 @@
-# node 10 only for https://github.com/TooTallNate/node-lame/issues/92
-FROM node:10-stretch
+FROM node:12.13-stretch
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -69,6 +68,6 @@ COPY docker_container_profile /root/.profile
 
 WORKDIR /app
 
-CMD ["/usr/bin/tail", "-f", "/dev/null"]
-# CMD ["/usr/local/bin/node", "/app/app.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/local/bin/node", "/app/app.js"]
 # CMD ["/bin/bash", "-l"]
