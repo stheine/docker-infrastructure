@@ -1,34 +1,116 @@
 # docker setup for the `wecker` raspi
 
-## System setup
+## Hypriot
 
-### Install
+- download hypriot from https://blog.hypriot.com/downloads/
+- write to SD card
+- update `/boot/user-data`
+```
+# Set your hostname here, the manage_etc_hosts will update the hosts file entries as well
+hostname: wecker
+manage_etc_hosts: true
 
-Currently this is a plain raspbian with `docker` and `docker-compose`
+# You could modify this for your own user information
+users:
+  - name: pirate
+    gecos: "Hypriot Pirate"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    groups: users,docker,video,input
+    plain_text_passwd: hypriot
+    lock_passwd: false
+    ssh_pwauth: true
+    chpasswd: { expire: false }
+
+# # Set the locale of the system
+# locale: "en_US.UTF-8"
+
+# # Set the timezone
+# # Value of 'timezone' must exist in /usr/share/zoneinfo
+timezone: "Europe/Berlin"
+
+# # Update apt packages on first boot
+# package_update: true
+# package_upgrade: true
+# package_reboot_if_required: true
+package_upgrade: false
+
+# # Install any additional apt packages you need here
+packages:
+  - ntp
+  - nfs-common
+  - vim
+
+# # WiFi connect to HotSpot
+# # - use `wpa_passphrase SSID PASSWORD` to encrypt the psk
+write_files:
+  - content: |
+      allow-hotplug wlan0
+      iface wlan0 inet dhcp
+      wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+      iface default inet dhcp
+    path: /etc/network/interfaces.d/wlan0
+  - content: |
+      country=de
+      ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+      update_config=1
+      network={
+      ssid="holzhaus"
+      psk="<enter the wifi key>"
+      proto=RSN
+      key_mgmt=WPA-PSK
+      pairwise=CCMP
+      auth_alg=OPEN
+      }
+    path: /etc/wpa_supplicant/wpa_supplicant.conf
+
+# These commands will be ran once on first boot only
+runcmd:
+  # Pickup the hostname changes
+  - 'systemctl restart avahi-daemon'
+
+  # Activate WiFi interface
+  - 'ifup wlan0'
+```
+- boot raspi
+- ssh to system
+- pirate / hypriot
+
+### Configure apt and install needed packages
 
 ```
-sudo apt-get install apt-transport-https ca-certificates software-properties-common -y
-curl -fsSL get.docker.com -o get-docker.sh && sh get-docker.sh
-sudo usermod -aG docker pi
-# Logout and login again
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y nfs-common vim
 
-sudo curl https://download.docker.com/linux/raspbian/gpg
-sudo vim /etc/apt/sources.list
-# Add this line
-deb https://download.docker.com/linux/raspbian/ stretch stable
+echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > .selected-editor
 
-sudo apt-get update
-sudo apt-get upgrade
-systemctl start docker.service
-systemctl enable docker.service
+echo "# Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
+# while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
+192.168.6.7:/linux /mnt/qnap_linux nfs nfsvers=3,soft 0 0" | sudo tee -a /etc/fstab >/dev/null
+sudo mkdir /mnt/qnap_linux
+sudo mount -a
 
-docker info
+echo "@reboot /bin/sleep 20 && /bin/mount -a" | sudo tee -a /var/spool/cron/crontabs/root >/dev/null
 ```
 
+### Setup ssh access key
+
 ```
-sudo apt-get install -y python3-pip python3-dev
-sudo pip3 install docker-compose
-docker-compose --version
+mkdir .ssh
+sudo cp /mnt/qnap_linux/data/sshd_certs/strom .ssh/id_rsa
+sudo cp /mnt/qnap_linux/data/sshd_certs/strom.pub .ssh/id_rsa.pub
+sudo cat /mnt/qnap_linux/data/sshd_certs/bonsai.pub  >> .ssh/authorized_keys
+sudo chown -R pirate:pirate .ssh
+chmod 700 .ssh
+chmod 600 .ssh/id_rsa
+chmod 644 .ssh/id_rsa.pub
+chmod 644 .ssh/authorized_keys
+
+passwd
+# Set new password
+
+sudo reboot
 ```
 
 ### Special hardware support
@@ -38,14 +120,17 @@ https://www.alsa-project.org/
 /boot/config.txt
 
 ```
+# Enable Hifiberry MiniAmp
+# dtoverlay=hifiberry-dac
+
+# Disable build-in audio (snd_bcm2835)
+dtparam=audio=off
+
 # Enable the optional hardware interfaces
 dtparam=i2c_arm=on
 dtparam=i2c1=on
 dtparam=i2c=on
 dtparam=i2c_arm_baudrate=1000000
-
-# Disable build-in audio (snd_bcm2835)
-dtparam=audio=off
 
 # Enable rotary encoder
 # https://blog.ploetzli.ch/2018/ky-040-rotary-encoder-linux-raspberry-pi/
@@ -65,8 +150,39 @@ dtoverlay=pi3-miniuart-bt
 max_usb_current=1
 ```
 
+### Prepare for docker
+
+```
+sudo mkdir /docker-data
+sudo mkdir /docker-data/portainer
+sudo mkdir /docker-data/wecker
+
+git config --global core.editor "vim"
+git config --edit --global
+# Enter name and arcor email
+git clone git@github.com:stheine/docker-infrastructure.git
+ln -s docker-infrastructure/wecker docker
+
+cp docker/docker_host_system__profile .profile
+
+cd docker/wecker
+git clone git@github.com:stheine/wecker.git
+
+cd ..
+docker-compose up -d
+```
+
 ### Check wecker
 
 ```
-docker-compose logs --tail 100 --follow wecker
+docker-compose logs --tail 10 --follow wecker
 ```
+
+### Configure portainer
+
+- http://192.168.6.15:8008/#/init/admin
+- admin
+- <pw>
+- Create user
+- Local
+- Connect
