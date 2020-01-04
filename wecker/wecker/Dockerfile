@@ -1,4 +1,4 @@
-FROM node:12.13-stretch
+FROM node:12.14-stretch
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
