@@ -109,8 +109,6 @@ chmod 644 .ssh/authorized_keys
 
 passwd
 # Set new password
-
-sudo reboot
 ```
 
 ### Special hardware support
@@ -120,8 +118,8 @@ https://www.alsa-project.org/
 /boot/config.txt
 
 ```
-# Enable Hifiberry MiniAmp
-# dtoverlay=hifiberry-dac
+# Disable GPIO interrupts (https://www.npmjs.com/package/rpio)
+# interferes with the input devices/ rotary encoder dtoverlay=gpio-no-irq
 
 # Disable build-in audio (snd_bcm2835)
 dtparam=audio=off
@@ -145,9 +143,11 @@ enable_uart=1
 # Disable Bluetooth
 dtoverlay=pi3-disable-bt
 dtoverlay=pi3-miniuart-bt
+```
 
-# Allow higher USB current (not sure if this actually works)
-max_usb_current=1
+### Reboot
+```
+sudo reboot
 ```
 
 ### Prepare for docker
@@ -158,8 +158,8 @@ sudo mkdir /docker-data/portainer
 sudo mkdir /docker-data/wecker
 
 git config --global core.editor "vim"
-git config --edit --global
-# Enter name and arcor email
+git config --global user.email "stheine@arcor.de"
+git config --global user.name "Stefan Heine"
 git clone git@github.com:stheine/docker-infrastructure.git
 ln -s docker-infrastructure/wecker docker
 
@@ -167,8 +167,22 @@ cp docker/docker_host_system__profile .profile
 
 cd docker/wecker
 git clone git@github.com:stheine/wecker.git
+mv wecker app
 
-cd ..
+cd app
+git clone https://github.com/suldashi/node-lame
+```
+
+Logout & Login again
+
+```
+cd docker
+docker-compose build wecker
+docker-compose run wecker /bin/bash -l
+
+npm install
+exit
+
 docker-compose up -d
 ```
 
