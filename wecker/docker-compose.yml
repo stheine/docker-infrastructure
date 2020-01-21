@@ -42,10 +42,11 @@ services:
     devices:
       - /dev/input:/dev/input
 #      - /dev/i2c-1:/dev/i2c-1
-#      - /dev/gpiomem:/dev/gpiomem
+      - /dev/gpiomem:/dev/gpiomem
       - /dev/mem:/dev/mem
       - /dev/snd:/dev/snd
 
     volumes:
+      - /dev/input/by-path:/dev/input/by-path
       - wecker:/var/wecker
       - ./wecker/app:/app
