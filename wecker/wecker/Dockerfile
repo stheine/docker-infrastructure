@@ -26,39 +26,34 @@ WORKDIR /source
 # ##############################################################################
 # Install and run wecker app
 
-#WORKDIR /root
-#
-#RUN \
-#  apt-get install -y \
-#    alsa-utils \
-#    input-utils \
-#    libasound2-dev
-
-COPY asound.conf /etc/
+WORKDIR /root
 
 RUN \
   apk add \
     alsa-lib-dev \
+    alsa-utils \
     curl \
     g++ \
     gcc \
     git \
     linux-headers \
     make \
+    mpg123 \
     musl-dev \
     python
-# && \
-#  /sbin/ldconfig
+
+COPY asound.conf /etc/
 
 COPY vimrc .vimrc
-#RUN \
-#  npm install --global eslint-cli eslint_d npm && \
-#  mkdir -p .vim/autoload .vim/bundle && \
-#  curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
-#  cd .vim/bundle && \
-#  git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
-#  git config --global user.email stheine@arcor.de && \
-#  git config --global user.name 'Stefan Heine'
+
+RUN \
+  npm install --global eslint-cli eslint_d npm && \
+  mkdir -p .vim/autoload .vim/bundle && \
+  curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
+  cd .vim/bundle && \
+  git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
+  git config --global user.email stheine@arcor.de && \
+  git config --global user.name 'Stefan Heine'
 
 COPY docker_container_profile /root/.profile
 
