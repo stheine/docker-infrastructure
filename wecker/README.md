@@ -57,7 +57,7 @@ dtoverlay=hifiberry-dac
 # Enable the optional hardware interfaces
 dtparam=i2c1=on
 dtparam=i2c_arm=on
-dtparam=i2c_arm_baudrate=100000
+dtparam=i2c_arm_baudrate=1000000
 
 # Enable rotary encoder
 # https://blog.ploetzli.ch/2018/ky-040-rotary-encoder-linux-raspberry-pi/
@@ -76,7 +76,7 @@ dtoverlay=pi3-disable-bt
 sudo reboot
 ```
 
-### Test Audio
+### Test Audio (not really required on the host)
 
 sudo vi /etc/asound.conf
 ```
@@ -97,6 +97,20 @@ amixer set Master 20%
 amixer set Master 1+
 
 speaker-test --channels 2 --test pink --nperiods 2
+
+### Install docker & docker-compose
+```
+curl -fsSL get.docker.com -o get-docker.sh && sh get-docker.sh
+sudo usermod -aG docker pi
+```
+
+Logout / Login
+
+```
+sudo apt-get install -y libffi-dev libssl-dev python python-pip
+sudo apt-get remove -y python-configparser
+sudo pip install docker-compose
+```
 
 ### Prepare for docker
 
@@ -120,7 +134,6 @@ git clone git@github.com:stheine/wecker.git
 mv wecker app
 
 cd app
-git clone https://github.com/suldashi/node-lame
 git clone git@github.com:stheine/mpg123.git
 ```
 
