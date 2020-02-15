@@ -1,0 +1,52 @@
+version: "3.2"
+
+volumes:
+  portainer:
+    driver: local
+    driver_opts:
+      type: none
+      device: /docker-data/portainer
+      o: bind
+
+  wecker:
+    driver: local
+    driver_opts:
+      type: none
+      device: /docker-data/wecker
+      o: bind
+
+networks:
+  backend:
+    driver: bridge
+
+services:
+  portainer:
+    restart: unless-stopped
+    image: portainer/portainer
+    ports:
+      - 8008:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data:nocopy
+
+  wecker:
+    restart: unless-stopped
+    build:
+      context: wecker
+    hostname: raspi-wecker
+    networks:
+      - backend
+    cap_add:
+      - SYS_RAWIO
+    privileged: true
+    devices:
+      - /dev/input:/dev/input
+#      - /dev/i2c-1:/dev/i2c-1
+      - /dev/gpiomem:/dev/gpiomem
+      - /dev/mem:/dev/mem
+      - /dev/snd:/dev/snd
+
+    volumes:
+      - /dev/input/by-path:/dev/input/by-path
+      - wecker:/var/wecker
+      - ./wecker/app:/app
