@@ -23,6 +23,10 @@ enable_uart=1
 dtoverlay=pi3-disable-bt
 dtoverlay=pi3-miniuart-bt" | sudo tee -a /boot/config.txt >/dev/null
 
+sudo vi /boot/config.txt
+# Required for pigpio (in jalousie nodejs) to restart after an unclean shutdown
+# gpu_mem=32
+
 sudo systemctl disable hciuart
 
 sudo vi /boot/cmdline.txt

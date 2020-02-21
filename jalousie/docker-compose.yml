@@ -61,7 +61,7 @@ services:
       - portainer:/data:nocopy
 
   jalousie:
-    restart: unless-stopped
+    restart: always
     build:
       context: jalousie
       args:
