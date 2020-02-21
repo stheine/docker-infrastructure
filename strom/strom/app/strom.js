@@ -6,6 +6,7 @@
 
 const check          = require('check-types');
 const fsExtra        = require('fs-extra');
+const millisecond    = require('millisecond');
 const moment         = require('moment');
 const mqtt           = require('async-mqtt');
 const smartmeterObis = require('smartmeter-obis');
@@ -39,6 +40,9 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let solarLeistung = 0;
+  let spuelmaschineInterval;
+  let waschmaschineInterval;
+  let zaehlerLeistung = 0;
   let zaehlerTimestamp;
 
   // #########################################################################
@@ -60,16 +64,114 @@ process.on('SIGTERM', () => stopProcess());
 
   // Subscribe to Solar data to get feed-in
   mqttClient.on('message', async(topic, messageBuffer) => {
-    try {
-      const message = JSON.parse(messageBuffer.toString());
+    const messageRaw = messageBuffer.toString();
 
-      solarLeistung = message.ENERGY.Power;
+    try {
+      let message;
+
+      try {
+        message = JSON.parse(messageRaw);
+      } catch(err) {
+        // ignore
+      }
+
+      switch(topic) {
+        case 'PowSolar/tele/SENSOR':
+          solarLeistung = message.ENERGY.Power;
+          break;
+
+        case 'sonoff/spuelmaschine/stat/POWER':
+          switch(messageRaw) {
+            case 'OFF':
+              if(!spuelmaschineInterval) {
+                logger.info('Spülmaschine OFF. Start waiting for Einspeisung.');
+
+                spuelmaschineInterval = setInterval(async() => {
+                  let triggerOn = false;
+
+                  if(zaehlerLeistung < -100) {
+                    logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
+                    triggerOn = true;
+                  } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
+                    logger.info(`13:00. Trigger Spülmaschine.`);
+                    triggerOn = true;
+		  }
+
+                  if(triggerOn) {
+                    await mqttClient.publish(`sonoff/spuelmaschine/cmnd/POWER`, 'ON');
+                  }
+                }, millisecond('5 minutes'));
+              }
+              break;
+
+            case 'ON':
+              if(spuelmaschineInterval) {
+                logger.info('Spülmaschine ON. Finish waiting.');
+
+                clearInterval(spuelmaschineInterval);
+
+                spuelmaschineInterval = null;
+              }
+              break;
+
+            default:
+              logger.error(`Unhandled message '${topic}'`, messageRaw);
+              break;
+          }
+          break;
+
+        case 'sonoff/waschmaschine/stat/POWER':
+          switch(messageRaw) {
+            case 'OFF':
+              if(!waschmaschineInterval) {
+                logger.info('Waschmaschine OFF. Start waiting for Einspeisung.');
+
+                waschmaschineInterval = setInterval(async() => {
+                  let triggerOn = false;
+
+                  if(zaehlerLeistung < -100) {
+                    logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
+                    triggerOn = true;
+                  } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
+                    logger.info(`13:00. Trigger Waschmaschine.`);
+                    triggerOn = true;
+		  }
+
+                  if(triggerOn) {
+                    await mqttClient.publish(`sonoff/waschmaschine/cmnd/POWER`, 'ON');
+                  }
+                }, millisecond('5 minutes'));
+              }
+              break;
+
+            case 'ON':
+              if(waschmaschineInterval) {
+                logger.info('Waschmaschine ON. Finish waiting.');
+
+                clearInterval(waschmaschineInterval);
+
+                WaschlmaschineInterval = null;
+              }
+              break;
+
+            default:
+              logger.error(`Unhandled message '${topic}'`, messageRaw);
+              break;
+          }
+          break;
+
+        default:
+          logger.error(`Unhandled topic '${topic}'`, messageRaw);
+          break;
+      }
     } catch(err) {
       logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
     }
   });
 
   await mqttClient.subscribe('PowSolar/tele/SENSOR');
+  await mqttClient.subscribe('sonoff/spuelmaschine/stat/POWER');
+  await mqttClient.subscribe('sonoff/waschmaschine/stat/POWER');
 
   // #########################################################################
   // SmartmeterObis
@@ -116,7 +218,7 @@ process.on('SIGTERM', () => stopProcess());
           case '1-0:16.7.0*255': {      // Momentanwert Gesamtwirkleistung (Total)
             check.assert.equal(obisResult[obisId].getValueLength(), 1);
 
-            const zaehlerLeistung   = obisResult[obisId].getValue(0).value;
+            zaehlerLeistung          = obisResult[obisId].getValue(0).value;
 
             payload.zaehlerLeistung  = zaehlerLeistung;
             payload.momentanLeistung = zaehlerLeistung + solarLeistung;

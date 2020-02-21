@@ -335,6 +335,7 @@ services:
     volumes:
       - mediawiki-images:/var/www/html/images
       - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php:ro
+      - ./mediawiki/php.ini:/usr/local/etc/php/php.ini:ro
 
   mediawiki-database:
     image: yobasystems/alpine-mariadb:armhf

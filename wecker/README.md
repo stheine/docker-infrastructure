@@ -1,80 +1,15 @@
 # docker setup for the `wecker` raspi
 
-## Hypriot
+## Raspbian
 
-- download hypriot from https://blog.hypriot.com/downloads/
-- write to SD card
-- update `/boot/user-data`
+Note, Hypriot does not work for wecker, since it doesn't contain the necessary Hifiberry overlay.
+
+Install, according to https://wiki.heine7.de/index.php/Raspbian
+
+### Set hostname
 ```
-# Set your hostname here, the manage_etc_hosts will update the hosts file entries as well
-hostname: wecker
-manage_etc_hosts: true
-
-# You could modify this for your own user information
-users:
-  - name: pirate
-    gecos: "Hypriot Pirate"
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    groups: users,docker,video,input
-    plain_text_passwd: hypriot
-    lock_passwd: false
-    ssh_pwauth: true
-    chpasswd: { expire: false }
-
-# # Set the locale of the system
-# locale: "en_US.UTF-8"
-
-# # Set the timezone
-# # Value of 'timezone' must exist in /usr/share/zoneinfo
-timezone: "Europe/Berlin"
-
-# # Update apt packages on first boot
-# package_update: true
-# package_upgrade: true
-# package_reboot_if_required: true
-package_upgrade: false
-
-# # Install any additional apt packages you need here
-packages:
-  - ntp
-  - nfs-common
-  - vim
-
-# # WiFi connect to HotSpot
-# # - use `wpa_passphrase SSID PASSWORD` to encrypt the psk
-write_files:
-  - content: |
-      allow-hotplug wlan0
-      iface wlan0 inet dhcp
-      wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
-      iface default inet dhcp
-    path: /etc/network/interfaces.d/wlan0
-  - content: |
-      country=de
-      ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-      update_config=1
-      network={
-      ssid="holzhaus"
-      psk="<enter the wifi key>"
-      proto=RSN
-      key_mgmt=WPA-PSK
-      pairwise=CCMP
-      auth_alg=OPEN
-      }
-    path: /etc/wpa_supplicant/wpa_supplicant.conf
-
-# These commands will be ran once on first boot only
-runcmd:
-  # Pickup the hostname changes
-  - 'systemctl restart avahi-daemon'
-
-  # Activate WiFi interface
-  - 'ifup wlan0'
+sudo hostnamectl set-hostname --static pi-wecker
 ```
-- boot raspi
-- ssh to system
-- pirate / hypriot
 
 ### Configure apt and install needed packages
 
@@ -101,7 +36,7 @@ mkdir .ssh
 sudo cp /mnt/qnap_linux/data/sshd_certs/strom .ssh/id_rsa
 sudo cp /mnt/qnap_linux/data/sshd_certs/strom.pub .ssh/id_rsa.pub
 sudo cat /mnt/qnap_linux/data/sshd_certs/bonsai.pub  >> .ssh/authorized_keys
-sudo chown -R pirate:pirate .ssh
+sudo chown -R pi:pi .ssh
 chmod 700 .ssh
 chmod 600 .ssh/id_rsa
 chmod 644 .ssh/id_rsa.pub
@@ -109,45 +44,72 @@ chmod 644 .ssh/authorized_keys
 
 passwd
 # Set new password
-
-sudo reboot
 ```
 
 ### Special hardware support
 
-https://www.alsa-project.org/
-
 /boot/config.txt
 
 ```
-# Enable Hifiberry MiniAmp
-# dtoverlay=hifiberry-dac
-
-# Disable build-in audio (snd_bcm2835)
-dtparam=audio=off
+# Enable Hifiberry Miniamp
+dtoverlay=hifiberry-dac
 
 # Enable the optional hardware interfaces
-dtparam=i2c_arm=on
 dtparam=i2c1=on
-dtparam=i2c=on
+dtparam=i2c_arm=on
 dtparam=i2c_arm_baudrate=1000000
 
 # Enable rotary encoder
 # https://blog.ploetzli.ch/2018/ky-040-rotary-encoder-linux-raspberry-pi/
-dtoverlay=rotary-encoder,pin_a=16,pin_b=20,relative_axis=1
-dtoverlay=gpio-key,gpio=21,keycode=28,label="ENTER"
-dtoverlay=rotary-encoder,pin_a=05,pin_b=06,relative_axis=1
-dtoverlay=gpio-key,gpio=13,keycode=28,label="ENTER"
-
-# Enable UART
-enable_uart=1
+dtoverlay=rotary-encoder,pin_a=22,pin_b=27,relative_axis=1
+dtoverlay=gpio-key,gpio=17,keycode=28,label="ENTER"
+dtoverlay=rotary-encoder,pin_a=12,pin_b=4,relative_axis=1
+dtoverlay=gpio-key,gpio=23,keycode=28,label="ENTER"
 
 # Disable Bluetooth
 dtoverlay=pi3-disable-bt
-dtoverlay=pi3-miniuart-bt
+```
 
-# Allow higher USB current (not sure if this actually works)
-max_usb_current=1
+### Reboot
+
+```
+sudo reboot
+```
+
+### Test Audio (not really required on the host)
+
+sudo vi /etc/asound.conf
+```
+pcm.hifiberry {
+    type softvol
+    slave.pcm "plughw:0"
+    control.name "Master"
+    control.card 0
+}
+
+pcm.!default {
+    type             plug
+    slave.pcm       "hifiberry"
+}
+```
+
+amixer set Master 20%
+amixer set Master 1+
+
+speaker-test --channels 2 --test pink --nperiods 2
+
+### Install docker & docker-compose
+```
+curl -fsSL get.docker.com -o get-docker.sh && sh get-docker.sh
+sudo usermod -aG docker pi
+```
+
+Logout / Login
+
+```
+sudo apt-get install -y libffi-dev libssl-dev python python-pip
+sudo apt-get remove -y python-configparser
+sudo pip install docker-compose
 ```
 
 ### Prepare for docker
@@ -157,9 +119,11 @@ sudo mkdir /docker-data
 sudo mkdir /docker-data/portainer
 sudo mkdir /docker-data/wecker
 
+sudo apt-get install -y git
+
 git config --global core.editor "vim"
-git config --edit --global
-# Enter name and arcor email
+git config --global user.email "stheine@arcor.de"
+git config --global user.name "Stefan Heine"
 git clone git@github.com:stheine/docker-infrastructure.git
 ln -s docker-infrastructure/wecker docker
 
@@ -167,8 +131,22 @@ cp docker/docker_host_system__profile .profile
 
 cd docker/wecker
 git clone git@github.com:stheine/wecker.git
+mv wecker app
 
-cd ..
+cd app
+git clone git@github.com:stheine/mpg123.git
+```
+
+Logout & Login again
+
+```
+cd docker
+docker-compose build wecker
+docker-compose run --rm wecker /bin/bash -l
+
+npm install
+exit
+
 docker-compose up -d
 ```
 

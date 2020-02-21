@@ -1,35 +1,25 @@
-FROM node:12.13-stretch
+FROM arm32v6/node:12.14-alpine
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
 # Set up timezone
 
-ENV DEBIAN_FRONTEND noninteractive
-
 RUN \
-  apt-get update && \
-  apt-get install -y \
-    apt-utils && \
-  apt-get upgrade -y && \
-  apt-get install -y \
-    dnsutils \
-    locales \
-    sudo \
+  apk update && \
+  apk add \
+    bash \
+    ca-certificates \
     tzdata \
-    unzip \
     vim \
-    wget \
-    xz-utils && \
+    wget && \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
-  sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && \
-  locale-gen && \
-  dpkg-reconfigure locales && \
-  /sbin/ldconfig
+  apk del tzdata
 
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
+ENV TZ Europe/Berlin
 
 WORKDIR /source
 
@@ -39,21 +29,23 @@ WORKDIR /source
 WORKDIR /root
 
 RUN \
-  apt-get install -y \
+  apk add \
+    alsa-lib-dev \
     alsa-utils \
-    input-utils \
-    libasound2-dev
+    curl \
+    g++ \
+    gcc \
+    git \
+    linux-headers \
+    make \
+    mpg123 \
+    musl-dev \
+    python
 
 COPY asound.conf /etc/
 
-RUN \
-  apt-get install -y \
-    curl \
-    git \
-    python && \
-  /sbin/ldconfig
-
 COPY vimrc .vimrc
+
 RUN \
   npm install --global eslint-cli eslint_d npm && \
   mkdir -p .vim/autoload .vim/bundle && \
@@ -62,12 +54,11 @@ RUN \
   git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
   git config --global user.email stheine@arcor.de && \
   git config --global user.name 'Stefan Heine'
-ENV TZ Europe/Berlin
 
 COPY docker_container_profile /root/.profile
 
 WORKDIR /app
 
-# CMD ["/usr/bin/tail", "-f", "/dev/null"]
+#CMD ["/usr/bin/tail", "-f", "/dev/null"]
 CMD ["/usr/local/bin/node", "/app/app.js"]
-# CMD ["/bin/bash", "-l"]
+#CMD ["/bin/bash", "-l"]
