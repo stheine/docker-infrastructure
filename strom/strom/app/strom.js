@@ -76,17 +76,21 @@ process.on('SIGTERM', () => stopProcess());
       }
 
       switch(topic) {
-        case 'PowSolar/tele/SENSOR':
+        case 'tasmota/solar/tele/SENSOR':
           solarLeistung = message.ENERGY.Power;
           break;
 
-        case 'sonoff/spuelmaschine/stat/POWER':
+        case 'tasmota/spuelmaschine/stat/POWER':
           switch(messageRaw) {
             case 'OFF':
               if(!spuelmaschineInterval) {
                 logger.info('Spülmaschine OFF. Start waiting for Einspeisung.');
 
+                await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
+
                 spuelmaschineInterval = setInterval(async() => {
+                  logger.info('spuelmaschineInterval');
+
                   let triggerOn = false;
 
                   if(zaehlerLeistung < -100) {
@@ -98,7 +102,7 @@ process.on('SIGTERM', () => stopProcess());
 		  }
 
                   if(triggerOn) {
-                    await mqttClient.publish(`sonoff/spuelmaschine/cmnd/POWER`, 'ON');
+                    await mqttClient.publish(`tasmota/spuelmaschine/cmnd/POWER`, 'ON');
                   }
                 }, millisecond('5 minutes'));
               }
@@ -107,6 +111,8 @@ process.on('SIGTERM', () => stopProcess());
             case 'ON':
               if(spuelmaschineInterval) {
                 logger.info('Spülmaschine ON. Finish waiting.');
+
+                await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '0');
 
                 clearInterval(spuelmaschineInterval);
 
@@ -120,13 +126,17 @@ process.on('SIGTERM', () => stopProcess());
           }
           break;
 
-        case 'sonoff/waschmaschine/stat/POWER':
+        case 'tasmota/waschmaschine/stat/POWER':
           switch(messageRaw) {
             case 'OFF':
               if(!waschmaschineInterval) {
                 logger.info('Waschmaschine OFF. Start waiting for Einspeisung.');
 
+                await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
+
                 waschmaschineInterval = setInterval(async() => {
+                  logger.info('waschmaschineInterval');
+
                   let triggerOn = false;
 
                   if(zaehlerLeistung < -100) {
@@ -138,7 +148,7 @@ process.on('SIGTERM', () => stopProcess());
 		  }
 
                   if(triggerOn) {
-                    await mqttClient.publish(`sonoff/waschmaschine/cmnd/POWER`, 'ON');
+                    await mqttClient.publish(`tasmota/waschmaschine/cmnd/POWER`, 'ON');
                   }
                 }, millisecond('5 minutes'));
               }
@@ -148,9 +158,11 @@ process.on('SIGTERM', () => stopProcess());
               if(waschmaschineInterval) {
                 logger.info('Waschmaschine ON. Finish waiting.');
 
+                await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '0');
+
                 clearInterval(waschmaschineInterval);
 
-                WaschlmaschineInterval = null;
+                waschmaschineInterval = null;
               }
               break;
 
@@ -165,13 +177,23 @@ process.on('SIGTERM', () => stopProcess());
           break;
       }
     } catch(err) {
-      logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`);
+      logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`, err.message);
     }
   });
 
-  await mqttClient.subscribe('PowSolar/tele/SENSOR');
-  await mqttClient.subscribe('sonoff/spuelmaschine/stat/POWER');
-  await mqttClient.subscribe('sonoff/waschmaschine/stat/POWER');
+  await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedState`, '0');
+  await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedMask`, '0');
+  await mqttClient.publish(`tasmota/spuelmaschine/cmnd/SetOption31`, '1');
+  await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower1`, '0'); // Blue/Link off
+
+  await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedState`, '0');
+  await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedMask`, '0');
+  await mqttClient.publish(`tasmota/waschmaschine/cmnd/SetOption31`, '1');
+  await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower1`, '0'); // Green/Link off
+
+  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
+  await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');
 
   // #########################################################################
   // SmartmeterObis
