@@ -97,7 +97,7 @@ process.on('SIGTERM', () => stopProcess());
           });
           break;
 
-        case 'PowSolar/tele/SENSOR':
+        case 'tasmota/solar/tele/SENSOR':
           await rrdtool.update('/var/strom/solar.rrd', {
             power:             message.ENERGY.Power,
             total:             message.ENERGY.Total,
@@ -157,7 +157,7 @@ process.on('SIGTERM', () => stopProcess());
   });
 
   await mqttClient.subscribe('FritzBox/tele/SENSOR');
-  await mqttClient.subscribe('PowSolar/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
   await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
