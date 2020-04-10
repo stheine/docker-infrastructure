@@ -129,6 +129,21 @@ process.on('SIGTERM', () => stopProcess());
             statusZirkulation: message.statusZirkulation,
           });
 
+          await rrdtool.update('/var/vito/vito2d.rrd', {
+            tempAussen:        message.tempAussen,
+            tempKessel:        message.tempKessel,
+            tempPufferOben:    message.tempPufferOben,
+            tempPufferUnten:   message.tempPufferUnten,
+            tempWarmwasser:    message.tempWarmwasser,
+            tempFlamme:        message.tempFlamme,
+            brennerStarts:     message.brennerStarts,
+            brennerStunden:    message.brennerStunden,
+            brennerVerbrauch:  message.brennerVerbrauch,
+            kesselLeistung:    message.kesselLeistung,
+            lambda:            message.lambda,
+            statusZirkulation: message.statusZirkulation,
+          });
+
           await fsExtra.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
           break;
 
