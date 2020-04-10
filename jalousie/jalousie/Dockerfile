@@ -85,6 +85,7 @@ RUN \
     python && \
   /sbin/ldconfig
 
+COPY npmrc .npmrc
 COPY vimrc .vimrc
 RUN \
   apt-get install -y \
