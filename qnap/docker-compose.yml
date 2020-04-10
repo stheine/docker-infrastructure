@@ -226,7 +226,7 @@ volumes:
 
 services:
   apache2:
-    restart: unless-stopped
+    restart: always
     build: apache2
     hostname: qnap-apache2
     volumes:
@@ -250,7 +250,7 @@ services:
       - letsencrypt_www:/var/letsencrypt
 
   dovecot:
-    restart: unless-stopped
+    restart: always
     build: dovecot
     hostname: qnap-dovecot
     ports:
@@ -260,7 +260,7 @@ services:
       - vmail:/home/vmail:nocopy
 
   fritz:
-    restart: unless-stopped
+    restart: always
     build: fritz
     hostname: qnap-fritz
     volumes:
@@ -270,7 +270,7 @@ services:
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
   gerbera-filme:
-    restart: unless-stopped
+    restart: always
     build: gerbera
     hostname: qnap-filme
     network_mode: host
@@ -281,7 +281,7 @@ services:
       - gerbera-filme:/gerbera_home
 
   gerbera-fotos:
-    restart: unless-stopped
+    restart: always
     build: gerbera
     hostname: qnap-fotos
     network_mode: host
@@ -292,7 +292,7 @@ services:
       - gerbera-fotos:/gerbera_home
 
   gerbera-kinder-filme:
-    restart: unless-stopped
+    restart: always
     build: gerbera
     hostname: qnap-kinder-filme
     network_mode: host
@@ -303,7 +303,7 @@ services:
       - gerbera-kinder-filme:/gerbera_home
 
   gerbera-kinder-cds:
-    restart: unless-stopped
+    restart: always
     build: gerbera
     hostname: qnap-kinder-cds
     network_mode: host
@@ -314,7 +314,7 @@ services:
       - gerbera-kinder-cds:/gerbera_home
 
   gerbera-musik:
-    restart: unless-stopped
+    restart: always
     build: gerbera
     hostname: qnap-gerbera-musik
     network_mode: host
@@ -327,7 +327,7 @@ services:
 
   mediawiki:
     build: mediawiki
-    restart: unless-stopped
+    restart: always
     depends_on:
       - mediawiki-database
       - mediawiki-parsoid
@@ -339,7 +339,7 @@ services:
 
   mediawiki-database:
     image: yobasystems/alpine-mariadb:armhf
-    restart: unless-stopped
+    restart: always
     environment:
       # @see https://phabricator.wikimedia.org/source/mediawiki/browse/master/includes/DefaultSettings.php
       MYSQL_DATABASE: my_wiki
@@ -361,14 +361,14 @@ services:
       - postfix
 
   mediawiki-parsoid:
-    restart: unless-stopped
+    restart: always
     build: mediawiki-parsoid
     environment:
       PARSOID_DOMAIN_heine7: https://wiki.heine7.de/api.php
       PARSOID_HOME: /app/parsoid
 
   mosquitto:
-    restart: unless-stopped
+    restart: always
     image: eclipse-mosquitto
     hostname: qnap-mosquitto
     ports:
@@ -380,7 +380,7 @@ services:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
   mqtt2rrd:
-    restart: unless-stopped
+    restart: always
     build: mqtt2rrd
     hostname: qnap-mqtt2rrd
     volumes:
@@ -392,7 +392,7 @@ services:
       - ./mqtt2rrd/app:/app
 
   nginx:
-    restart: unless-stopped
+    restart: always
     build: nginx
     hostname: qnap-nginx
     ports:
@@ -406,7 +406,7 @@ services:
       - apache2
 
   portainer:
-    restart: unless-stopped
+    restart: always
     image: portainer/portainer
     hostname: qnap-portainer
     ports:
@@ -416,7 +416,7 @@ services:
       - portainer:/data
 
   postfix:
-    restart: unless-stopped
+    restart: always
     build: postfix
     hostname: qnap-postfix
     ports:
@@ -425,7 +425,7 @@ services:
       - postfix_creds:/postfix_creds
 
   unison:
-    restart: unless-stopped
+    restart: always
     build: unison
     hostname: qnap-unison
     ports:
@@ -436,7 +436,7 @@ services:
       - unison:/root/.unison:nocopy
 
   zigbee2mqtt-assistant:
-    restart: unless-stopped
+    restart: always
     image: carldebilly/zigbee2mqttassistant:0.3.120
     hostname: zigbee2mqtt-assistant
     ports:
