@@ -52,7 +52,7 @@ networks:
 
 services:
   portainer:
-    restart: unless-stopped
+    restart: always
     image: portainer/portainer
     ports:
       - 8008:9000
@@ -88,7 +88,7 @@ services:
       - postfix
 
   vito:
-    restart: unless-stopped
+    restart: always
     build: vito
     hostname: raspi-vito
     networks:
@@ -100,7 +100,7 @@ services:
       - vcontrold
 
   postfix:
-    restart: unless-stopped
+    restart: always
     build: postfix
     hostname: raspi-postfix
     ports:
@@ -111,7 +111,7 @@ services:
       - postfix_creds:/postfix_creds:nocopy
 
   vcontrold:
-    restart: unless-stopped
+    restart: always
     build: vcontrold
     hostname: raspi-vcontrold
     ports:
