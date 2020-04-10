@@ -102,9 +102,9 @@ COPY \
   /vito/
 
 RUN \
-  mkdir /etc/periodic/2min && \
-  echo -e '*/2	*	*	*	*	run-parts /etc/periodic/2min\n' >> /var/spool/cron/crontabs/root && \
-  ln -s /vito/getVitoData.sh /etc/periodic/2min/getVitoData
+  mkdir /etc/periodic/min && \
+  echo -e '*	*	*	*	*	run-parts /etc/periodic/min\n' >> /var/spool/cron/crontabs/root && \
+  ln -s /vito/getVitoData.sh /etc/periodic/min/getVitoData
 
 COPY docker_container_profile /root/.profile
 # CMD ["/bin/bash", "-l"]
