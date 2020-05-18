@@ -188,3 +188,24 @@ $wgHooks['HtmlPageLinkRendererBegin'][] = function ( $linkRenderer, $target, &$t
     $query['action'] = 'view'; // Prevent MediaWiki from overriding veaction
   }
 };
+
+# -----------------------------------------------------------------------------
+# https://www.mediawiki.org/wiki/Extension:UploadWizard
+$wgEnableUploads = true;
+$wgUseImageMagick = true;
+# $wgImageMagickConvertCommand = <path to your convert command>;  # Only needs to be set if different from /usr/bin/convert
+$wgUploadNavigationUrl = '/index.php/Special:UploadWizard';
+$wgUploadWizardConfig = array(
+  'licensing' => array(
+    'ownWorkDefault' => 'own',
+    'ownWork' => array(
+      'type' => 'or',
+      'template' => 'licensing', // this adds a link to Template:Licensing to the file info page
+      'licenses' => array(
+        'generic',
+      )
+    ),
+  ),
+);
+
+wfLoadExtension('UploadWizard');

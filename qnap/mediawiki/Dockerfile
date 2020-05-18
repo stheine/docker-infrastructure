@@ -54,6 +54,12 @@ RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$CATEGORY_TREE_URL && \
   tar -xzf $CATEGORY_TREE_URL -C /var/www/html/extensions
 
+# https://www.mediawiki.org/wiki/Extension:UploadWizard
+ARG UPLOAD_WIZARD_URL=UploadWizard-REL1_33-ac21297.tar.gz
+RUN \
+  wget https://extdist.wmflabs.org/dist/extensions/$UPLOAD_WIZARD_URL && \
+  tar -xzf $UPLOAD_WIZARD_URL -C /var/www/html/extensions
+
 
 
 COPY docker_container_profile /root/.profile
