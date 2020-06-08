@@ -1,4 +1,4 @@
-FROM koenkk/zigbee2mqtt:1.12.2
+FROM koenkk/zigbee2mqtt:1.13.0
 
 # ##############################################################################
 # Extend the package with bash
