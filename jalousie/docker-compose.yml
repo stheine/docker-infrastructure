@@ -87,6 +87,31 @@ services:
     links:
       - postfix
 
+  jalousie-io:
+    restart: always
+    build:
+      context: jalousie-io
+      args:
+        - CACHE_DATE=2020-05-09
+    hostname: raspi-jalousie-io
+#    ports:
+#      - 9124:9124
+#      - 3000:3000
+    networks:
+      - backend
+    cap_add:
+      - SYS_RAWIO
+    privileged: true
+    devices:
+#      - /dev/i2c-1:/dev/i2c-1
+#      - /dev/gpiomem:/dev/gpiomem
+      - /dev/mem:/dev/mem
+    volumes:
+#      - jalousie:/var/jalousie:nocopy
+#      - strom:/var/strom:nocopy
+#      - vito:/var/vito:nocopy,ro
+      - ./jalousie-io/app:/jalousie-io
+
   vito:
     restart: always
     build: vito
@@ -124,12 +149,12 @@ services:
       - backend
 
   zigbee2mqtt:
+    restart: always
     build: zigbee2mqtt
     volumes:
       - zigbee2mqtt:/app/data
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
-    restart: always
     network_mode: host
     environment:
       - TZ=Europe/Amsterdam
