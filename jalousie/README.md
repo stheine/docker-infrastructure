@@ -94,7 +94,7 @@ docker-compose up -d
 
 ### Configure portainer
 
-- http://192.168.6.41:8008/#/init/admin
+- http://192.168.6.11:8008/#/init/admin
 - admin
 - &lt;pw&gt;
 - Create user
@@ -114,8 +114,15 @@ docker-compose exec vito /bin/bash -c /vito/checkAccess.sh
 docker-compose exec vito /bin/sh -c '/bin/echo -e "testing email\n\nsent on: $(date)\n\n$(hostname)" | /usr/bin/mail -s "test cli email $(date)" stefan@heine7.de'
 ```
 
-### Check jalousie
+### Setup jalousie (npm install missing)
 
 ```
+docker-compose stop jalousie
+docker-compose run --rm jalousie /bin/bash -l
+
+npm install
+exit
+
+docker-compose up -d jalousie
 docker-compose logs --tail 100 --follow jalousie
 ```
