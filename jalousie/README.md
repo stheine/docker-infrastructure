@@ -77,6 +77,7 @@ sudo reboot
 sudo mkdir /docker-data
 sudo mkdir /docker-data/portainer
 
+git config --global core.editor vim
 git config --edit --global
 # Enter name and arcor email
 git clone git@github.com:stheine/docker-infrastructure.git
