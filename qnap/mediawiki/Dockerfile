@@ -47,6 +47,9 @@ ARG VISUAL_EDITOR_URL=VisualEditor-REL1_33-8c9c37e.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$VISUAL_EDITOR_URL && \
   tar -xzf $VISUAL_EDITOR_URL -C /var/www/html/extensions
+# Required for 32-bit systems (Error 500 from parsoid/ Visual Editor)
+RUN \
+  docker-php-ext-install bcmath
 
 # https://www.mediawiki.org/wiki/Extension:CategoryTree
 ARG CATEGORY_TREE_URL=CategoryTree-REL1_33-ece3dc2.tar.gz
@@ -60,11 +63,4 @@ RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$UPLOAD_WIZARD_URL && \
   tar -xzf $UPLOAD_WIZARD_URL -C /var/www/html/extensions
 
-
-
 COPY docker_container_profile /root/.profile
-
-
-# Required for 32-bit systems (Error 500 from parsoid/ Visual Editor)
-RUN \
-  docker-php-ext-install bcmath
