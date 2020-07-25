@@ -9,9 +9,9 @@ RUN apk add --no-cache tini gcc g++ pkgconf make automake autoconf libtool \
 # Install and run from https://github.com/gerbera/gerbera
 
 WORKDIR /source
-ARG CACHE_DATE=2020-05-03
+ARG CACHE_DATE=2020-07-25
 
-ARG GERBERA_VERSION=1.5.0
+ARG GERBERA_VERSION=1.6.0
 RUN \
   wget https://github.com/gerbera/gerbera/archive/v$GERBERA_VERSION.zip && \
   unzip v$GERBERA_VERSION.zip && \
@@ -35,10 +35,9 @@ RUN mkdir build && \
 RUN mkdir -p /root/.config/gerbera &&\
     gerbera --create-config > /root/.config/gerbera/config.xml &&\
     sed 's/<import hidden-files="no">/<import hidden-files="no">\n\
-<autoscan use-inotify="yes">\n\
-<directory location="\/root" mode="inotify" \
-recursive="yes" hidden-files="no"\/>\n\
-<\/autoscan>/' -i /root/.config/gerbera/config.xml
+    <autoscan use-inotify="yes">\n\
+      <directory location="\/media" mode="inotify" recursive="yes" hidden-files="no"\/>\n\
+    <\/autoscan>/' -i /root/.config/gerbera/config.xml
 
 WORKDIR /
 
