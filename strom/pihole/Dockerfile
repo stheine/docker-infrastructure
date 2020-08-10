@@ -1,4 +1,4 @@
-FROM pihole/pihole:v5.1.1
+FROM pihole/pihole:v5.1.2
 
 COPY docker_container_profile /root/.profile
 EXPOSE 53 80 443
