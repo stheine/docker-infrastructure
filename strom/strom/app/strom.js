@@ -4,7 +4,7 @@
 
 /* eslint-disable no-console */
 
-const check          = require('check-types');
+const check          = require('check-types-2');
 const fsExtra        = require('fs-extra');
 const millisecond    = require('millisecond');
 const moment         = require('moment');
