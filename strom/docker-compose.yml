@@ -9,20 +9,6 @@ volumes:
       device: /docker-data/portainer
       o: bind
 
-  pihole_etc_pihole:
-    driver: local
-    driver_opts:
-      type: none
-      device: /docker-data/pihole/etc_pihole
-      o: bind
-
-  pihole_etc_dnsmasq.d:
-    driver: local
-    driver_opts:
-      type: none
-      device: /docker-data/pihole/etc_dnsmasq.d
-      o: bind
-
   strom:
     driver: local
     driver_opts:
@@ -35,27 +21,8 @@ networks:
     driver: bridge
 
 services:
-  pihole:
-    restart: unless-stopped
-    build: pihole
-    hostname: strom-pihole
-    dns:
-      - 127.0.0.1
-      - 1.1.1.1
-    ports:
-      - 53:53/tcp
-      - 53:53/udp
-      - 80:80
-      - 443:443
-    environment:
-      - ServerIP=192.168.6.6
-      - WEBPASSWORD=1234
-    volumes:
-      - pihole_etc_pihole:/etc/pihole:nocopy
-      - pihole_etc_dnsmasq.d:/etc/dnsmasq.d:nocopy
-
   portainer:
-    restart: unless-stopped
+    restart: always
     image: portainer/portainer
     ports:
       - 8008:9000
@@ -64,7 +31,7 @@ services:
       - portainer:/data:nocopy
 
   strom:
-    restart: unless-stopped
+    restart: always
     build:
       context: strom
       args:
