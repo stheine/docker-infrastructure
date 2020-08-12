@@ -29,6 +29,13 @@ sudo vi /boot/cmdline.txt
 # <remove all console entries>
 ```
 
+### Set hostname
+```
+sudo hostnamectl set-hostname --static pi-strom
+sudo vi /etc/cloud/cloud.cfg
+# Change preserve_hostname: true
+```
+
 ### Configure apt and install needed packages
 
 ```
@@ -37,6 +44,8 @@ sudo apt update
 sudo apt upgrade
 sudo apt install -y nfs-common vim
 
+echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > .selected-editor
+
 # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
 # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
 echo "192.168.6.7:/linux /mnt/qnap_linux nfs nfsvers=3,soft 0 0" | sudo tee -a /etc/fstab >/dev/null
@@ -44,8 +53,6 @@ sudo mkdir /mnt/qnap_linux
 sudo mount -a
 
 echo "@reboot /bin/sleep 20 && /bin/mount -a" | sudo tee -a /var/spool/cron/crontabs/root >/dev/null
-
-cp docker/docker_host_system__profile .profile
 ```
 
 ### Setup ssh access key
@@ -72,19 +79,37 @@ sudo systemctl stop systemd-resolved
 
 sudo mkdir /docker-data
 sudo mkdir /docker-data/portainer
-sudo mkdir /docker-data/pihole
-sudo mkdir /docker-data/pihole/etc_pihole
-sudo mkdir /docker-data/pihole/etc_dnsmasq.d
+# sudo mkdir /docker-data/pihole
+# sudo mkdir /docker-data/pihole/etc_pihole
+# sudo mkdir /docker-data/pihole/etc_dnsmasq.d
+
+git config --global core.editor vim
 git config --edit --global
 # Enter name and arcor email
 git clone git@github.com:stheine/docker-infrastructure.git
+
 ln -s docker-infrastructure/strom docker
+cp docker/docker_host_system__profile .profile
 cd docker
 docker-compose build
 docker-compose up -d
 ```
 
-### Configure pihole
+### Install and Configure pihole
+
+Note, pihole docker does not function on armv6, so it has to be installed locally, outside docker
+
+```
+curl -sSL https://install.pi-hole.net | bash
+
+# Set web admin password
+pihole -a -p
+```
+
+# /docker-data/pihole/etc_pihole
+# /docker-data/pihole/etc_dnsmasq.d
+# - ServerIP=192.168.6.6
+# - WEBPASSWORD=1234
 
 - http://192.168.6.6/admin/index.php
 - Login
@@ -118,6 +143,17 @@ docker-compose up -d
 - Create user
 - Local
 - Connect
+
+### Install strom
+
+```
+docker-compose run --rm strom /bin/bash -l
+cd /app
+npm install
+exit
+
+docker-compose up -d
+```
 
 ### Check strom
 
