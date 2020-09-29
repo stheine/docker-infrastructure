@@ -11,7 +11,7 @@ RUN apk add --no-cache tini gcc g++ pkgconf make automake autoconf libtool \
 WORKDIR /source
 ARG CACHE_DATE=2020-07-25
 
-ARG GERBERA_VERSION=1.6.0
+ARG GERBERA_VERSION=1.6.1
 RUN \
   wget https://github.com/gerbera/gerbera/archive/v$GERBERA_VERSION.zip && \
   unzip v$GERBERA_VERSION.zip && \

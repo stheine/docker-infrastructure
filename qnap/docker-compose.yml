@@ -4,6 +4,7 @@ version: "2.2"
 # Ports
 #    25 postfix              smtp
 #   993 dovecot              imap
+#  1499 unison               unison/ rsync
 #  1883 mosquitto-websockets mqtt
 #  8008 portainer            http://192.168.6.7:8008/
 #  9001 mosquitto-websockets websockets
@@ -407,7 +408,7 @@ services:
 
   portainer:
     restart: always
-    image: portainer/portainer
+    image: portainer/portainer-ce
     hostname: qnap-portainer
     ports:
       - 8008:9000
