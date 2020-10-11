@@ -29,6 +29,19 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer:/data:nocopy
 
+  watchdog:
+    restart: always
+    build: watchdog
+    hostname: pi-jalousie-watchdog
+    volumes:
+      - ./watchdog/app:/app
+    networks:
+      - backend
+    ports:
+      - 31038:31038
+#    links:
+#      - postfix
+
   wecker:
     restart: unless-stopped
     build:
