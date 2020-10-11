@@ -62,6 +62,6 @@ WORKDIR /app
 # RUN \
 #   npm install
 
-CMD ["/usr/bin/tail", "-f", "/dev/null"]
-# CMD ["/usr/local/bin/node", "/app/watchdog.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/local/bin/node", "/app/watchdog.js"]
 # CMD ["/bin/bash", "-l"]
