@@ -66,7 +66,7 @@ services:
       context: jalousie
       args:
         - CACHE_DATE=2019-07-27
-    hostname: raspi-jalousie
+    hostname: pi-jalousie
     ports:
       - 9124:9124
 #      - 3000:3000
@@ -94,7 +94,7 @@ services:
       context: jalousie-io
       args:
         - CACHE_DATE=2020-05-09
-    hostname: raspi-jalousie-io
+    hostname: pi-jalousie-io
 #    ports:
 #      - 9124:9124
 #      - 3000:3000
@@ -116,7 +116,7 @@ services:
   vito:
     restart: always
     build: vito
-    hostname: raspi-vito
+    hostname: pi-vito
     networks:
       - backend
     volumes:
@@ -128,7 +128,7 @@ services:
   postfix:
     restart: always
     build: postfix
-    hostname: raspi-postfix
+    hostname: pi-postfix
     ports:
       - "25:25"
     networks:
@@ -139,7 +139,7 @@ services:
   vcontrold:
     restart: always
     build: vcontrold
-    hostname: raspi-vcontrold
+    hostname: pi-vcontrold
     ports:
       - 3002:3002
     cap_add:
@@ -148,6 +148,19 @@ services:
       - /dev/ttyAMA0:/dev/ttyAMA0
     networks:
       - backend
+
+  watchdog:
+    restart: always
+    build: watchdog
+    hostname: pi-jalousie-watchdog
+    volumes:
+      - ./watchdog/app:/app
+    networks:
+      - backend
+    ports:
+      - 31038:31038
+    links:
+      - postfix
 
   zigbee2mqtt:
     restart: always
