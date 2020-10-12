@@ -74,14 +74,11 @@ sudo reboot
 ### Prepare for docker
 
 ```
-sudo systemctl disable systemd-resolved.service
-sudo systemctl stop systemd-resolved
+# sudo systemctl disable systemd-resolved.service
+# sudo systemctl stop systemd-resolved
 
 sudo mkdir /docker-data
 sudo mkdir /docker-data/portainer
-# sudo mkdir /docker-data/pihole
-# sudo mkdir /docker-data/pihole/etc_pihole
-# sudo mkdir /docker-data/pihole/etc_dnsmasq.d
 
 git config --global core.editor vim
 git config --edit --global
@@ -90,9 +87,6 @@ git clone git@github.com:stheine/docker-infrastructure.git
 
 ln -s docker-infrastructure/strom docker
 cp docker/docker_host_system__profile .profile
-cd docker
-docker-compose build
-docker-compose up -d
 ```
 
 ### Install and Configure pihole
@@ -106,22 +100,18 @@ curl -sSL https://install.pi-hole.net | bash
 pihole -a -p
 ```
 
-# /docker-data/pihole/etc_pihole
-# /docker-data/pihole/etc_dnsmasq.d
-# - ServerIP=192.168.6.6
-# - WEBPASSWORD=1234
-
 - http://192.168.6.6/admin/index.php
 - Login
 - &lt;pw&gt;
 - Settings
 - DNS
 - Upstream: `OpenDNS`
-- disable `Never forward non-FQDNs`
-- disable `Never forward reverse lookups for private IP ranges`
-- enable `Use conditional forwarding`
-- IP: `192.168.6.1`
-- domain name: `fritz.box`
+- [ ] `Never forward non-FQDNs`
+- [ ] `Never forward reverse lookups for private IP ranges`
+- [x] `Use conditional forwarding`
+- Local network: `192.168.6.0/24`
+- IP address of DHCP server: `192.168.6.1`
+- Local domain name: `fritz.box`
 
 ### Configure FritzBox
 
@@ -135,7 +125,49 @@ pihole -a -p
 - Heimnetz/ Netzwerk/ Netzwerkeinstellungen/ IPv4-Addressen
 - Lokaler DNS-Server: `192.168.6.6`
 
+### Finalize docker setup
+Somehow pihole and docker interfere, so that docker containers do not have DNS resolution.
+To fix, make docker bypass the pihole DNS.
+
+```
+echo "{
+  \"dns\": [\"8.8.8.8\"]
+}" | sudo tee -a /etc/docker/daemon.json >/dev/null
+sudo systemctl restart docker
+
+cd docker
+docker-compose build
+```
+
+### Install strom
+```
+docker-compose run --rm strom /bin/bash -l
+cd /app
+npm install
+exit
+
+docker-compose up -d strom
+```
+
+### Install watchdog
+```
+cd watchdog
+git clone git@github.com:stheine/watchdog.git
+mv watchdog app
+cd ..
+
+docker-compose run --rm watchdog /bin/bash -l
+cd app
+npm install
+exit
+
+docker-compose up -d watchdog
+```
+
 ### Configure portainer
+```
+docker-compose up -d
+```
 
 - http://192.168.6.6:8008/#/init/admin
 - admin
@@ -143,17 +175,6 @@ pihole -a -p
 - Create user
 - Local
 - Connect
-
-### Install strom
-
-```
-docker-compose run --rm strom /bin/bash -l
-cd /app
-npm install
-exit
-
-docker-compose up -d
-```
 
 ### Check strom
 
@@ -174,7 +195,7 @@ sudo minicom
 #### View current state
 
 ```
-# CPU freq
+# CPU freq (default 700)
 cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq # / 1000
 
 # CPU temperate (recommended to keep below 70)

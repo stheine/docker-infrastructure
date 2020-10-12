@@ -49,13 +49,15 @@ services:
       - strom:/var/strom
 
   watchdog:
-    restart: "no"
+    restart: always
     build: watchdog
     hostname: pi-jalousie-watchdog
     volumes:
       - ./watchdog/app:/app
     networks:
       - backend
+    dns:
+      - 192.168.6.1
     ports:
       - 31038:31038
 #    links:
