@@ -1,5 +1,4 @@
-version: "2.2"
-# Remain on v2 for https://github.com/docker/compose/issues/4513
+version: "3.2"
 
 volumes:
   portainer:
@@ -48,3 +47,16 @@ services:
     volumes:
       - ./strom/app:/app
       - strom:/var/strom
+
+  watchdog:
+    restart: "no"
+    build: watchdog
+    hostname: pi-jalousie-watchdog
+    volumes:
+      - ./watchdog/app:/app
+    networks:
+      - backend
+    ports:
+      - 31038:31038
+#    links:
+#      - postfix
