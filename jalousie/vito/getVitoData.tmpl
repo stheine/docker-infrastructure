@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# Hol Systemzeit jetzt, damit sie stimmt, auch wenn spaeter verzoegerungen
+# beim zugriff auf /var/vito stattfinden (weil NAS nicht verfuegbar)
+
+systemZeit=`date +'%Y-%m-%d %H:%M:%S'`
+systemZeitSeconds=`date +%s`
+
 # Holen der Rueckgabewerte
 
 #  1 getTempAussen
@@ -224,8 +230,6 @@ fi
 
 # Uhrzeit Einstellung prüfen
 
-systemZeit=`date +'%Y-%m-%d %H:%M:%S'`
-systemZeitSeconds=`date +%s`
 vitoZeit=`echo "$SYSTEM_TIME" | awk -F ' ' '{print \$1\$2"-"\$3"-"\$4" "\$6":"\$7":"\$8}'`
 vitoZeitSeconds=`date --date "$vitoZeit" +%s`
 zeitDiff=`expr $systemZeitSeconds - $vitoZeitSeconds`
