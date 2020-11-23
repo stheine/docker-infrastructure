@@ -62,6 +62,10 @@ module.exports = {
     const resolveNumber = number.replace(/#$/, '').replace(/\s/g, '');
     let   name;
 
+    if(!resolveNumber) {
+      return;
+    }
+
     if(phonebook[resolveNumber]) {
       name = phonebook[resolveNumber];
       // logger.info(`Single match '${number}' to '${name}'`);
@@ -71,7 +75,7 @@ module.exports = {
         phonebookNumber.endsWith(numberWithoutLeadingZero));
 
       if(_.keys(resolvedEntries).length > 1) {
-        logger.warn(`Multiple phonebook entries for '${number}'`, resolvedEntries);
+        logger.warn(`Multiple phonebook entries end with '${number}'`, resolvedEntries);
       }
 
       if(_.keys(resolvedEntries).length) {
