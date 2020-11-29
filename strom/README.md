@@ -113,6 +113,12 @@ pihole -a -p
 - IP address of DHCP server: `192.168.6.1`
 - Local domain name: `fritz.box`
 
+### Update to new version
+
+```
+/usr/local/bin/pihole --update
+```
+
 ### Configure FritzBox
 
 - http://192.168.6.1
