@@ -7,41 +7,14 @@
 const fsExtra  = require('fs-extra');
 const graphviz = require('graphviz');
 const mqtt     = require('async-mqtt');
-const moment   = require('moment');
 
+const logger   = require('./logger');
 const rrdtool  = require('./rrdtool');
 
 // ###########################################################################
 // Globals
 
 let mqttClient;
-
-// ###########################################################################
-// Logging
-
-const logger = {
-  info(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg);
-    }
-  },
-  warn(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg);
-    }
-  },
-  error(msg, params) {
-    if(params) {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg, params);
-    } else {
-      console.log(`${moment().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg);
-    }
-  },
-};
 
 // ###########################################################################
 // Process handling
@@ -97,6 +70,13 @@ process.on('SIGTERM', () => stopProcess());
           });
           break;
 
+        case 'FritzBox/speedtest/result':
+          await rrdtool.update('/var/fritz/speedtest.rrd', {
+            upstreamTest:   Math.trunc(message.upload),
+            downstreamTest: Math.trunc(message.download),
+          });
+          break;
+
         case 'tasmota/solar/tele/SENSOR':
           await rrdtool.update('/var/strom/solar.rrd', {
             power:             message.ENERGY.Power,
@@ -147,6 +127,14 @@ process.on('SIGTERM', () => stopProcess());
           await fsExtra.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
           break;
 
+//        case 'Zigbee/LuftSensor':
+//          logger.info(message);
+//          await rrdtool.update('/var/jalousie/jalousie.rrd', {
+//            bueroHumidity:    message.humidity,
+//            bueroTemperature: message.temperature,
+//          });
+//          break;
+
         case 'Zigbee/bridge/networkmap/graphviz':
           // Trigger by mosquitto_pub -h 192.168.6.7 -t Zigbee/bridge/networkmap -m graphviz
           await new Promise(resolve => {
@@ -172,8 +160,10 @@ process.on('SIGTERM', () => stopProcess());
   });
 
   await mqttClient.subscribe('FritzBox/tele/SENSOR');
+  await mqttClient.subscribe('FritzBox/speedtest/result');
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
   await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
+//  await mqttClient.subscribe('Zigbee/LuftSensor');
 })();
