@@ -7,6 +7,7 @@
 
 const _                        = require('lodash');
 const {CallMonitor, EventKind} = require('fritz-callmonitor');
+const execa                    = require('execa');
 const Fritzbox                 = require('tr-064-async');
 const millisecond              = require('millisecond');
 const mqtt                     = require('async-mqtt');
@@ -22,6 +23,7 @@ let callMonitor;
 let mqttClient;
 let phonebookInterval;
 let stateInterval;
+let speedtestInterval;
 
 // ###########################################################################
 // Process handling
@@ -29,6 +31,7 @@ let stateInterval;
 const stopProcess = async function() {
   clearInterval(phonebookInterval);
   clearInterval(stateInterval);
+  clearInterval(speedtestInterval);
 
   callMonitor.end();
   callMonitor = undefined;
@@ -116,7 +119,9 @@ process.on('SIGTERM', () => stopProcess());
 
     logger.info('Publish to mqtt', {topic, payload});
 
-    await mqttClient.publish(topic, JSON.stringify(payload));
+    if(mqttClient) {
+      await mqttClient.publish(topic, JSON.stringify(payload));
+    }
   });
 
 //  callMonitor.on('close', () => logger.info('Connection closed.'));
@@ -157,7 +162,7 @@ process.on('SIGTERM', () => stopProcess());
 // ???   tele.downstreamMaxBitRate = data.NewLayer1DownstreamMaxBitRate;
     tele.physicalLinkStatus   = data.NewPhysicalLinkStatus;
 
-//    data = await service.actions.GetTotalBytesReceived());
+//    data = await service.actions.GetTotalBytesReceived();
 //    logger.info('WANCommonInterfaceConfig.', data);
 
     data = await service.actions['X_AVM-DE_GetOnlineMonitor']({NewSyncGroupIndex: 0});
@@ -192,6 +197,29 @@ process.on('SIGTERM', () => stopProcess());
 
 //    logger.info('MQTT publish', tele);
 
-    await mqttClient.publish(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
+    if(mqttClient) {
+      await mqttClient.publish(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
+    }
   }, millisecond('20 seconds'));
+
+  // #########################################################################
+  // Speedtest
+  const speedtest = async function() {
+    const {stdout} = await execa('/usr/local/bin/SpeedTest', [
+      '--test-server',
+      'voiptest.starface.de:8080',
+      '--output',
+      'json',
+    ]);
+
+    logger.info('speedtest', _.pick(JSON.parse(stdout), ['download', 'upload']));
+
+    if(mqttClient) {
+      await mqttClient.publish(`FritzBox/speedtest/result`, stdout);
+    }
+  };
+
+  speedtestInterval = setInterval(speedtest, millisecond('90 minutes'));
+
+  speedtest();
 })();

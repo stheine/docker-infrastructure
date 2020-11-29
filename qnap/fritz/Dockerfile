@@ -34,6 +34,26 @@ ENV LC_ALL en_US.UTF-8
 WORKDIR /source
 
 # ##############################################################################
+# Install and run speedtest
+# https://github.com/taganaka/SpeedTest
+
+WORKDIR /build
+
+RUN \
+  apt-get install -y \
+    build-essential \
+    cmake \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev
+
+RUN \
+  git clone https://github.com/taganaka/SpeedTest && \
+  cd SpeedTest && \
+  cmake -DCMAKE_BUILD_TYPE=Release . && \
+  make install
+
+# ##############################################################################
 # Install and run fritz app
 
 WORKDIR /root
