@@ -53,7 +53,7 @@ networks:
 services:
   portainer:
     restart: always
-    image: portainer/portainer
+    image: portainer/portainer-ce
     ports:
       - 8008:9000
     volumes:
