@@ -22,7 +22,7 @@ networks:
 services:
   portainer:
     restart: unless-stopped
-    image: portainer/portainer
+    image: portainer/portainer-ce
     ports:
       - 8008:9000
     volumes:
