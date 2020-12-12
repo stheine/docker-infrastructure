@@ -1,7 +1,7 @@
 " Support 256 colors
 ":set t_Co=256
 
-" :set mouse=n
+:set mouse=
 
 :syntax on
 :set list
