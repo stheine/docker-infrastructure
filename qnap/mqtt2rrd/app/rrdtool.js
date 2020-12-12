@@ -1,32 +1,44 @@
 'use strict';
 
-const execa = require('execa');
-
-const logger = require('./logger');
-
+const AsyncLock = require('async-lock');
+const execa     = require('execa');
 const {
   keys,
   values,
 } = require('lodash');
 
+const logger    = require('./logger');
+
+const lock = new AsyncLock();
+
 module.exports = {
   async update(rrdFile, rrdUpdates) {
-    const cmd = '/opt/rrdtool/bin/rrdupdate';
-    const params = [
-      rrdFile,
-      '--template',
-      keys(rrdUpdates).join(':'),
-      `N:${values(rrdUpdates).join(':')}`,
-    ];
+    await lock.acquire(rrdFile, async() => {
+      const cmd = '/opt/rrdtool/bin/rrdupdate';
+      const params = [
+        rrdFile,
+        '--template',
+        keys(rrdUpdates).join(':'),
+        `N:${values(rrdUpdates).join(':')}`,
+      ];
 
-    // logger.info('rrdtool.update', {cmd, params});
+      // logger.info('rrdtool.update', {cmd, params});
 
-    const {stderr, stdout} = await execa(cmd, params);
+      try {
+        const {stderr, stdout} = await execa(cmd, params);
 
-    // logger.info('rrdtool.update', {stderr, stdout});
+        if(stderr) {
+          logger.info('rrdtool.update', {stderr, stdout});
 
-    if(stderr) {
-      throw new Error(stderr);
-    }
+          throw new Error(stderr);
+        }
+      } catch(err) {
+        if(err.message.includes('ERROR: could not lock RRD')) {
+          logger.error('rrdtool.update() could not lock RRD', rrdFile);
+        } else {
+          logger.error('rrdtool.update() execa error:', err.message);
+        }
+      }
+    });
   },
 };
