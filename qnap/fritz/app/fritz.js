@@ -219,7 +219,7 @@ process.on('SIGTERM', () => stopProcess());
     }
   };
 
-  speedtestInterval = setInterval(speedtest, millisecond('90 minutes'));
+  speedtestInterval = setInterval(speedtest, millisecond('6 hours'));
 
   speedtest();
 })();
