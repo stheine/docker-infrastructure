@@ -47,10 +47,13 @@ process.on('SIGTERM', () => stopProcess());
   // Init MQTT connection
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
 
+  const update = {};
+
   mqttClient.on('message', async(topic, messageBuffer) => {
     const messageRaw = messageBuffer.toString();
 
     try {
+      let files= [];
       let message;
 
       try {
@@ -60,82 +63,193 @@ process.on('SIGTERM', () => stopProcess());
       }
 
       switch(topic) {
-        case 'FritzBox/tele/SENSOR':
-          await rrdtool.update('/var/fritz/fritz.rrd', {
-            upTime:            message.upTime,
-            downstreamMax:     message.downstreamMaxBitRate,
-            upstreamMax:       message.upstreamMaxBitRate,
-            downstreamCurrent: message.downstreamCurrent,
-            upstreamCurrent:   message.upstreamCurrent,
-          });
+        case 'FritzBox/tele/SENSOR': {
+          const file = '/var/fritz/fritz.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              upTime:            message.upTime,
+              downstreamMax:     message.downstreamMaxBitRate,
+              upstreamMax:       message.upstreamMaxBitRate,
+              downstreamCurrent: message.downstreamCurrent,
+              upstreamCurrent:   message.upstreamCurrent,
+            }
+          };
           break;
+        }
 
-        case 'FritzBox/speedtest/result':
-          await rrdtool.update('/var/fritz/speedtest.rrd', {
-            upstreamTest:   Math.trunc(message.upload),
-            downstreamTest: Math.trunc(message.download),
-          });
+        case 'FritzBox/speedtest/result': {
+          const file = '/var/fritz/speedtest.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              upstreamTest:   Math.trunc(message.upload),
+              downstreamTest: Math.trunc(message.download),
+            },
+          };
           break;
+        }
 
-        case 'tasmota/solar/tele/SENSOR':
-          await rrdtool.update('/var/strom/solar.rrd', {
-            power:             message.ENERGY.Power,
-            total:             message.ENERGY.Total,
-          });
+        case 'Jalousie/tele/SENSOR': {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...message,
+          };
           break;
+        }
 
-        case 'Stromzaehler/tele/SENSOR':
-          await rrdtool.update('/var/strom/strom.rrd', {
-            gesamtLeistung:    message.gesamtLeistung,
-            momentanLeistung:  message.momentanLeistung,
-            zaehlerLeistung:   message.zaehlerLeistung,
-            gesamtEinspeisung: message.gesamtEinspeisung,
-          });
+        case 'Sonne/tele/SENSOR': {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              sunThreshold: message.level,
+            },
+          };
           break;
+        }
 
-        case 'Vito/tele/SENSOR':
-          await rrdtool.update('/var/vito/vito.rrd', {
-            tempAussen:        message.tempAussen,
-            tempKessel:        message.tempKessel,
-            tempPufferOben:    message.tempPufferOben,
-            tempPufferUnten:   message.tempPufferUnten,
-            tempWarmwasser:    message.tempWarmwasser,
-            tempFlamme:        message.tempFlamme,
-            brennerStarts:     message.brennerStarts,
-            brennerStunden:    message.brennerStunden,
-            brennerVerbrauch:  message.brennerVerbrauch,
-            kesselLeistung:    message.kesselLeistung,
-            lambda:            message.lambda,
-            statusZirkulation: message.statusZirkulation,
-          });
+        case 'Stromzaehler/tele/SENSOR': {
+          const file = '/var/strom/strom.rrd';
 
-          await rrdtool.update('/var/vito/vito2d.rrd', {
-            tempAussen:        message.tempAussen,
-            tempKessel:        message.tempKessel,
-            tempPufferOben:    message.tempPufferOben,
-            tempPufferUnten:   message.tempPufferUnten,
-            tempWarmwasser:    message.tempWarmwasser,
-            tempFlamme:        message.tempFlamme,
-            brennerStarts:     message.brennerStarts,
-            brennerStunden:    message.brennerStunden,
-            brennerVerbrauch:  message.brennerVerbrauch,
-            kesselLeistung:    message.kesselLeistung,
-            lambda:            message.lambda,
-            statusZirkulation: message.statusZirkulation,
-          });
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              gesamtLeistung:    message.gesamtLeistung,
+              momentanLeistung:  message.momentanLeistung,
+              zaehlerLeistung:   message.zaehlerLeistung,
+              gesamtEinspeisung: message.gesamtEinspeisung,
+            },
+          };
+          break;
+        }
 
+        case 'tasmota/solar/tele/SENSOR': {
+          const file = '/var/strom/solar.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              power:             message.ENERGY.Power,
+              total:             message.ENERGY.Total,
+            },
+          };
+          break;
+        }
+
+        case 'Vito/tele/SENSOR': {
+          let file;
+
+          file = '/var/vito/vito.rrd';
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              tempAussen:        message.tempAussen,
+              tempKessel:        message.tempKessel,
+              tempPufferOben:    message.tempPufferOben,
+              tempPufferUnten:   message.tempPufferUnten,
+              tempWarmwasser:    message.tempWarmwasser,
+              tempFlamme:        message.tempFlamme,
+              brennerStarts:     message.brennerStarts,
+              brennerStunden:    message.brennerStunden,
+              brennerVerbrauch:  message.brennerVerbrauch,
+              kesselLeistung:    message.kesselLeistung,
+              lambda:            message.lambda,
+              statusZirkulation: message.statusZirkulation,
+            },
+          };
+
+          file = '/var/vito/vito2d.rrd';
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              tempAussen:        message.tempAussen,
+              tempKessel:        message.tempKessel,
+              tempPufferOben:    message.tempPufferOben,
+              tempPufferUnten:   message.tempPufferUnten,
+              tempWarmwasser:    message.tempWarmwasser,
+              tempFlamme:        message.tempFlamme,
+              brennerStarts:     message.brennerStarts,
+              brennerStunden:    message.brennerStunden,
+              brennerVerbrauch:  message.brennerVerbrauch,
+              kesselLeistung:    message.kesselLeistung,
+              lambda:            message.lambda,
+              statusZirkulation: message.statusZirkulation,
+            },
+          };
+
+          file = '/var/jalousie/jalousie.rrd';
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              temperatureOutside: message.tempAussen,
+            },
+          };
           await fsExtra.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
           break;
+        }
 
-//        case 'Zigbee/LuftSensor':
-//          logger.info(message);
-//          await rrdtool.update('/var/jalousie/jalousie.rrd', {
-//            bueroHumidity:    message.humidity,
-//            bueroTemperature: message.temperature,
-//          });
-//          break;
+        case 'Wind/tele/SENSOR': {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
 
-        case 'Zigbee/bridge/networkmap/graphviz':
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              windThreshold: message.level,
+            },
+          };
+          break;
+        }
+
+        case 'Wohnzimmer/tele/SENSOR': {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              humidity:       message.humidity,
+              temperatureDht: message.temperature,
+            },
+          };
+          break;
+        }
+
+        case 'Zigbee/LuftSensor': {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              bueroHumidity:    message.humidity,
+              bueroTemperature: message.temperature,
+            },
+          };
+          break;
+        }
+
+        case 'Zigbee/bridge/networkmap/graphviz': {
           // Trigger by mosquitto_pub -h 192.168.6.7 -t Zigbee/bridge/networkmap -m graphviz
           await new Promise(resolve => {
             graphviz.parse(messageRaw, graph => {
@@ -149,10 +263,17 @@ process.on('SIGTERM', () => stopProcess());
             });
           });
           break;
+        }
 
         default:
           logger.error(`Unhandled topic '${topic}'`, message);
           break;
+      }
+
+      for(const file of files) {
+        // logger.info(file, update[file]);
+
+        await rrdtool.update(file, update[file]);
       }
     } catch(err) {
       logger.error(`Failed mqtt handling for '${topic}': ${messageRaw}`, err);
@@ -161,9 +282,13 @@ process.on('SIGTERM', () => stopProcess());
 
   await mqttClient.subscribe('FritzBox/tele/SENSOR');
   await mqttClient.subscribe('FritzBox/speedtest/result');
+  await mqttClient.subscribe('Jalousie/tele/SENSOR');
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
+  await mqttClient.subscribe('Sonne/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
+  await mqttClient.subscribe('Wind/tele/SENSOR');
+  await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
-//  await mqttClient.subscribe('Zigbee/LuftSensor');
+  await mqttClient.subscribe('Zigbee/LuftSensor');
 })();
