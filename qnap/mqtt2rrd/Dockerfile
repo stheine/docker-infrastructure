@@ -98,4 +98,5 @@ WORKDIR /app
 #   npm install
 
 CMD ["/usr/local/bin/node", "/app/mqtt2rrd.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
 # CMD ["/bin/bash", "-l"]
