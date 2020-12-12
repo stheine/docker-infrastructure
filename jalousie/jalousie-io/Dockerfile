@@ -1,4 +1,4 @@
-FROM node:12-stretch
+FROM node:15-stretch
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -36,14 +36,14 @@ WORKDIR /source
 # ##############################################################################
 # Install pigpio from http://abyz.me.uk/rpi/pigpio/index.html
 
-ARG PIGPIO_VERSION=71
+ARG PIGPIO_VERSION=78
 RUN \
   apt-get install -y \
     gcc \
     make \
     musl-dev && \
-  wget https://github.com/joan2937/pigpio/archive/V$PIGPIO_VERSION.zip && \
-  unzip V$PIGPIO_VERSION && \
+  wget https://github.com/joan2937/pigpio/archive/v$PIGPIO_VERSION.zip && \
+  unzip v$PIGPIO_VERSION && \
   cd pigpio-$PIGPIO_VERSION && \
   /bin/cat Makefile | sed 's/ldconfig//' > Makefile.tmp && \
   mv Makefile.tmp Makefile && \
@@ -83,7 +83,8 @@ WORKDIR /jalousie-io
 # RUN \
 #   npm install
 
-# CMD ["/usr/local/bin/node", "/jalousie-io/lib/jalousie-io.js"]
-CMD ["/bin/bash", "-l"]
+CMD ["/usr/local/bin/node", "/jalousie-io/lib/jalousie-io.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
+# CMD ["/bin/bash", "-l"]
 
 # EXPOSE 9124
