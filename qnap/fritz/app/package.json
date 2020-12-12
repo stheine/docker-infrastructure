@@ -10,11 +10,11 @@
   "license": "ISC",
   "dependencies": {
     "async-mqtt": "^2.4.2",
+    "dayjs": "^1.9.7",
     "execa": "^4.1.0",
     "fritz-callmonitor": "^3.1.5",
     "lodash": "^4.17.15",
     "millisecond": "^0.1.2",
-    "moment": "^2.24.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.8",
     "tr-064-async": "^1.0.0",
