@@ -77,14 +77,8 @@ ENV TZ Europe/Berlin
 
 COPY docker_container_profile /root/.profile
 
-WORKDIR /jalousie-io
+WORKDIR /app
 
-
-# RUN \
-#   npm install
-
-CMD ["/usr/local/bin/node", "/jalousie-io/lib/jalousie-io.js"]
+CMD ["/usr/local/bin/node", "/app/lib/jalousie-io.js"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
 # CMD ["/bin/bash", "-l"]
-
-# EXPOSE 9124
