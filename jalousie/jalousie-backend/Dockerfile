@@ -1,4 +1,4 @@
-FROM node:12-stretch
+FROM node:15-stretch
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -34,48 +34,7 @@ ENV LC_ALL en_US.UTF-8
 WORKDIR /source
 
 # ##############################################################################
-# Install rrdtool from https://github.com/oetiker/rrdtool-1.x
-
-RUN \
-  apt-get install -y \
-    g++ \
-    groff \
-    libpango1.0-dev \
-    libpng-dev \
-    libxml2-dev \
-    make
-ARG RRDTOOL_VERSION=1.7.2
-RUN \
-  wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
-  tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
-  cd rrdtool-$RRDTOOL_VERSION && \
-  ./configure --prefix=/opt/rrdtool && \
-  make && \
-  make install && \
-  ln -s /opt/rrdtool/include/rrd.h /usr/include/ && \
-  ln -s /opt/rrdtool/lib/librrd.so /usr/lib/ && \
-  ln -s /opt/rrdtool/lib/librrd.so.8 /usr/lib/ && \
-  ln -s /opt/rrdtool/lib/librrd.so.8.1.0 /usr/lib/
-
-# ##############################################################################
-# Install pigpio from http://abyz.me.uk/rpi/pigpio/index.html
-
-ARG PIGPIO_VERSION=71
-RUN \
-  apt-get install -y \
-    gcc \
-    make \
-    musl-dev && \
-  wget https://github.com/joan2937/pigpio/archive/V$PIGPIO_VERSION.zip && \
-  unzip V$PIGPIO_VERSION && \
-  cd pigpio-$PIGPIO_VERSION && \
-  /bin/cat Makefile | sed 's/ldconfig//' > Makefile.tmp && \
-  mv Makefile.tmp Makefile && \
-  make && \
-  make install
-
-# ##############################################################################
-# Install and run jalousie app
+# Install and run jalousie-backend app
 
 WORKDIR /root
 
@@ -101,14 +60,7 @@ ENV TZ Europe/Berlin
 
 COPY docker_container_profile /root/.profile
 
-WORKDIR /jalousie
+WORKDIR /app
 
-
-# RUN \
-#   npm install
-
-CMD ["/usr/local/bin/node", "/jalousie/lib/jalousie.js"]
-# CMD ["/bin/bash", "-l"]
-
-EXPOSE 9124
-# VOLUME /var/jalousie /var/strom /var/vito
+CMD ["/usr/local/bin/node", "/app/lib/jalousie-backend.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
