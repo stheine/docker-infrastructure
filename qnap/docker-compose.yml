@@ -371,7 +371,7 @@ services:
 
   mosquitto:
     restart: always
-    image: eclipse-mosquitto
+    image: eclipse-mosquitto:2.0.3
     hostname: qnap-mosquitto
     ports:
       - 1883:1883
@@ -409,7 +409,7 @@ services:
 
   portainer:
     restart: always
-    image: portainer/portainer-ce
+    image: portainer/portainer-ce:2.0.0
     hostname: qnap-portainer
     ports:
       - 8008:9000
@@ -450,7 +450,7 @@ services:
 
   zigbee2mqtt-assistant:
     restart: always
-    image: carldebilly/zigbee2mqttassistant:0.3.120
+    image: carldebilly/zigbee2mqttassistant:0.3.178
     hostname: zigbee2mqtt-assistant
     ports:
       - 19725:80
