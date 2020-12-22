@@ -39,11 +39,9 @@ services:
       - backend
     ports:
       - 31038:31038
-#    links:
-#      - postfix
 
   wecker:
-    restart: unless-stopped
+    restart: always
     build:
       context: wecker
     hostname: raspi-wecker
@@ -54,7 +52,6 @@ services:
     privileged: true
     devices:
       - /dev/input:/dev/input
-#      - /dev/i2c-1:/dev/i2c-1
       - /dev/gpiomem:/dev/gpiomem
       - /dev/mem:/dev/mem
       - /dev/snd:/dev/snd
