@@ -1,4 +1,4 @@
-FROM arm32v6/node:12.14-alpine
+FROM arm32v6/node:15.4-alpine3.12
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -40,25 +40,24 @@ RUN \
     make \
     mpg123 \
     musl-dev \
-    python
+    python3
 
 COPY asound.conf /etc/
 
 COPY vimrc .vimrc
 
-RUN \
-  npm install --global eslint-cli eslint_d npm && \
-  mkdir -p .vim/autoload .vim/bundle && \
-  curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
-  cd .vim/bundle && \
-  git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
-  git config --global user.email stheine@arcor.de && \
-  git config --global user.name 'Stefan Heine'
+#RUN \
+#  npm install --global eslint-cli eslint_d npm && \
+#  mkdir -p .vim/autoload .vim/bundle && \
+#  curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
+#  cd .vim/bundle && \
+#  git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
+#  git config --global user.email stheine@arcor.de && \
+#  git config --global user.name 'Stefan Heine'
 
 COPY docker_container_profile /root/.profile
 
 WORKDIR /app
 
-#CMD ["/usr/bin/tail", "-f", "/dev/null"]
 CMD ["/usr/local/bin/node", "/app/app.js"]
-#CMD ["/bin/bash", "-l"]
+#CMD ["/usr/bin/tail", "-f", "/dev/null"]

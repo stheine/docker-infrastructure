@@ -72,6 +72,19 @@ dtoverlay=gpio-key,gpio=23,keycode=28,label="ENTER"
 dtoverlay=pi3-disable-bt
 ```
 
+### Swap
+
+Since the Raspberry Pi Zero has little memory, it might be required to add a swapfile
+(eg. `npm install` results in `npm ERR! code ENOMEM`).
+
+```
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+```
+
 ### Reboot
 
 ```
