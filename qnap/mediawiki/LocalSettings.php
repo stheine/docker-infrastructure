@@ -73,7 +73,7 @@ $wgMemCachedServers = [];
 $wgEnableUploads = true;
 $wgUseImageMagick = true;
 $wgImageMagickConvertCommand = "/usr/bin/convert";
-$wgFileExtensions = array('png', 'gif', 'jpg', 'jpeg', 'pdf', 'gz', 'zip');
+$wgFileExtensions = array('gif', 'gz', 'jpeg', 'jpg', 'pdf', 'png', 'webp', 'zip');
 
 # InstantCommons allows wiki to use images from https://commons.wikimedia.org
 $wgUseInstantCommons = false;
