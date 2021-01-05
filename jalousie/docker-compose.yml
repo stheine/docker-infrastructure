@@ -82,6 +82,7 @@ services:
     devices:
       - /dev/mem:/dev/mem
     volumes:
+      - jalousie:/var/jalousie:nocopy
       - ./jalousie-io/app:/app
 
   vito:
