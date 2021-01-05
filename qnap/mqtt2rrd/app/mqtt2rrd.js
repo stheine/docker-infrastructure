@@ -53,13 +53,14 @@ process.on('SIGTERM', () => stopProcess());
     const messageRaw = messageBuffer.toString();
 
     try {
-      let files= [];
-      let message;
+      const files    = [];
+      let   message;
 
       try {
         message = JSON.parse(messageRaw);
       } catch(err) {
         // ignore
+        // logger.debug('JSON.parse', {messageRaw, errMessage: err.message});
       }
 
       switch(topic) {
@@ -75,7 +76,7 @@ process.on('SIGTERM', () => stopProcess());
               upstreamMax:       message.upstreamMaxBitRate,
               downstreamCurrent: message.downstreamCurrent,
               upstreamCurrent:   message.upstreamCurrent,
-            }
+            },
           };
           break;
         }
@@ -106,6 +107,20 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'Regen/tele/SENSOR': {
+          logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              rain: message.level,
+            },
+          };
+          break;
+        }
+
         case 'Sonne/tele/SENSOR': {
           // logger.info(topic, message);
           const file = '/var/jalousie/jalousie.rrd';
@@ -131,6 +146,20 @@ process.on('SIGTERM', () => stopProcess());
               momentanLeistung:  message.momentanLeistung,
               zaehlerLeistung:   message.zaehlerLeistung,
               gesamtEinspeisung: message.gesamtEinspeisung,
+            },
+          };
+          break;
+        }
+
+        case 'tasmota/espco2/tele/SENSOR': {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/co2.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              co2: message.MHZ19B.CarbonDioxide,
             },
           };
           break;
@@ -234,7 +263,7 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'Zigbee/LuftSensor': {
+        case 'Zigbee/LuftSensor Büro': {
           // logger.info(topic, message);
           const file = '/var/jalousie/jalousie.rrd';
 
@@ -283,12 +312,14 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('FritzBox/tele/SENSOR');
   await mqttClient.subscribe('FritzBox/speedtest/result');
   await mqttClient.subscribe('Jalousie/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
+  await mqttClient.subscribe('Regen/tele/SENSOR');
   await mqttClient.subscribe('Sonne/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
   await mqttClient.subscribe('Wind/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
-  await mqttClient.subscribe('Zigbee/LuftSensor');
+  await mqttClient.subscribe('Zigbee/LuftSensor Büro');
 })();
