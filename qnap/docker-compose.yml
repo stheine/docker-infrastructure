@@ -17,6 +17,7 @@ version: "2.2"
 # 59156 kinder-cds           http://192.168.6.7:59156/
 # 59157 fotos                http://192.168.6.7:59157/
 # 59158 filme                http://192.168.6.7:59158/
+# 59159 video                http://192.168.6.7:59159/
 
 volumes:
   collectd-data:
@@ -66,6 +67,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/gerberaMusik
+      o: bind
+
+  gerbera-video:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/gerberaVideo
       o: bind
 
   jalousie:
@@ -122,6 +130,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/Musik
+      o: bind
+
+  media_video:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/Sat-Rekorder
       o: bind
 
   mediawiki-database:
@@ -326,6 +341,17 @@ services:
     volumes:
       - media_musik:/media:ro
       - gerbera-musik:/gerbera_home
+
+  gerbera-video:
+    restart: always
+    build: gerbera
+    hostname: qnap-gerbera-video
+    network_mode: host
+    environment:
+      - CONFIG=59159-video
+    volumes:
+      - media_video:/media:ro
+      - gerbera-video:/gerbera_home
 
   mediawiki:
     build: mediawiki
