@@ -205,14 +205,32 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // Speedtest
   const speedtest = async function() {
-    const {stdout} = await execa('/usr/local/bin/SpeedTest', [
-      '--test-server',
-      'voiptest.starface.de:8080',
-      '--output',
-      'json',
-    ]);
+    let download;
+    let upload;
+    let retries = 3;
+    let stdout;
 
-    logger.info('speedtest', _.pick(JSON.parse(stdout), ['download', 'upload']));
+    do {
+      try {
+        ({stdout} = await execa('/usr/local/bin/SpeedTest', [
+          '--test-server',
+          'voiptest.starface.de:8080',
+          '--output',
+          'json',
+        ]));
+
+        logger.debug(stdout);
+        const results = JSON.parse(stdout);
+
+        ({download, upload} = results);
+
+        logger.info('speedtest', {download, upload});
+      } catch(err) {
+        logger.error(err.message);
+      }
+
+      retries--;
+    } while(retries && (!download || !upload));
 
     if(mqttClient) {
       await mqttClient.publish(`FritzBox/speedtest/result`, stdout);
