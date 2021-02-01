@@ -428,6 +428,13 @@ services:
       - www:/var/www
       - ./mqtt2rrd/app:/app
 
+  mqtt-volumio:
+    restart: always
+    build: mqtt-volumio
+    hostname: qnap-mqtt-volumio
+    volumes:
+      - ./mqtt-volumio/app:/app
+
   nginx:
     restart: always
     build: nginx
