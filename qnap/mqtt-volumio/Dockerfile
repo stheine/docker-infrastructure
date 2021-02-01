@@ -59,8 +59,8 @@ COPY docker_container_profile /root/.profile
 
 WORKDIR /app
 
-ONBUILD \
-  npm install
+# ONBUILD \
+#   npm install
 
-# CMD ["/usr/local/bin/node", "/app/mqtt-volumio.js"]
-CMD ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/local/bin/node", "/app/mqtt-volumio.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
