@@ -67,7 +67,7 @@ RUN \
     graphviz
 
 # ##############################################################################
-# Install and run jalousie app
+# Install and run mqtt2rrd app
 
 WORKDIR /root
 
