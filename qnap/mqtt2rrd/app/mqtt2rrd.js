@@ -165,6 +165,21 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'tasmota/espfeinstaub/tele/SENSOR': {
+          logger.info(topic, message);
+          const file = '/var/jalousie/co2.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              feinstaub2_5: message.SDS0X1['PM2.5'],
+              feinstaub10:  message.SDS0X1.PM10,
+            },
+          };
+          break;
+        }
+
         case 'tasmota/solar/tele/SENSOR': {
           const file = '/var/strom/solar.rrd';
 
@@ -316,6 +331,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('Sonne/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
   await mqttClient.subscribe('Wind/tele/SENSOR');
