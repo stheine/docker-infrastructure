@@ -108,16 +108,18 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Regen/tele/SENSOR': {
-          logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd';
+          // logger.info(topic, message);
+          if(message.level) {
+            const file = '/var/jalousie/jalousie.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              rain: message.level,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                rain: message.level,
+              },
+            };
+          }
           break;
         }
 
@@ -153,30 +155,34 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'tasmota/espco2/tele/SENSOR': {
           // logger.info(topic, message);
-          const file = '/var/jalousie/co2.rrd';
+          if(message.MHZ19B.CarbonDioxide) {
+            const file = '/var/jalousie/co2.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              co2: message.MHZ19B.CarbonDioxide,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                co2: message.MHZ19B.CarbonDioxide,
+              },
+            };
+          }
           break;
         }
 
         case 'tasmota/espfeinstaub/tele/SENSOR': {
-          logger.info(topic, message);
-          const file = '/var/jalousie/co2.rrd';
+          // logger.info(topic, message);
+          if(message.SDS0X1['PM2.5'] && message.SDS0X1.PM10) {
+            const file = '/var/jalousie/co2.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              feinstaub2_5: message.SDS0X1['PM2.5'],
-              feinstaub10:  message.SDS0X1.PM10,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                feinstaub2_5: message.SDS0X1['PM2.5'],
+                feinstaub10:  message.SDS0X1.PM10,
+              },
+            };
+          }
           break;
         }
 
