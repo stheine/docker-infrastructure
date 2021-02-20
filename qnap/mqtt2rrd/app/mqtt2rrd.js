@@ -162,7 +162,26 @@ process.on('SIGTERM', () => stopProcess());
             update[file] = {
               ...update[file],
               ...{
+                co2:      message.MHZ19B.CarbonDioxide,
+                temp:     message.DHT11.Temperature,
+                humidity: message.DHT11.Humidity,
+              },
+            };
+          }
+          break;
+        }
+
+        case 'tasmota/espco2klein/tele/SENSOR': {
+          // logger.info(topic, message);
+          if(message.MHZ19B.CarbonDioxide) {
+            const file = '/var/jalousie/co2klein.rrd';
+
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
                 co2: message.MHZ19B.CarbonDioxide,
+                temp: message.MHZ19B.Temperature,
               },
             };
           }
@@ -337,6 +356,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('Sonne/tele/SENSOR');
   await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/espco2klein/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('Vito/tele/SENSOR');
