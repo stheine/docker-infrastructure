@@ -137,17 +137,31 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'Stromzaehler/tele/SENSOR': {
+        case 'strom/tele/SENSOR': {
+          // logger.info(topic, message);
           const file = '/var/strom/strom.rrd';
 
           files.push(file);
           update[file] = {
             ...update[file],
             ...{
-              gesamtLeistung:    message.gesamtLeistung,
               momentanLeistung:  message.momentanLeistung,
-              zaehlerLeistung:   message.zaehlerLeistung,
               gesamtEinspeisung: message.gesamtEinspeisung,
+            },
+          };
+          break;
+        }
+
+        case 'tasmota/espstrom/tele/SENSOR': {
+          // logger.info(topic, message);
+          const file = '/var/strom/strom.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              gesamtLeistung:  message['SML  '].Total_in,
+              zaehlerLeistung: message['SML  '].Power_curr,
             },
           };
           break;
@@ -171,26 +185,9 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'tasmota/espco2klein/tele/SENSOR': {
-          // logger.info(topic, message);
-          if(message.MHZ19B.CarbonDioxide) {
-            const file = '/var/jalousie/co2klein.rrd';
-
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                co2: message.MHZ19B.CarbonDioxide,
-                temp: message.MHZ19B.Temperature,
-              },
-            };
-          }
-          break;
-        }
-
         case 'tasmota/espfeinstaub/tele/SENSOR': {
           // logger.info(topic, message);
-          if(message.SDS0X1['PM2.5'] && message.SDS0X1.PM10) {
+          if(message.SDS0X1 && message.SDS0X1['PM2.5'] && message.SDS0X1.PM10) {
             const file = '/var/jalousie/co2.rrd';
 
             files.push(file);
@@ -199,6 +196,18 @@ process.on('SIGTERM', () => stopProcess());
               ...{
                 feinstaub2_5: message.SDS0X1['PM2.5'],
                 feinstaub10:  message.SDS0X1.PM10,
+              },
+            };
+          }
+          if(message.MHZ19B && message.MHZ19B.CarbonDioxide) {
+            const file = '/var/jalousie/co2klein.rrd';
+
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                co2: message.MHZ19B.CarbonDioxide,
+                temp: message.MHZ19B.Temperature,
               },
             };
           }
@@ -354,7 +363,8 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('Jalousie/tele/SENSOR');
   await mqttClient.subscribe('Regen/tele/SENSOR');
   await mqttClient.subscribe('Sonne/tele/SENSOR');
-  await mqttClient.subscribe('Stromzaehler/tele/SENSOR');
+  await mqttClient.subscribe('strom/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espco2klein/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');

@@ -421,12 +421,20 @@ services:
     build: mqtt2rrd
     hostname: qnap-mqtt2rrd
     volumes:
+      - ./mqtt2rrd/app:/app
       - fritz:/var/fritz
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
       - www:/var/www
-      - ./mqtt2rrd/app:/app
+
+  mqtt-strom:
+    restart: always
+    build: mqtt-strom
+    hostname: qnap-mqtt-strom
+    volumes:
+      - ./mqtt-strom/app:/app
+      - strom:/var/strom
 
   mqtt-volumio:
     restart: always
