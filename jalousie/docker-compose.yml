@@ -18,6 +18,20 @@ volumes:
       device: /docker-data/portainer
       o: bind
 
+  pihole_etc_dnsmasq_d:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/pihole/etc_dnsmasq.d
+      o: bind
+
+  pihole_etc_pihole:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/pihole/etc_pihole
+      o: bind
+
   postfix_creds:
     driver: local
     driver_opts:
@@ -85,17 +99,23 @@ services:
       - jalousie:/var/jalousie:nocopy
       - ./jalousie-io/app:/app
 
-  vito:
+  pihole:
     restart: always
-    build: vito
-    hostname: pi-vito
-    networks:
-      - backend
+    image: pihole/pihole:v5.7
+    hostname: pi-pihole
+    dns:
+      - 192.168.6.1
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    environment:
+      TZ: 'Europe/Berlin'
     volumes:
-      - vito:/var/vito:nocopy
-    links:
-      - postfix
-      - vcontrold
+      - pihole_etc_dnsmasq_d:/etc/dnsmasq.d
+      - pihole_etc_pihole:/etc/pihole
 
   postfix:
     restart: always
@@ -121,6 +141,18 @@ services:
     networks:
       - backend
 
+  vito:
+    restart: always
+    build: vito
+    hostname: pi-vito
+    networks:
+      - backend
+    volumes:
+      - vito:/var/vito:nocopy
+    links:
+      - postfix
+      - vcontrold
+
   watchdog:
     restart: always
     build: watchdog
@@ -137,10 +169,13 @@ services:
   zigbee2mqtt:
     restart: always
     build: zigbee2mqtt
+    ports:
+      - 1881:1881
+    networks:
+      - backend
     volumes:
       - zigbee2mqtt:/app/data
     devices:
       - /dev/ttyACM0:/dev/ttyACM0
-    network_mode: host
     environment:
       - TZ=Europe/Amsterdam
