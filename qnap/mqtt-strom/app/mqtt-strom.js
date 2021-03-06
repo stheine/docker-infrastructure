@@ -34,11 +34,11 @@ process.on('SIGTERM', () => stopProcess());
 
 (async() => {
   // Globals
-  let solarLeistung = 0;
+  let lastTimestamp   = null;
+  let solarLeistung   = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
   let zaehlerLeistung = 0;
-  let zaehlerTimestamp;
 
   // #########################################################################
   // Startup
@@ -50,7 +50,11 @@ process.on('SIGTERM', () => stopProcess());
 
   const status = await fsExtra.readJson('/var/strom/strom.json');
 
-  let {gesamtEinspeisung} = status;
+  let {gesamtEinspeisung, verbrauchBeiSonne, verbrauchImDunkeln} = status;
+
+  gesamtEinspeisung  = gesamtEinspeisung  || 0;
+  verbrauchBeiSonne  = verbrauchBeiSonne  || 0;
+  verbrauchImDunkeln = verbrauchImDunkeln || 0;
 
   // #########################################################################
   // Init MQTT
@@ -84,21 +88,41 @@ process.on('SIGTERM', () => stopProcess());
           // {SML  ': { Total_in: 0, Total_out: 0, Power_curr: 0, Meter_number: '' }}
           zaehlerLeistung = message['SML  '].Power_curr;
 
-          const payload = {};
-
-          payload.momentanLeistung = zaehlerLeistung + solarLeistung;
-
-          if(zaehlerLeistung < 0 && zaehlerTimestamp) {
-            const nowTimestamp = moment();
-
-            // Leistung (W)    * differenzSeitLetzterMessung (ms)    (s)    (h)    (k)    positive
-            gesamtEinspeisung += zaehlerLeistung * (nowTimestamp - zaehlerTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
-
-            await fsExtra.writeJson('/var/strom/strom.json', {gesamtEinspeisung});
+          if(solarLeistung === null) {
+            return;
           }
-          payload.gesamtEinspeisung = gesamtEinspeisung;
 
-          zaehlerTimestamp = moment();
+          const momentanLeistung = zaehlerLeistung + solarLeistung;
+          const nowTimestamp = moment();
+          const payload = {
+            momentanLeistung,
+          };
+
+          if(lastTimestamp !== null) {
+            if(zaehlerLeistung < 0) {
+              // Einspeisung
+              //                   Leistung (W)    * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)    positive
+              gesamtEinspeisung += zaehlerLeistung * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
+            }
+  
+            if(solarLeistung > 200) {
+              // Verbrauch bei Sonne (> 200W)
+              //                   Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
+              verbrauchBeiSonne += Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+            } else {
+              // Verbrauch im Dunkeln
+              //                    Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
+              verbrauchImDunkeln += Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+            }
+
+            payload.gesamtEinspeisung  = gesamtEinspeisung;
+            payload.verbrauchBeiSonne  = verbrauchBeiSonne;
+            payload.verbrauchImDunkeln = verbrauchImDunkeln;
+          }
+
+          lastTimestamp = nowTimestamp;
+
+          await fsExtra.writeJson('/var/strom/strom.json', {gesamtEinspeisung, verbrauchBeiSonne, verbrauchImDunkeln});
 
           await mqttClient.publish(`strom/tele/SENSOR`, JSON.stringify(payload));
           break;
