@@ -140,14 +140,25 @@ process.on('SIGTERM', () => stopProcess());
         case 'strom/tele/SENSOR': {
           // logger.info(topic, message);
           const file = '/var/strom/strom.rrd';
+          const set  = {};
+
+          if(message.momentanLeistung) {
+            set.momentanLeistung = message.momentanLeistung;
+          }
+          if(message.gesamtEinspeisung) {
+            set.gesamtEinspeisung = message.gesamtEinspeisung;
+          }
+          if(message.verbrauchBeiSonne) {
+            set.verbrauchBeiSonne = message.verbrauchBeiSonne;
+          }
+          if(message.verbrauchImDunkeln) {
+            set.verbrauchImDunkeln = message.verbrauchImDunkeln;
+          }
 
           files.push(file);
           update[file] = {
             ...update[file],
-            ...{
-              momentanLeistung:  message.momentanLeistung,
-              gesamtEinspeisung: message.gesamtEinspeisung,
-            },
+            ...set,
           };
           break;
         }
@@ -228,7 +239,7 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'Vito/tele/SENSOR': {
+        case 'vito/tele/SENSOR': {
           let file;
 
           file = '/var/vito/vito.rrd';
@@ -246,8 +257,7 @@ process.on('SIGTERM', () => stopProcess());
               brennerStunden:    message.brennerStunden,
               brennerVerbrauch:  message.brennerVerbrauch,
               kesselLeistung:    message.kesselLeistung,
-              lambda:            message.lambda,
-              statusZirkulation: message.statusZirkulation,
+              lambda:            message.lambdaO2,
             },
           };
 
@@ -266,8 +276,7 @@ process.on('SIGTERM', () => stopProcess());
               brennerStunden:    message.brennerStunden,
               brennerVerbrauch:  message.brennerVerbrauch,
               kesselLeistung:    message.kesselLeistung,
-              lambda:            message.lambda,
-              statusZirkulation: message.statusZirkulation,
+              lambda:            message.lambdaO2,
             },
           };
 
@@ -369,7 +378,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('tasmota/espco2klein/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
-  await mqttClient.subscribe('Vito/tele/SENSOR');
+  await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wind/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
