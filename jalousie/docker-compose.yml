@@ -46,13 +46,6 @@ volumes:
       device: /mnt/qnap_linux/data/strom
       o: bind
 
-  vito:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/vito
-      o: bind
-
   zigbee2mqtt:
     driver: local
     driver_opts:
@@ -127,31 +120,6 @@ services:
       - backend
     volumes:
       - postfix_creds:/postfix_creds:nocopy
-
-  vcontrold:
-    restart: always
-    build: vcontrold
-    hostname: pi-vcontrold
-    ports:
-      - 3002:3002
-    cap_add:
-      - SYS_RAWIO
-    devices:
-      - /dev/ttyAMA0:/dev/ttyAMA0
-    networks:
-      - backend
-
-  vito:
-    restart: always
-    build: vito
-    hostname: pi-vito
-    networks:
-      - backend
-    volumes:
-      - vito:/var/vito:nocopy
-    links:
-      - postfix
-      - vcontrold
 
   watchdog:
     restart: always
