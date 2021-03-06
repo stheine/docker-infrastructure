@@ -436,6 +436,14 @@ services:
       - ./mqtt-strom/app:/app
       - strom:/var/strom
 
+  mqtt-vito:
+    restart: always
+    build: mqtt-vito
+    hostname: qnap-mqtt-vito
+    volumes:
+      - ./mqtt-vito/app:/app
+      - vito:/var/vito
+
   mqtt-volumio:
     restart: always
     build: mqtt-volumio

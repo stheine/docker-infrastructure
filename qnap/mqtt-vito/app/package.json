@@ -1,0 +1,23 @@
+{
+  "name": "mqtt-vito",
+  "version": "1.0.0",
+  "description": "",
+  "main": "mqtt-vito.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "stheine@arcor.de",
+  "license": "ISC",
+  "dependencies": {
+    "async-mqtt": "^2.6.1",
+    "dayjs": "^1.10.4",
+    "fs-extra": "^9.1.0",
+    "lodash": "^4.17.21",
+    "millisecond": "^0.1.2",
+    "nodemailer": "^6.5.0"
+  },
+  "devDependencies": {
+    "eslint": "7.20.0",
+    "eslint-config-es": "3.28.8"
+  }
+}
