@@ -22,14 +22,14 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap_linux/data/pihole/etc_dnsmasq.d
+      device: /docker-data/pihole/etc_dnsmasq.d
       o: bind
 
   pihole_etc_pihole:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap_linux/data/pihole/etc_pihole
+      device: /docker-data/pihole/etc_pihole
       o: bind
 
   postfix_creds:
