@@ -6,7 +6,7 @@
 
 cd /root/docker/
 
-RESULT=`/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker-compose run --rm certbot /certbot/certbot-auto renew --webroot --webroot-path=/var/letsencrypt 2>/dev/null`
+RESULT=`/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker-compose exec certbot /usr/bin/certbot renew --webroot --webroot-path=/var/letsencrypt 2>/dev/null`
 
 # echo "$RESULT"
 

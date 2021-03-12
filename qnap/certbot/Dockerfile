@@ -1,4 +1,4 @@
-FROM armv7/armhf-ubuntu:xenial
+FROM ubuntu:20.04
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -11,6 +11,7 @@ RUN \
   apt-get install -y \
     apt-utils && \
   apt-get install -y \
+    locales \
     sudo \
     tzdata \
     unzip \
@@ -26,31 +27,27 @@ ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # ##############################################################################
-# Install certbot-auto from https://certbot.eff.org/
-
-WORKDIR /certbot
-
-# This command is just to invalidate the cache and force docker to rebuild the app from here on
-# docker-compose build --build-arg CACHE_DATE_JS="$(date)" certbot
-ARG CACHE_DATE_JS=2019-10-13
+# Install certbot-auto from https://certbot.eff.org/ Nginx / Ubuntu 20.04
 
 RUN \
-  wget https://dl.eff.org/certbot-auto && \
-  chmod a+x certbot-auto && \
-  apt-get update && \
   apt-get install -y \
-    gcc \
+    build-essential \
+    libaugeas0 \
     libffi-dev \
     libssl-dev \
-    python \
-    python-dev \
-    virtualenv && \
-  ./certbot-auto --no-bootstrap ; \
-  /bin/true
+    python3 \
+    python3-dev \
+    python3-venv \
+    rustc && \
+  /usr/bin/python3 -m venv /opt/certbot/ && \
+  /opt/certbot/bin/pip install --upgrade pip && \
+  /opt/certbot/bin/pip install certbot certbot-nginx && \
+  ln -s /opt/certbot/bin/certbot /usr/bin/certbot
 
 COPY docker_container_profile /root/.profile
-# CMD ["/bin/bash", "-l"]
 
-CMD ["/certbot/certbot-auto", "renew", "--webroot", "--webroot-path=/var/letsencrypt"]
+ENTRYPOINT ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/bin/echo", "Startup"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
 
-VOLUME /etc/letsencrypt /var/letsencrypt
+# docker-compose exec certbot /usr/bin/certbot renew --webroot --webroot-path=/var/letsencrypt
