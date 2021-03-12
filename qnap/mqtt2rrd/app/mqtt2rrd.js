@@ -184,14 +184,25 @@ process.on('SIGTERM', () => stopProcess());
             const file = '/var/jalousie/co2.rrd';
 
             files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                co2:      message.MHZ19B.CarbonDioxide,
-                temp:     message.DHT11.Temperature,
-                humidity: message.DHT11.Humidity,
-              },
-            };
+            if(message.DHT11) {
+              update[file] = {
+                ...update[file],
+                ...{
+                  co2:      message.MHZ19B.CarbonDioxide,
+                  temp:     message.DHT11.Temperature,
+                  humidity: message.DHT11.Humidity,
+                },
+              };
+            } else if(message.AM2301) {
+              update[file] = {
+                ...update[file],
+                ...{
+                  co2:      message.MHZ19B.CarbonDioxide,
+                  temp:     message.AM2301.Temperature,
+                  humidity: message.AM2301.Humidity,
+                },
+              };
+            }
           }
           break;
         }
