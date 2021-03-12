@@ -58,6 +58,9 @@
   </server>
 
   <import hidden-files="no">
+    <autoscan use-inotify="yes">
+      <directory location="/media" mode="inotify" recursive="yes" hidden-files="no"/>
+    </autoscan>
     <scripting script-charset="UTF-8">
       <common-script>/usr/local/share/gerbera/js/common.js</common-script>
       <playlist-script>/usr/local/share/gerbera/js/playlists.js</playlist-script>
