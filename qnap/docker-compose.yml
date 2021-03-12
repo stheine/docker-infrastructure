@@ -368,7 +368,6 @@ services:
     depends_on:
       - mediawiki-database
       - mediawiki-parsoid
-      - nginx
     volumes:
       - mediawiki-images:/var/www/html/images
       - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php:ro
@@ -395,7 +394,6 @@ services:
       - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup:ro
     depends_on:
       - mediawiki-database
-      - postfix
 
   mediawiki-parsoid:
     restart: always
@@ -464,6 +462,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - apache2
+      - mediawiki
 
   portainer:
     restart: always
@@ -503,8 +502,6 @@ services:
       - ./watchdog/app:/app
     ports:
       - 31038:31038
-    depends_on:
-      - postfix
 
   zigbee2mqtt-assistant:
     restart: always
