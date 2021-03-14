@@ -44,10 +44,28 @@ RUN \
   /opt/certbot/bin/pip install certbot certbot-nginx && \
   ln -s /opt/certbot/bin/certbot /usr/bin/certbot
 
+# ##############################################################################
+# Set up email
+
+RUN \
+  apt-get install -y \
+    mailutils \
+    ssmtp && \
+  chfn -f 'certbot'
+
+COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
+
+# ##############################################################################
+# Configure cron
+# http://manpages.ubuntu.com/manpages/trusty/man8/cron.8.html
+
+RUN \
+  apt-get install -y \
+    cron && \
+  echo '0 10 1,16 * * /renew.sh' | /usr/bin/crontab -
+
+CMD ["/usr/sbin/cron", "-f"]
+# CMD ["/bin/bash", "-l"]
+
+COPY renew.sh /
 COPY docker_container_profile /root/.profile
-
-ENTRYPOINT ["/usr/bin/tail", "-f", "/dev/null"]
-CMD ["/usr/bin/echo", "Startup"]
-# CMD ["/usr/bin/tail", "-f", "/dev/null"]
-
-# docker-compose exec certbot /usr/bin/certbot renew --webroot --webroot-path=/var/letsencrypt
