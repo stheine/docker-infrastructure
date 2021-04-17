@@ -130,7 +130,7 @@ process.on('SIGTERM', () => stopProcess());
             const letzteLeerungVerbrauch = letzteLeerung.split(' ')[1];
             const verbrauchSeitLetzterLeerung = Number(brennerVerbrauch) - Number(letzteLeerungVerbrauch);
 
-            // logger.info({verbrauchSeitLetzterLeerung});
+            logger.info({verbrauchSeitLetzterLeerung});
 
             if(((verbrauchSeitLetzterLeerung > 500 && verbrauchSeitLetzterLeerung < 510) ||
               verbrauchSeitLetzterLeerung > 580) &&
@@ -176,8 +176,12 @@ process.on('SIGTERM', () => stopProcess());
             }, 0);
             const vorrat = gesamt - Number(brennerVerbrauch);
 
-            if(vorrat < 200 &&
-              (!reportedSpeicher || dayjs(reportedSpeicher).isBefore(twoDaysAgo))
+            logger.info({gesamt, brennerVerbrauch, vorrat});
+
+            if((vorrat < 200 &&
+                (!reportedSpeicher || dayjs(reportedSpeicher).isBefore(twoDaysAgo))
+              ) ||
+              vorrat < 30
             ) {
               try {
                 const transport = nodemailer.createTransport({
