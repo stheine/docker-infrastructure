@@ -20,6 +20,13 @@ version: "3.7"
 # 59159 video                  http://192.168.6.7:59159/
 
 volumes:
+  bitwardenrs:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/bitwardenrs-data
+      o: bind
+
   collectd-data:
     driver: local
     driver_opts:
@@ -256,6 +263,17 @@ services:
     healthcheck:
       test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
 
+  bitwardenrs:
+    # https://github.com/dani-garcia/bitwarden_rs/wiki
+    restart: always
+    image: bitwardenrs/server:1.20.0-alpine
+    hostname: bitwardenrs
+    volumes:
+      - bitwardenrs:/data
+    # environment:
+      # - ADMIN_TOKEN=ChangeInAdmin
+      # - WEBSOCKET_ENABLED=true
+
   certbot:
     restart: always
     build: certbot
@@ -461,6 +479,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - apache2
+      - bitwardenrs
       - mediawiki
 
   portainer:
