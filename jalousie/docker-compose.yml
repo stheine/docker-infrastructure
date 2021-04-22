@@ -94,7 +94,7 @@ services:
 
   pihole:
     restart: always
-    image: pihole/pihole:v5.8
+    image: pihole/pihole:v5.8.1
     hostname: pi-pihole
     dns:
       - 192.168.6.1
