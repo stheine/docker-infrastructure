@@ -64,4 +64,3 @@ WORKDIR /app
 
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
 CMD ["/usr/local/bin/node", "/app/watchdog.js"]
-# CMD ["/bin/bash", "-l"]
