@@ -150,8 +150,7 @@ ln -s docker-infrastructure/wecker docker
 cp docker/docker_host_system__profile .profile
 
 cd docker/wecker
-git clone git@github.com:stheine/wecker.git
-mv wecker app
+git clone git@github.com:stheine/wecker.git app
 
 cd app
 git clone git@github.com:stheine/mpg123.git
