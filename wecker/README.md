@@ -66,8 +66,15 @@ dtoverlay=gpio-key,gpio=17,keycode=28,label="ENTER"
 dtoverlay=rotary-encoder,pin_a=12,pin_b=4,relative_axis=1
 dtoverlay=gpio-key,gpio=23,keycode=28,label="ENTER"
 
+[pi3]
 # Disable Bluetooth
 dtoverlay=pi3-disable-bt
+
+[pi4]
+# Disable Bluetooth
+dtoverlay=pi3-disable-bt
+
+[all]
 ```
 
 ### Swap
