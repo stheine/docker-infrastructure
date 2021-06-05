@@ -179,7 +179,7 @@ docker-compose logs --tail 10 --follow wecker
 
 - http://192.168.6.15:8008/#/init/admin
 - admin
-- <pw>
+- &lt;pw&gt;
 - Create user
 - Local
 - Connect
