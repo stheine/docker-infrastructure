@@ -9,8 +9,6 @@ Install, according to https://wiki.heine7.de/index.php/Raspbian
 ### Set hostname
 ```
 sudo hostnamectl set-hostname --static pi-wecker
-sudo vi /etc/cloud/cloud.cfg
-# Change preserve_hostname: true
 ```
 
 ### Configure apt and install needed packages
