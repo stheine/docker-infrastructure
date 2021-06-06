@@ -44,6 +44,13 @@ chmod 644 .ssh/authorized_keys
 
 passwd
 # Set new password
+
+sudo raspi-config
+# - Localisation
+# - Timezone
+# - Europe
+# - Berlin
+# - Finish
 ```
 
 ### Special hardware support
@@ -113,10 +120,6 @@ pcm.!default {
 }
 ```
 
-amixer set Master 20%
-
-amixer set Master 1+
-
 speaker-test --channels 2 --test pink --nperiods 2
 
 ### Install docker & docker-compose
@@ -156,7 +159,7 @@ git clone git@github.com:stheine/wecker.git app
 cd app
 git clone git@github.com:stheine/mpg123.git
 
-amixer set Master 20%
+amixer set Master 60%
 ```
 
 Logout & Login again
