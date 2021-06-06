@@ -114,6 +114,7 @@ pcm.!default {
 ```
 
 amixer set Master 20%
+
 amixer set Master 1+
 
 speaker-test --channels 2 --test pink --nperiods 2
@@ -154,6 +155,8 @@ git clone git@github.com:stheine/wecker.git app
 
 cd app
 git clone git@github.com:stheine/mpg123.git
+
+amixer set Master 20%
 ```
 
 Logout & Login again
