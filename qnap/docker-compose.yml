@@ -3,7 +3,7 @@ version: "3.7"
 # Ports
 #    25 postfix                smtp
 #   993 dovecot                imap                          Freigabe in FritzBox
-#  1498 unison                 unison/ rsync                 Freigabe in FritzBox
+#  1499 unison                 unison/ rsync                 Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
 #  8008 portainer              http://192.168.6.7:8008/
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
@@ -20,13 +20,6 @@ version: "3.7"
 # 59159 video                  http://192.168.6.7:59159/
 
 volumes:
-  bitwardenrs:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/bitwardenrs-data
-      o: bind
-
   collectd-data:
     driver: local
     driver_opts:
@@ -216,6 +209,13 @@ volumes:
       device: /share/linux/data/unison
       o: bind
 
+  vaultwarden:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/vaultwarden-data
+      o: bind
+
   vito:
     driver: local
     driver_opts:
@@ -263,16 +263,16 @@ services:
     healthcheck:
       test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
 
-  bitwardenrs:
-    # https://github.com/dani-garcia/bitwarden_rs/wiki
+  vaultwarden:
+    # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: bitwardenrs/server:1.20.0-alpine
-    hostname: bitwardenrs
+    image: vaultwarden/server:1.21.0-alpine
+    hostname: vaultwarden
     volumes:
-      - bitwardenrs:/data
-    # environment:
+      - vaultwarden:/data
+    environment:
       # - ADMIN_TOKEN=ChangeInAdmin
-      # - WEBSOCKET_ENABLED=true
+      - WEBSOCKET_ENABLED=true
 
   certbot:
     restart: always
@@ -479,12 +479,12 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - apache2
-      - bitwardenrs
+      - vaultwarden
       - mediawiki
 
   portainer:
     restart: always
-    image: portainer/portainer-ce:2.0.0
+    image: portainer/portainer-ce
     hostname: qnap-portainer
     ports:
       - 8008:9000
@@ -506,7 +506,7 @@ services:
     build: unison
     hostname: qnap-unison
     ports:
-      - 1498:1499
+      - 1499:1499
     volumes:
       - media_musik:/var/musik:nocopy
       - sshd_certs:/var/sshd_certs:nocopy
