@@ -85,8 +85,8 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          // {SML  ': { Total_in: 0, Total_out: 0, Power_curr: 0, Meter_number: '' }}
-          zaehlerLeistung = message['SML  '].Power_curr;
+          // {SML: { Total_in: 0, Total_out: 0, Power_curr: 0, Meter_number: '' }}
+          zaehlerLeistung = message.SML.Power_curr;
 
           if(solarLeistung === null) {
             return;
