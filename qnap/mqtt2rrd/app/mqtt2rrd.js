@@ -184,8 +184,8 @@ process.on('SIGTERM', () => stopProcess());
           update[file] = {
             ...update[file],
             ...{
-              gesamtLeistung:  message.SML.Verbrauch,
-              zaehlerLeistung: message.SML.Leistung,
+              zaehlerVerbrauch: message.SML.Verbrauch,
+              zaehlerLeistung:  message.SML.Leistung,
             },
           };
           break;
