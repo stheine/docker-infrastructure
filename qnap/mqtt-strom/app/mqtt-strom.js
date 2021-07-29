@@ -85,8 +85,8 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          // {SML: { Total_in: 0, Total_out: 0, Power_curr: 0, Meter_number: '' }}
-          zaehlerLeistung = message.SML.Power_curr;
+          // {SML: { Verbrauch: 0, Leistung: 0 }}
+          zaehlerLeistung = message.SML.Leistung;
 
           if(solarLeistung === null) {
             return;
@@ -141,7 +141,7 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
 
                 spuelmaschineInterval = setInterval(async() => {
-                  logger.info('spuelmaschineInterval');
+                  // logger.info('spuelmaschineInterval');
 
                   let triggerOn = false;
 
@@ -187,7 +187,7 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
 
                 waschmaschineInterval = setInterval(async() => {
-                  logger.info('waschmaschineInterval');
+                  // logger.info('waschmaschineInterval');
 
                   let triggerOn = false;
 
