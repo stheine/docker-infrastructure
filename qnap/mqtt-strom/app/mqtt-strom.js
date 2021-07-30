@@ -36,9 +36,9 @@ process.on('SIGTERM', () => stopProcess());
   // Globals
   let lastTimestamp   = null;
   let solarLeistung   = null;
+  let zaehlerLeistung = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
-  let zaehlerLeistung = 0;
 
   // #########################################################################
   // Startup
@@ -85,12 +85,26 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          // {SML: { Verbrauch: 0, Leistung: 0 }}
-          zaehlerLeistung = message.SML.Leistung;
-
           if(solarLeistung === null) {
             return;
           }
+
+          if(message.SML.Verbrauch < 20000 || message.SML.Verbrauch > 50000) {
+            logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`);
+            zaehlerLeistung = null;
+
+            return;
+          }
+
+          if(message.SML.Leistung < -800 || message.SML.Leistung > 10000) {
+            logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`);
+            zaehlerLeistung = null;
+
+            return;
+          }
+
+          // {SML: { Verbrauch: 0, Leistung: 0 }}
+          zaehlerLeistung = message.SML.Leistung;
 
           const momentanLeistung = zaehlerLeistung + solarLeistung;
           const nowTimestamp = moment();
@@ -129,7 +143,12 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'tasmota/solar/tele/SENSOR':
-          solarLeistung = message.ENERGY.Power;
+          if(message.ENERGY.Power < 0 || message.ENERGY.Power > 800) {
+            logger.warn(`Ungültige Solarleistung ${message.ENERGY.Power}`);
+            solarLeistung = null
+          } else {
+            solarLeistung = message.ENERGY.Power;
+          }
           break;
 
         case 'tasmota/spuelmaschine/stat/POWER':
@@ -141,6 +160,10 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
 
                 spuelmaschineInterval = setInterval(async() => {
+                  if(zaehlerLeistung === null) {
+                    return;
+                  }
+
                   // logger.info('spuelmaschineInterval');
 
                   let triggerOn = false;
@@ -187,6 +210,10 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
 
                 waschmaschineInterval = setInterval(async() => {
+                  if(zaehlerLeistung === null) {
+                    return;
+                  }
+
                   // logger.info('waschmaschineInterval');
 
                   let triggerOn = false;
