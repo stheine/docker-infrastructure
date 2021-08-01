@@ -12,12 +12,12 @@ version: "3.7"
 # 31038 watchdog               http://192.168.6.7:31038
 # 59080 nginx (http)           http://192.168.6.7:59080/     Freigabe in FritzBox
 # 59443 nginx (https)          https://192.168.6.7:59443/    Freigabe in FritzBox
-# 59154 musik                  http://192.168.6.7:59154/
-# 59155 kinder-filme           http://192.168.6.7:59155/
-# 59156 kinder-cds             http://192.168.6.7:59156/
-# 59157 fotos                  http://192.168.6.7:59157/
-# 59158 filme                  http://192.168.6.7:59158/
-# 59159 video                  http://192.168.6.7:59159/
+# 59154 gerbera-musik          http://192.168.6.7:59154/
+# 59155 gerbera-kinder-filme   http://192.168.6.7:59155/
+# 59156 gerbera-kinder-cds     http://192.168.6.7:59156/
+# 59157 gerbera-fotos          http://192.168.6.7:59157/
+# 59158 gerbera-filme          http://192.168.6.7:59158/
+# 59159 gerbera-video          http://192.168.6.7:59159/
 
 volumes:
   collectd-data:
