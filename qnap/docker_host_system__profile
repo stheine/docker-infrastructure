@@ -51,7 +51,7 @@ function start_vi {
   echo -e "${HEADER}${TITLE_PREFIX}${TITLE}${CTLG}\c"
 }
 
-export EDITOR=vi
+export EDITOR=vim
 alias vi=start_vi
 
 ###############################################################################
