@@ -76,6 +76,13 @@ volumes:
       device: /share/linux/data/gerberaVideo
       o: bind
 
+  homer:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/homer
+      o: bind
+
   jalousie:
     driver: local
     driver_opts:
@@ -263,17 +270,6 @@ services:
     healthcheck:
       test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
 
-  vaultwarden:
-    # https://github.com/dani-garcia/vaultwarden/wiki
-    restart: always
-    image: vaultwarden/server:1.21.0-alpine
-    hostname: vaultwarden
-    volumes:
-      - vaultwarden:/data
-    environment:
-      # - ADMIN_TOKEN=ChangeInAdmin
-      - WEBSOCKET_ENABLED=true
-
   certbot:
     restart: always
     build: certbot
@@ -378,6 +374,13 @@ services:
     volumes:
       - ./hivemq-mqtt-web-client/nginx.conf:/etc/nginx/nginx.conf:ro
 
+  homer:
+    restart: always
+    image: b4bz/homer:latest
+    hostname: qnap-homer
+    volumes:
+      - homer:/www/assets
+
   mediawiki:
     restart: always
     build: mediawiki
@@ -479,8 +482,9 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - apache2
-      - vaultwarden
+      - homer
       - mediawiki
+      - vaultwarden
 
   portainer:
     restart: always
@@ -511,6 +515,17 @@ services:
       - media_musik:/var/musik:nocopy
       - sshd_certs:/var/sshd_certs:nocopy
       - unison:/root/.unison:nocopy
+
+  vaultwarden:
+    # https://github.com/dani-garcia/vaultwarden/wiki
+    restart: always
+    image: vaultwarden/server:1.21.0-alpine
+    hostname: vaultwarden
+    volumes:
+      - vaultwarden:/data
+    environment:
+      # - ADMIN_TOKEN=ChangeInAdmin
+      - WEBSOCKET_ENABLED=true
 
   watchdog:
     restart: always
