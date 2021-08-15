@@ -9,8 +9,9 @@ docker-compose run --rm certbot /bin/bash -l
 
 ```
 docker-compose run --rm certbot /bin/bash -l
+cd /etc/letsencrypt/live/heine7.de/
 /usr/bin/openssl x509 -in cert.pem -text -noout | grep DNS
-/usr/bin/certbot certonly --webroot --webroot-path=/var/letsencrypt -d heine7.de -d wiki.heine7.de -d home.heine7.de -d bitwarden.heine7.de
+/usr/bin/certbot certonly --webroot --webroot-path=/var/letsencrypt -d heine7.de -d wiki.heine7.de -d home.heine7.de -d bitwarden.heine7.de -d homer.heine7.de
 exit
 docker-compose kill -s HUP dovecot
 docker-compose kill -s HUP nginx
