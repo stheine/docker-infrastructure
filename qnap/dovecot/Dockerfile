@@ -34,6 +34,8 @@ RUN \
   apt-get install -y \
     autoconf \
     automake \
+    bison \
+    flex \
     gettext \
     libssl-dev \
     libtool \
@@ -42,7 +44,7 @@ RUN \
 
 WORKDIR /source
 
-ARG DOVECOT_VERSION=2.3.11.3
+ARG DOVECOT_VERSION=2.3.16
 RUN \
   wget https://github.com/dovecot/core/archive/$DOVECOT_VERSION.tar.gz && \
   tar xf $DOVECOT_VERSION.tar.gz && \
