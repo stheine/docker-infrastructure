@@ -172,13 +172,6 @@ $wgHiddenPrefs[] = 'visualeditor-enable';
 // OPTIONAL: Enable VisualEditor's experimental code features
 // #$wgDefaultUserOptions['visualeditor-enable-experimental'] = 1;
 
-$wgVirtualRestConfig['modules']['parsoid'] = array(
-  // URL to the Parsoid instance
-  'url' => 'http://mediawiki-parsoid:8000',
-  // Parsoid "domain"
-  'domain' => 'heine7'
-);
-
 // Make the VisualEditor the default for red links (create new page)
 // https://www.mediawiki.org/w/index.php?title=Topic:R9u1ujwknjqxgoxb&topic_showPostId=ufx6qvy2nyikpvwq#flow-post-ufx6qvy2nyikpvwq
 $wgHooks['HtmlPageLinkRendererBegin'][] = function ( $linkRenderer, $target, &$text, &$extraAttribs, &$query, &$ret ) {

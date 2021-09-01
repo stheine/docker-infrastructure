@@ -386,7 +386,6 @@ services:
     build: mediawiki
     depends_on:
       - mediawiki-database
-      - mediawiki-parsoid
     volumes:
       - mediawiki-images:/var/www/html/images
       - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php:ro
@@ -414,13 +413,6 @@ services:
       - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup:ro
     depends_on:
       - mediawiki-database
-
-  mediawiki-parsoid:
-    restart: always
-    build: mediawiki-parsoid
-    environment:
-      PARSOID_DOMAIN_heine7: https://wiki.heine7.de/api.php
-      PARSOID_HOME: /app/parsoid
 
   mosquitto:
     restart: always
