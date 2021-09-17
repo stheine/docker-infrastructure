@@ -159,28 +159,15 @@ wfLoadExtension('CategoryTree');
 # https://www.mediawiki.org/wiki/Extension:VisualEditor
 wfLoadExtension('VisualEditor');
 
-// Enable by default for everybody
-$wgDefaultUserOptions['visualeditor-enable'] = 1;
-
 // Optional: Set VisualEditor as the default for anonymous users
 // otherwise they will have to switch to VE
-// $wgDefaultUserOptions['visualeditor-editor'] = "visualeditor";
+$wgDefaultUserOptions['visualeditor-editor'] = "visualeditor";
 
 // Don't allow users to disable it
 $wgHiddenPrefs[] = 'visualeditor-enable';
 
 // OPTIONAL: Enable VisualEditor's experimental code features
 // #$wgDefaultUserOptions['visualeditor-enable-experimental'] = 1;
-
-// Make the VisualEditor the default for red links (create new page)
-// https://www.mediawiki.org/w/index.php?title=Topic:R9u1ujwknjqxgoxb&topic_showPostId=ufx6qvy2nyikpvwq#flow-post-ufx6qvy2nyikpvwq
-$wgHooks['HtmlPageLinkRendererBegin'][] = function ( $linkRenderer, $target, &$text, &$extraAttribs, &$query, &$ret ) {
-  $title = Title::newFromLinkTarget( $target );
-  if ( !$title->isKnown() ) {
-    $query['veaction'] = 'edit';
-    $query['action'] = 'view'; // Prevent MediaWiki from overriding veaction
-  }
-};
 
 # -----------------------------------------------------------------------------
 # https://www.mediawiki.org/wiki/Extension:UploadWizard
