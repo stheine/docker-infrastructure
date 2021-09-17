@@ -130,6 +130,7 @@ wfLoadSkin( 'Vector' );
 # End of automatically generated settings.
 
 $wgGroupPermissions['*']['edit'] = false;
+$wgGroupPermissions['*']['read'] = false;
 
 # -----------------------------------------------------------------------------
 # https://www.mediawiki.org/wiki/Extension:ConfirmAccount/de
