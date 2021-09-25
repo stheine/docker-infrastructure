@@ -416,7 +416,7 @@ services:
 
   mosquitto:
     restart: always
-    image: eclipse-mosquitto:2.0.3
+    image: eclipse-mosquitto:2.0.12
     hostname: qnap-mosquitto
     ports:
       - 1883:1883
@@ -466,8 +466,8 @@ services:
     build: nginx
     hostname: qnap-nginx
     ports:
-      - 59080:80
-      - 59443:443
+      - 59082:80
+      - 59445:443
     volumes:
       - letsencrypt:/etc/letsencrypt
       - letsencrypt_www:/var/letsencrypt
