@@ -497,6 +497,13 @@ services:
     volumes:
       - postfix_creds:/postfix_creds
 
+  solar:
+    restart: always
+    build: solar
+    hostname: qnap-solar
+    volumes:
+      - ./solar/app:/app
+
   unison:
     restart: always
     build: unison
