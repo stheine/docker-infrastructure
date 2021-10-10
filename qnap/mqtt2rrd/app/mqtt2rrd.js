@@ -192,9 +192,9 @@ process.on('SIGTERM', () => stopProcess());
         case 'tasmota/espstrom/tele/SENSOR': {
           // logger.info(topic, message);
           if(message.SML.Verbrauch < 20000 || message.SML.Verbrauch > 50000) {
-            logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`);
+            logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`, message);
           } else if(message.SML.Leistung < -800 || message.SML.Leistung > 10000) {
-            logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`);
+            logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`, message);
           } else {
             const file = '/var/strom/strom.rrd';
 

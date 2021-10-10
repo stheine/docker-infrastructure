@@ -34,9 +34,10 @@ process.on('SIGTERM', () => stopProcess());
 
 (async() => {
   // Globals
-  let lastTimestamp   = null;
-  let solarLeistung   = null;
-  let zaehlerLeistung = null;
+  let lastTimestamp       = null;
+  let solarDachLeistung   = null;
+  let solarGarageLeistung = null;
+  let zaehlerLeistung     = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
 
@@ -85,7 +86,7 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          if(solarLeistung === null) {
+          if(solarDachLeistung === null || solarGarageLeistung === null) {
             return;
           }
 
@@ -96,7 +97,7 @@ process.on('SIGTERM', () => stopProcess());
             return;
           }
 
-          if(message.SML.Leistung < -800 || message.SML.Leistung > 10000) {
+          if(message.SML.Leistung < -10000 || message.SML.Leistung > 10000) {
             logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`);
             zaehlerLeistung = null;
 
@@ -106,7 +107,7 @@ process.on('SIGTERM', () => stopProcess());
           // {SML: { Verbrauch: 0, Leistung: 0 }}
           zaehlerLeistung = message.SML.Leistung;
 
-          const momentanLeistung = zaehlerLeistung + solarLeistung;
+          const momentanLeistung = zaehlerLeistung + solarDachLeistung + solarGarageLeistung;
           const nowTimestamp = moment();
           const payload = {
             momentanLeistung,
@@ -119,7 +120,7 @@ process.on('SIGTERM', () => stopProcess());
               gesamtEinspeisung += zaehlerLeistung * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
             }
   
-            if(solarLeistung > 200) {
+            if(solarGarageLeistung > 200) {
               // Verbrauch bei Sonne (> 200W)
               //                   Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
               verbrauchBeiSonne += Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
@@ -142,12 +143,21 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'Fronius/solar/tele/SENSOR':
+          if(message.powerOutgoing < 0 || message.powerOutgoing > 10000) {
+            logger.warn(`Ungültige Solarleistung Dach ${message.powerOutgoing}`);
+            solarDachLeistung = null
+          } else {
+            solarDachLeistung = message.powerOutgoing;
+          }
+          break;
+
         case 'tasmota/solar/tele/SENSOR':
           if(message.ENERGY.Power < 0 || message.ENERGY.Power > 800) {
-            logger.warn(`Ungültige Solarleistung ${message.ENERGY.Power}`);
-            solarLeistung = null
+            logger.warn(`Ungültige Solarleistung Garage ${message.ENERGY.Power}`);
+            solarGarageLeistung = null
           } else {
-            solarLeistung = message.ENERGY.Power;
+            solarGarageLeistung = message.ENERGY.Power;
           }
           break;
 
@@ -272,6 +282,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.publish('tasmota/waschmaschine/cmnd/SetOption31', '1');
   await mqttClient.publish('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
+  await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
