@@ -1,43 +1,54 @@
-FROM httpd:2.4-alpine
+FROM httpd:2.4-buster
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
 # Set up timezone
 
 RUN \
-  apk update && \
-  apk add \
-    bash \
-    ca-certificates \
+  apt-get update && \
+  apt-get install -y \
+    apt-utils && \
+  apt-get upgrade -y && \
+  apt-get install -y \
+    dnsutils \
+    locales \
     tzdata \
+    vim \
     wget && \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
-  apk del tzdata
+  sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && \
+  locale-gen && \
+  dpkg-reconfigure locales && \
+  /sbin/ldconfig && \
+  echo "LC_ALL=en_US.UTF-8" >> /etc/environment && \
+  echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+  echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
+  /usr/sbin/locale-gen en_US.UTF-8
+
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
 
 WORKDIR /source
 
 # ##############################################################################
 # Install rrdtool from https://github.com/oetiker/rrdtool-1.x
 
-ARG RRDTOOL_VERSION=1.7.2
 RUN \
-  apk add \
+  apt-get install -y \
     g++ \
     groff \
+    libpango1.0-dev \
     libpng-dev \
     libxml2-dev \
-    make \
-    pango-dev \
-    pcre-dev \
-    perl-dev \
-    ttf-dejavu && \
+    make
+ARG RRDTOOL_VERSION=1.7.2
+RUN \
   wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
   tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
   cd rrdtool-$RRDTOOL_VERSION && \
   ./configure --prefix=/opt/rrdtool && \
-  /bin/cat src/Makefile | sed 's/^LIBS = $/LIBS = -lintl/' > src/Makefile.tmp && \
-  mv src/Makefile.tmp src/Makefile && \
   make && \
   make install && \
   ln -s /opt/rrdtool/include/rrd.h /usr/include/ && \
@@ -45,19 +56,17 @@ RUN \
   ln -s /opt/rrdtool/lib/librrd.so.8 /usr/lib/ && \
   ln -s /opt/rrdtool/lib/librrd.so.8.1.0 /usr/lib/
 
+ENV PATH="/opt/rrdtool/bin:${PATH}"
+
 # ##############################################################################
 # Install mosquitto client to publish MQTT messages
 RUN \
-  apk add \
+  apt-get install -y \
     inotify-tools \
     mosquitto-clients
 
 # ##############################################################################
 # Configure and run apache2
-
-RUN \
-  apk add \
-    coreutils
 
 WORKDIR $HTTPD_PREFIX
 
