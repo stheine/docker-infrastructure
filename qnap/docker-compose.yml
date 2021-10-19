@@ -267,8 +267,9 @@ services:
       - vito:/var/vito
       - www:/var/www
       - www_auth:/var/www_auth
-    healthcheck:
-      test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
+      - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+    # healthcheck:
+    #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
 
   certbot:
     restart: always

@@ -68,7 +68,5 @@ RUN \
   mkdir /usr/local/apache2/lock/ && \
   chown www-data:www-data /usr/local/apache2/lock/
 
-COPY httpd.conf /usr/local/apache2/conf/
-
 EXPOSE 80
 VOLUME /var/jalousie /var/strom /var/vito /var/www /var/www_auth
