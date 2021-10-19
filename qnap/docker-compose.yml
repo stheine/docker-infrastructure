@@ -467,8 +467,8 @@ services:
     build: nginx
     hostname: qnap-nginx
     ports:
-      - 59082:80
-      - 59445:443
+      - 59080:80
+      - 59443:443
     volumes:
       - letsencrypt:/etc/letsencrypt
       - letsencrypt_www:/var/letsencrypt
