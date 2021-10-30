@@ -4,6 +4,7 @@
 
 /* eslint-disable no-console */
 
+const _           = require('lodash');
 const fsExtra     = require('fs-extra');
 const millisecond = require('millisecond');
 const moment      = require('moment');
@@ -35,6 +36,7 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let lastTimestamp       = null;
+  let inverterLeistung    = null;
   let solarDachLeistung   = null;
   let solarGarageLeistung = null;
   let zaehlerLeistung     = null;
@@ -86,7 +88,7 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          if(solarDachLeistung === null || solarGarageLeistung === null) {
+          if(inverterLeistung === null || solarDachLeistung === null || solarGarageLeistung === null) {
             return;
           }
 
@@ -97,7 +99,7 @@ process.on('SIGTERM', () => stopProcess());
             return;
           }
 
-          if(message.SML.Leistung < -10000 || message.SML.Leistung > 10000) {
+          if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
             logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`);
             zaehlerLeistung = null;
 
@@ -107,7 +109,7 @@ process.on('SIGTERM', () => stopProcess());
           // {SML: { Verbrauch: 0, Leistung: 0 }}
           zaehlerLeistung = message.SML.Leistung;
 
-          const momentanLeistung = zaehlerLeistung + solarDachLeistung + solarGarageLeistung;
+          const momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
           const nowTimestamp = moment();
           const payload = {
             momentanLeistung,
@@ -123,7 +125,7 @@ process.on('SIGTERM', () => stopProcess());
             if(solarGarageLeistung > 200) {
               // Verbrauch bei Sonne (> 200W)
               //                   Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
-              verbrauchBeiSonne += Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+              verbrauchBeiSonne += Math.max(momentanLeistung, -1) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
             } else {
               // Verbrauch im Dunkeln
               //                    Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
@@ -144,11 +146,45 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Fronius/solar/tele/SENSOR':
-          if(message.powerOutgoing < 0 || message.powerOutgoing > 10000) {
-            logger.warn(`Ungültige Solarleistung Dach ${message.powerOutgoing}`);
-            solarDachLeistung = null
-          } else {
-            solarDachLeistung = message.powerOutgoing;
+          const battery  = _.find(message, {observedBy: 'battery/1'});
+          const inverter = _.find(message, {observedBy: 'inverter/1'});
+          const meter    = _.find(message, {observedBy: 'meter/grid'});
+          const solar    = _.find(message, {observedBy: 'solar/1'});
+
+          if(battery) {
+            if(battery.powerIncoming && battery.powerOutgoing) {
+              logger.warn('battery.powerIncoming && powerOutgoing', battery);
+            }
+            if(battery.stateOfCharge < 0 || battery.stateOfCharge > 1) {
+              logger.warn('battery.stateOfCharge', battery);
+            }
+          }
+          if(inverter) {
+            if(inverter.powerIncoming) {
+              logger.warn('inverter.powerIncoming', inverter);
+              inverterLeistung = null
+            } else if(inverter.powerOutgoing < 0 || inverter.powerOutgoing > 10000) {
+              logger.warn(`Ungültige Inverterleistung ${inverter.powerOutgoing}`, message);
+              inverterLeistung = null
+            } else {
+              inverterLeistung = inverter.powerOutgoing;
+            }
+          }
+          if(meter) {
+            if(meter.powerIncoming && meter.powerOutgoing) {
+              logger.warn('meter.powerIncoming && powerOutgoing', meter);
+            }
+          }
+          if(solar) {
+            if(solar.powerIncoming) {
+              logger.warn('solar.powerIncoming', solar);
+              solarDachLeistung = null
+            } else if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
+              logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
+              solarDachLeistung = null
+            } else {
+              solarDachLeistung = solar.powerOutgoing;
+            }
           }
           break;
 
@@ -178,7 +214,7 @@ process.on('SIGTERM', () => stopProcess());
 
                   let triggerOn = false;
 
-                  if(zaehlerLeistung < -100) {
+                  if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
@@ -228,7 +264,7 @@ process.on('SIGTERM', () => stopProcess());
 
                   let triggerOn = false;
 
-                  if(zaehlerLeistung < -100) {
+                  if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {

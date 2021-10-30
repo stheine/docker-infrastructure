@@ -34,6 +34,13 @@ volumes:
       device: /share/linux/data/fritz
       o: bind
 
+  fronius-battery:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/fronius-battery
+      o: bind
+
   gerbera-filme:
     driver: local
     driver_opts:
@@ -296,6 +303,14 @@ services:
     volumes:
       - ./fritz/app:/app
       - fritz:/var/fritz
+
+  fronius-battery:
+    restart: always
+    build: fronius-battery
+    hostname: qnap-fronius-battery
+    volumes:
+      - ./fronius-battery/app:/app
+      - fronius-battery:/var/fronius-battery
 
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.

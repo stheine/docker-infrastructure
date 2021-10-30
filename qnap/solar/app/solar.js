@@ -63,14 +63,13 @@ process.on('SIGTERM', () => stopProcess());
 
   while(true) {
     const powerFlow = await client.powerFlow({format: 'json'});
-    const solarSensor = _.find(powerFlow, {observedBy: 'solar/1'});
 
-    // logger.debug({powerFlow, solarSensor});
+    // logger.debug({powerFlow});
 
-    if(solarSensor) {
-      // logger.info({solarSensor});
+    if(powerFlow) {
+      // logger.info({powerFlow});
 
-      await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(solarSensor));
+      await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(powerFlow));
     }
 
     await setTimeout(millisecond('5 seconds'));

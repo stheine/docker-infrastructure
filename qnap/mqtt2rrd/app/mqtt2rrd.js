@@ -4,6 +4,7 @@
 
 /* eslint-disable no-console */
 
+const _        = require('lodash');
 const fsExtra  = require('fs-extra');
 const graphviz = require('graphviz');
 const mqtt     = require('async-mqtt');
@@ -97,12 +98,51 @@ process.on('SIGTERM', () => stopProcess());
         case 'Fronius/solar/tele/SENSOR': {
           const file = '/var/strom/fronius.rrd';
 
+          const battery  = _.find(message, {observedBy: 'battery/1'});
+          const inverter = _.find(message, {observedBy: 'inverter/1'});
+          const meter    = _.find(message, {observedBy: 'meter/grid'});
+          const solar    = _.find(message, {observedBy: 'solar/1'});
+
+          const updates = {};
+
+          if(battery) {
+            if(battery.powerIncoming && battery.powerOutgoing) {
+              logger.warn('battery.powerIncoming && powerOutgoing', battery);
+            } else {
+              updates.battery = battery.powerIncoming || -battery.powerOutgoing;
+            }
+            if(battery.stateOfCharge < 0 || battery.stateOfCharge > 1) {
+              logger.warn('battery.stateOfCharge', battery);
+            } else {
+              updates.batteryPct = battery.stateOfCharge * 100;
+            }
+          }
+          if(inverter) {
+            if(inverter.powerIncoming) {
+              logger.warn('inverter.powerIncoming', inverter);
+            } else {
+              updates.inverter = inverter.powerOutgoing;
+            }
+          }
+          if(meter) {
+            if(meter.powerIncoming && meter.powerOutgoing) {
+              logger.warn('meter.powerIncoming && powerOutgoing', meter);
+            } else {
+              updates.meter = meter.powerIncoming || -meter.powerOutgoing;
+            }
+          }
+          if(solar) {
+            if(solar.powerIncoming) {
+              logger.warn('solar.powerIncoming', solar);
+            } else {
+              updates.solar = solar.powerOutgoing;
+            }
+          }
+
           files.push(file);
           update[file] = {
             ...update[file],
-            ...{
-              powerOutgoing: message.powerOutgoing,
-            },
+            ...updates,
           };
           break;
         }
@@ -193,7 +233,7 @@ process.on('SIGTERM', () => stopProcess());
           // logger.info(topic, message);
           if(message.SML.Verbrauch < 20000 || message.SML.Verbrauch > 50000) {
             logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`, message);
-          } else if(message.SML.Leistung < -800 || message.SML.Leistung > 10000) {
+          } else if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
             logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`, message);
           } else {
             const file = '/var/strom/strom.rrd';

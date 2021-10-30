@@ -12,6 +12,7 @@
     "async-mqtt": "^2.6.1",
     "dayjs": "^1.10.4",
     "fs-extra": "^9.1.0",
+    "lodash": "^4.17.21",
     "millisecond": "^0.1.2",
     "moment": "^2.29.1"
   },

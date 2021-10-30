@@ -1,0 +1,29 @@
+{
+  "name": "fronius-battery",
+  "version": "1.0.0",
+  "description": "",
+  "main": "fronius-battery.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "stheine@arcor.de",
+  "license": "ISC",
+  "dependencies": {
+    "async-mqtt": "2.6.1",
+    "check-types-2": "11.4.0",
+    "dayjs": "1.10.7",
+    "fronius": "0.2.3",
+    "fs-extra": "^10.0.0",
+    "lodash": "4.17.21",
+    "millisecond": "0.1.2",
+    "modbus-serial": "8.0.4",
+    "needle": "^3.0.0",
+    "node-cron": "^3.0.0"
+  },
+  "devDependencies": {
+    "eslint": "8.0.1",
+    "eslint-config-es": "3.30.15",
+    "eslint-plugin-json": "3.1.0",
+    "eslint-plugin-unicorn": "37.0.1"
+  }
+}
