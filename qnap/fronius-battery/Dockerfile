@@ -58,5 +58,5 @@ WORKDIR /app
 # ONBUILD \
 #   npm install
 
-# CMD ["/usr/local/bin/node", "/app/fronius-battery.js"]
-CMD ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/local/bin/node", "/app/fronius-battery.js"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]

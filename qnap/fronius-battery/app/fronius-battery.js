@@ -168,14 +168,17 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
       rate = wattToRate({capacity, watt: 1000}); // Before high PV. Charge 1000W.
     }
   } else if(totalPv > 3 * toCharge) {
-    if(maxPvTime < now) {
-      rate = wattToRate({capacity, watt: 2500}); // After high PV. Sufficient PV for battery charge. Charge 2500W.
-    } else {
-      rate = wattToRate({capacity, watt: 1000}); // Before high PV. Sufficient PV for battery charge. Charge 1000W.
-    }
+    // Sufficient for today, but won't even reach the high level.
+    rate = 1; // Charge-rate 100%;
+
+    // if(maxPvTime < now) {
+    //   rate = wattToRate({capacity, watt: 2500}); // After high PV. Sufficient PV for battery charge. Charge 2500W.
+    // } else {
+    //   rate = wattToRate({capacity, watt: 1000}); // Before high PV. Sufficient PV for battery charge. Charge 1000W.
+    // }
   } else {
     // Pretty low forecast for today
-    rate = 1; // Change-rate 100%.
+    rate = 1; // Charge-rate 100%.
   }
 
   totalPv = _.round(totalPv);
