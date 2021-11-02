@@ -12,7 +12,7 @@ const _           = require('lodash');
 const check       = require('check-types-2');
 const cron        = require('node-cron');
 const dayjs       = require('dayjs');
-// const fronius     = require('fronius');
+const fronius     = require('fronius');
 const fsExtra     = require('fs-extra');
 const millisecond = require('millisecond');
 const ModbusRTU   = require('modbus-serial');
@@ -34,6 +34,7 @@ const {API_KEY, RESOURCE_ID} = config;
 // ###########################################################################
 // Globals
 
+let froniusInterval;
 let modbusClient;
 let mqttClient;
 
@@ -41,6 +42,12 @@ let mqttClient;
 // Process handling
 
 const stopProcess = async function() {
+  if(froniusInterval) {
+    clearInterval(froniusInterval);
+    logger.info('fronius.closed');
+    froniusInterval = undefined;
+  }
+
   if(modbusClient) {
     await new Promise(resolve => modbusClient.close(() => {
       logger.info('modbus.closed');
@@ -155,7 +162,7 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
     rate = wattToRate({capacity, watt: 1000}); // Charge the last few Wh with 1000W.
   } else if(dcPower > 5800) {
     // PV over the limit. Charge what's over the limit.
-    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1000]); // Charge-rate, based on current dcPower, at least 1000W.
+    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1000]); // Charge-rate, based on dcPower, at least 1kW.
   } else if(limitPv && totalPv - limitPv > 2 * toCharge) {
     // Limit expected for later and enough PV after the limit. Wait to reach limit.
     rate = 0;
@@ -267,38 +274,36 @@ const handleRate = async function(capacity) {
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
   mqttClient.on('end',        ()  => logger.info('mqtt.end'));
 
-//  // Handle Fronius data
-//  const froniusClient = new fronius.froniusClient('http://192.168.6.11');
-//
-//  while(true) {
-//    const powerFlow = await froniusClient.powerFlow({format: 'json'});
-//
-//    // logger.debug({powerFlow});
-//
-//    if(powerFlow) {
-//      // logger.info({powerFlow});
-//
-//      await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(powerFlow));
-//    }
-//
-//    await setTimeout(millisecond('5 seconds'));
-//  }
+  // #########################################################################
+  // Handle Fronius data
+  const froniusClient = new fronius.Client('http://192.168.6.11');
+
+  froniusInterval = setInterval(async() => {
+    try {
+      const powerFlow = await froniusClient.powerFlow({format: 'json'});
+
+      // logger.debug({powerFlow});
+
+      if(powerFlow) {
+        // logger.info({powerFlow});
+
+        await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(powerFlow));
+      }
+    } catch(err) {
+      logger.error(`Failed to read powerFlow: ${err.message}`);
+    }
+  }, millisecond('10 seconds'));
 
   // #########################################################################
   // Read battery capacity
   const capacity = await readRegister(modbusClient, 'WHRtg');
 
+  // #########################################################################
+  // Handle charge-rate once and scheduled
   await handleRate(capacity);
-
-  // if(true) { // TODO weg
-  //   await stopProcess();
-  //
-  //   return;
-  // }
 
   //                s min h d m wd
   const schedule = '0 */5 * * * *'; // Every 5 minutes
-  // const schedule = '0 * * * * *'; // Every minute
 
   cron.schedule(schedule, async() => {
     // logger.info(`--------------------- Cron ----------------------`);
