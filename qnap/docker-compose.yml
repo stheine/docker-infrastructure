@@ -283,6 +283,7 @@ services:
     build: certbot
     hostname: qnap-certbot
     volumes:
+      - ./certbot/renew.sh:/renew.sh:ro
       - letsencrypt:/etc/letsencrypt:nocopy
       - letsencrypt_www:/var/letsencrypt
 
