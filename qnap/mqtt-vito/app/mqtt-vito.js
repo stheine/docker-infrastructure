@@ -154,7 +154,9 @@ process.on('SIGTERM', () => stopProcess());
                     `Asche leeren.` +
                     `</p>` +
                     `<p>` +
-                    `<a href='https://heine7.de/vito/ascheGeleert.sh'>Asche geleert</a>` +
+                    `<form method="post" action="https://heine7.de/vito/ascheGeleert.sh">` +
+                    `<input type="submit" value="Asche geleert" />` +
+                    `</form>` +
                     `</p>`,
                 });
 
