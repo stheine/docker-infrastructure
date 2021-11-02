@@ -42,7 +42,10 @@ let mqttClient;
 
 const stopProcess = async function() {
   if(modbusClient) {
-    await modbusClient.close();
+    await new Promise(resolve => modbusClient.close(() => {
+      logger.info('modbus.closed');
+      resolve();
+    }));
     modbusClient = undefined;
   }
 
@@ -75,7 +78,7 @@ const getSolcast = async function() {
     cacheAge = null;
   }
 
-  if(cacheAge && cacheAge < millisecond('1 hour')) {
+  if(cacheAge && cacheAge < millisecond('30 minutes')) {
     solcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
   } else {
     logger.info('Refresh solcast cache');
@@ -146,7 +149,9 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
     }
   }
 
-  if(toCharge < 100) {
+  if(chargeState < 10) {
+    rate = 1; // Make sure to always have a base load of 10%.
+  } else if(toCharge < 100) {
     rate = wattToRate({capacity, watt: 1000}); // Charge the last few Wh with 1000W.
   } else if(dcPower > 5800) {
     // PV over the limit. Charge what's over the limit.
@@ -185,17 +190,19 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   highPv  = _.round(highPv);
   limitPv = _.round(limitPv);
 
-  logger.debug('getBatteryRate', {
-    toCharge:    `${toCharge}Wh`,
-    chargeState: `${chargeState}%`,
-    dcPower:     `${dcPower}W`,
-    totalPv,
-    highPv,
-    highPvHours,
-    limitPv,
-    limitPvHours,
-    rate:        `${rate * 100}% (${capacity * rate}W)`,
-  });
+  if(toCharge && dcPower) {
+    logger.debug('getBatteryRate', {
+      toCharge:    `${toCharge}Wh`,
+      chargeState: `${chargeState}%`,
+      dcPower:     `${dcPower}W`,
+      totalPv,
+      highPv,
+      highPvHours,
+      limitPv,
+      limitPvHours,
+      rate:        `${rate * 100}% (${capacity * rate}W)`,
+    });
+  }
 
   return rate;
 };
@@ -210,7 +217,7 @@ const handleRate = async function(capacity) {
   const dcPower     = _.round(await readRegister(modbusClient, '1_DCW') + await readRegister(modbusClient, '2_DCW'));
   const rate        = getBatteryRate({capacity, chargeState, dcPower, solcast});
 
-  logger.info('handleRate', {chargeState, rate});
+  // logger.debug('handleRate', {chargeState, rate});
 
   // Set charge rate
   await writeRegister(modbusClient, 'StorCtl_Mod', [1]); // Bit0 enable charge control, Bit1 enable discharge control
@@ -219,15 +226,15 @@ const handleRate = async function(capacity) {
   // await writeRegister(modbusClient, 'OutWRte', [10000]); // 0% nicht entladen
 
   // Display current charge rate
-  logger.info('Inverter Status (StVnd)', await readRegister(modbusClient, 'StVnd'));
-  logger.info('Inverter Power (VA)', await readRegister(modbusClient, 'VA'));
+  // logger.info('Inverter Status (StVnd)', await readRegister(modbusClient, 'StVnd'));
+  // logger.info('Inverter Power (VA)', await readRegister(modbusClient, 'VA'));
 
-  logger.info('Battery State (ChaSt)', await readRegister(modbusClient, 'ChaSt'));
-  logger.info('Battery Percent (ChaState)', await readRegister(modbusClient, 'ChaState'));
+  // logger.info('Battery State (ChaSt)', await readRegister(modbusClient, 'ChaSt'));
+  // logger.info('Battery Percent (ChaState)', await readRegister(modbusClient, 'ChaState'));
 
-  logger.info('Battery Control (StorCtl_Mod)', await readRegister(modbusClient, 'StorCtl_Mod'));
-  logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await readRegister(modbusClient, 'InOutWRte_RvrtTms'));
-  logger.info('Battery Charge Rate (InWRte)', await readRegister(modbusClient, 'InWRte'));
+  // logger.info('Battery Control (StorCtl_Mod)', await readRegister(modbusClient, 'StorCtl_Mod'));
+  // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await readRegister(modbusClient, 'InOutWRte_RvrtTms'));
+  // logger.info('Battery Charge Rate (InWRte)', await readRegister(modbusClient, 'InWRte'));
 };
 
 (async() => {
@@ -254,7 +261,7 @@ const handleRate = async function(capacity) {
 
   mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
   mqttClient.on('reconnect',  ()  => logger.info('mqtt.reconnect'));
-  mqttClient.on('close',      ()  => logger.info('mqtt.close'));
+  // mqttClient.on('close',      ()  => logger.info('mqtt.close'));
   mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
   mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
@@ -294,7 +301,7 @@ const handleRate = async function(capacity) {
   // const schedule = '0 * * * * *'; // Every minute
 
   cron.schedule(schedule, async() => {
-    logger.info(`--------------------- Cron ----------------------`);
+    // logger.info(`--------------------- Cron ----------------------`);
 
     await handleRate(capacity);
   });

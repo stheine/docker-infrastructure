@@ -62,16 +62,20 @@ process.on('SIGTERM', () => stopProcess());
   const client = new fronius.Client('http://192.168.6.11');
 
   while(true) {
-    const powerFlow = await client.powerFlow({format: 'json'});
+    try {
+      const powerFlow = await client.powerFlow({format: 'json'});
 
-    // logger.debug({powerFlow});
+      // logger.debug({powerFlow});
 
-    if(powerFlow) {
-      // logger.info({powerFlow});
+      if(powerFlow) {
+        // logger.info({powerFlow});
 
-      await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(powerFlow));
+        await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(powerFlow));
+      }
+    } catch(err) {
+      logger.error(`Failed to read powerFlow: ${err.message}`);
     }
 
-    await setTimeout(millisecond('5 seconds'));
+    await setTimeout(millisecond('10 seconds'));
   }
 })();

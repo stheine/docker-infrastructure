@@ -118,11 +118,7 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
           if(inverter) {
-            if(inverter.powerIncoming) {
-              logger.warn('inverter.powerIncoming', inverter);
-            } else {
-              updates.inverter = inverter.powerOutgoing;
-            }
+            updates.inverter = inverter.powerOutgoing || -inverter.powerIncoming;
           }
           if(meter) {
             if(meter.powerIncoming && meter.powerOutgoing) {

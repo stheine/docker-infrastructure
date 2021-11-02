@@ -36,12 +36,27 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let lastTimestamp       = null;
+  let batteryLeistung     = null;
   let inverterLeistung    = null;
+  let momentanLeistung    = null;
   let solarDachLeistung   = null;
   let solarGarageLeistung = null;
   let zaehlerLeistung     = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
+
+  // #########################################################################
+  // Signal handling for debug
+  process.on('SIGHUP', () => {
+    logger.debug('Dump', {
+      solarDachLeistung,
+      solarGarageLeistung,
+      inverterLeistung,
+      batteryLeistung,
+      zaehlerLeistung,
+      momentanLeistung,
+    });
+  });
 
   // #########################################################################
   // Startup
@@ -88,7 +103,11 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          if(inverterLeistung === null || solarDachLeistung === null || solarGarageLeistung === null) {
+          if(batteryLeistung == null ||
+            inverterLeistung === null ||
+            solarDachLeistung === null ||
+            solarGarageLeistung === null
+          ) {
             return;
           }
 
@@ -109,11 +128,13 @@ process.on('SIGTERM', () => stopProcess());
           // {SML: { Verbrauch: 0, Leistung: 0 }}
           zaehlerLeistung = message.SML.Leistung;
 
-          const momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
+          momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
           const nowTimestamp = moment();
           const payload = {
             momentanLeistung,
           };
+
+          // logger.debug({zaehlerLeistung, inverterLeistung, solarGarageLeistung, batteryLeistung, momentanLeistung});
 
           if(lastTimestamp !== null) {
             if(zaehlerLeistung < 0) {
@@ -154,20 +175,21 @@ process.on('SIGTERM', () => stopProcess());
           if(battery) {
             if(battery.powerIncoming && battery.powerOutgoing) {
               logger.warn('battery.powerIncoming && powerOutgoing', battery);
+              batteryLeistung = null;
+            } else {
+              batteryLeistung = battery.powerIncoming;
             }
             if(battery.stateOfCharge < 0 || battery.stateOfCharge > 1) {
               logger.warn('battery.stateOfCharge', battery);
             }
           }
           if(inverter) {
-            if(inverter.powerIncoming) {
-              logger.warn('inverter.powerIncoming', inverter);
-              inverterLeistung = null
-            } else if(inverter.powerOutgoing < 0 || inverter.powerOutgoing > 10000) {
+            // logger.debug({inverter});
+            if(inverter.powerOutgoing < 0 || inverter.powerOutgoing > 10000) {
               logger.warn(`Ungültige Inverterleistung ${inverter.powerOutgoing}`, message);
               inverterLeistung = null
             } else {
-              inverterLeistung = inverter.powerOutgoing;
+              inverterLeistung = inverter.powerOutgoing || -inverter.powerIncoming;
             }
           }
           if(meter) {
@@ -206,7 +228,7 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
 
                 spuelmaschineInterval = setInterval(async() => {
-                  if(zaehlerLeistung === null) {
+                  if(zaehlerLeistung === null || batteryLeistung === null) {
                     return;
                   }
 
@@ -216,6 +238,9 @@ process.on('SIGTERM', () => stopProcess());
 
                   if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
+                    triggerOn = true;
+                  } else if(batteryLeistung > 1000) {
+                    logger.info(`Battery (${batteryLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
                     logger.info(`13:00. Trigger Spülmaschine.`);
@@ -256,7 +281,7 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
 
                 waschmaschineInterval = setInterval(async() => {
-                  if(zaehlerLeistung === null) {
+                  if(zaehlerLeistung === null || batteryLeistung === null) {
                     return;
                   }
 
@@ -266,6 +291,9 @@ process.on('SIGTERM', () => stopProcess());
 
                   if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
+                    triggerOn = true;
+                  } else if(batteryLeistung > 1000) {
+                    logger.info(`Battery (${batteryLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
                     logger.info(`13:00. Trigger Waschmaschine.`);
