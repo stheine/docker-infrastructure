@@ -88,7 +88,7 @@ const getSolcast = async function() {
   if(cacheAge && cacheAge < millisecond('30 minutes')) {
     solcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
   } else {
-    logger.info('Refresh solcast cache');
+    // logger.info('Refresh solcast cache');
 
     const response = await needle('get',
       `https://api.solcast.com.au/rooftop_sites/${RESOURCE_ID}/forecasts?hours=24`,
