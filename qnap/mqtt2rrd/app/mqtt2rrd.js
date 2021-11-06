@@ -227,7 +227,7 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'tasmota/espstrom/tele/SENSOR': {
           // logger.info(topic, message);
-          if(message.SML.Verbrauch < 20000 || message.SML.Verbrauch > 50000) {
+          if(message.SML.Verbrauch < 0 || message.SML.Verbrauch > 50000) {
             logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`, message);
           } else if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
             logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`, message);
@@ -238,8 +238,9 @@ process.on('SIGTERM', () => stopProcess());
             update[file] = {
               ...update[file],
               ...{
-                zaehlerVerbrauch: message.SML.Verbrauch,
-                zaehlerLeistung:  message.SML.Leistung,
+                zaehlerEinspeisung: message.SML.Einspeisung,
+                zaehlerVerbrauch:   message.SML.Verbrauch,
+                zaehlerLeistung:    message.SML.Leistung,
               },
             };
           }

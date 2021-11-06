@@ -66,7 +66,15 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // Read static data
 
-  const status = await fsExtra.readJson('/var/strom/strom.json');
+  let status;
+
+  try {
+    status = await fsExtra.readJson('/var/strom/strom.json');
+  } catch(err) {
+    logger.error('Failed to read JSON in /var/strom/strom.json');
+
+    process.exit(1);
+  }
 
   let {gesamtEinspeisung, verbrauchBeiSonne, verbrauchImDunkeln} = status;
 
@@ -111,7 +119,18 @@ process.on('SIGTERM', () => stopProcess());
             return;
           }
 
-          if(message.SML.Verbrauch < 20000 || message.SML.Verbrauch > 50000) {
+          if(!message.SML) {
+            logger.warn(`Ungültiges Nachrichtenformat vom Zähler`, message);
+          }
+
+          if(message.SML.Einspeisung < 0 || message.SML.Einspeisung > 50000) {
+            logger.warn(`Ungültige Zählereinspeisung ${message.SML.Einspeisung}`);
+            zaehlerLeistung = null;
+
+            return;
+          }
+
+          if(message.SML.Verbrauch < 0 || message.SML.Verbrauch > 50000) {
             logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`);
             zaehlerLeistung = null;
 
@@ -125,7 +144,12 @@ process.on('SIGTERM', () => stopProcess());
             return;
           }
 
-          // {SML: { Verbrauch: 0, Leistung: 0 }}
+          await mqttClient.publish(`tasmota/espstrom/cmnd/LedPower1`, '1');
+          setTimeout(async() => {
+            await mqttClient.publish(`tasmota/espstrom/cmnd/LedPower1`, '0');
+          }, millisecond('0.1 seconds'));
+
+          // {SML: {Einspeisung, Verbrauch, Leistung}}
           zaehlerLeistung = message.SML.Leistung;
 
           momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
@@ -160,6 +184,7 @@ process.on('SIGTERM', () => stopProcess());
 
           lastTimestamp = nowTimestamp;
 
+          await fsExtra.copyFile('/var/strom/strom.json', '/var/strom/strom.json.bak');
           await fsExtra.writeJson('/var/strom/strom.json', {gesamtEinspeisung, verbrauchBeiSonne, verbrauchImDunkeln});
 
           await mqttClient.publish(`strom/tele/SENSOR`, JSON.stringify(payload));
