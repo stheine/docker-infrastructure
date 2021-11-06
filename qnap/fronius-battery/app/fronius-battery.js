@@ -4,28 +4,26 @@
 
 /* eslint-disable camelcase */
 
-const fs          = require('fs/promises');
+const fs                = require('fs/promises');
 
-// const {setTimeout} = require('timers/promises');
+// const {setTimeout: delay} = require('timers/promises');
 
-const _           = require('lodash');
-const check       = require('check-types-2');
-const cron        = require('node-cron');
-const dayjs       = require('dayjs');
-const fronius     = require('fronius');
-const fsExtra     = require('fs-extra');
-const millisecond = require('millisecond');
-const ModbusRTU   = require('modbus-serial');
-const mqtt        = require('async-mqtt');
-const needle      = require('needle');
-const utc         = require('dayjs/plugin/utc');
+const _                 = require('lodash');
+const check             = require('check-types-2');
+const cron              = require('node-cron');
+const dayjs             = require('dayjs');
+const fronius           = require('fronius');
+const fsExtra           = require('fs-extra');
+const millisecond       = require('millisecond');
+const mqtt              = require('async-mqtt');
+const needle            = require('needle');
+const utc               = require('dayjs/plugin/utc');
 
-const config      = require('/var/fronius-battery/config.js');
-const logger      = require('./logger.js');
-const {
-  readRegister,
-  writeRegister,
-} = require('./utils.js');
+const config            = require('/var/fronius-battery/config.js');
+const FroniusClient     = require('./fronius-client');
+const logger            = require('./logger.js');
+const sunspecInverter   = require('./sunspec_map_inverter.js');
+const sunspecSmartMeter = require('./sunspec_map_smart_meter.js');
 
 dayjs.extend(utc);
 
@@ -35,8 +33,10 @@ const {API_KEY, RESOURCE_ID} = config;
 // Globals
 
 let froniusInterval;
-let modbusClient;
+let inverter;
 let mqttClient;
+let smartMeter;
+let smartMeterInterval;
 
 // ###########################################################################
 // Process handling
@@ -48,12 +48,21 @@ const stopProcess = async function() {
     froniusInterval = undefined;
   }
 
-  if(modbusClient) {
-    await new Promise(resolve => modbusClient.close(() => {
-      logger.info('modbus.closed');
-      resolve();
-    }));
-    modbusClient = undefined;
+  if(inverter) {
+    await inverter.close();
+    logger.info('inverter.closed');
+    inverter = undefined;
+  }
+
+  if(smartMeter) {
+    if(smartMeterInterval) {
+      clearInterval(smartMeterInterval);
+      smartMeterInterval = undefined;
+    }
+
+    await smartMeter.close();
+    logger.info('smartMeter.closed');
+    smartMeter = undefined;
   }
 
   if(mqttClient) {
@@ -216,32 +225,32 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
 
 const handleRate = async function(capacity) {
   // Sanity check
-  await readRegister(modbusClient, 'Mn');
+  await inverter.readRegister('Mn');
 
   // Get charge rate
   const solcast     = await getSolcast();
-  const chargeState = _.round(await readRegister(modbusClient, 'ChaState'), 1);
-  const dcPower     = _.round(await readRegister(modbusClient, '1_DCW') + await readRegister(modbusClient, '2_DCW'));
+  const chargeState = _.round(await inverter.readRegister('ChaState'), 1);
+  const dcPower     = _.round(await inverter.readRegister('1_DCW') + await inverter.readRegister('2_DCW'));
   const rate        = getBatteryRate({capacity, chargeState, dcPower, solcast});
 
   // logger.debug('handleRate', {chargeState, rate});
 
   // Set charge rate
-  await writeRegister(modbusClient, 'StorCtl_Mod', [1]); // Bit0 enable charge control, Bit1 enable discharge control
-  await writeRegister(modbusClient, 'InOutWRte_RvrtTms', [3900]); // Timeout for (dis)charge rate in seconds
-  await writeRegister(modbusClient, 'InWRte', [rate * 100 * 100]); // rate% von 5120W => max Ladeleistung
-  // await writeRegister(modbusClient, 'OutWRte', [10000]); // 0% nicht entladen
+  await inverter.writeRegister('StorCtl_Mod', [1]); // Bit0 enable charge control, Bit1 enable discharge control
+  await inverter.writeRegister('InOutWRte_RvrtTms', [3900]); // Timeout for (dis)charge rate in seconds
+  await inverter.writeRegister('InWRte', [rate * 100 * 100]); // rate% von 5120W => max Ladeleistung
+  // await inverter.writeRegister('OutWRte', [10000]); // 0% nicht entladen
 
   // Display current charge rate
-  // logger.info('Inverter Status (StVnd)', await readRegister(modbusClient, 'StVnd'));
-  // logger.info('Inverter Power (VA)', await readRegister(modbusClient, 'VA'));
+  // logger.info('Inverter Status (StVnd)', await inverter.readRegister('StVnd'));
+  // logger.info('Inverter Power (VA)', await inverter.readRegister('VA'));
 
-  // logger.info('Battery State (ChaSt)', await readRegister(modbusClient, 'ChaSt'));
-  // logger.info('Battery Percent (ChaState)', await readRegister(modbusClient, 'ChaState'));
+  // logger.info('Battery State (ChaSt)', await inverter.readRegister('ChaSt'));
+  // logger.info('Battery Percent (ChaState)', await inverter.readRegister('ChaState'));
 
-  // logger.info('Battery Control (StorCtl_Mod)', await readRegister(modbusClient, 'StorCtl_Mod'));
-  // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await readRegister(modbusClient, 'InOutWRte_RvrtTms'));
-  // logger.info('Battery Charge Rate (InWRte)', await readRegister(modbusClient, 'InWRte'));
+  // logger.info('Battery Control (StorCtl_Mod)', await inverter.readRegister('StorCtl_Mod'));
+  // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await inverter.readRegister('InOutWRte_RvrtTms'));
+  // logger.info('Battery Charge Rate (InWRte)', await inverter.readRegister('InWRte'));
 };
 
 (async() => {
@@ -254,10 +263,11 @@ const handleRate = async function(capacity) {
 
   // #########################################################################
   // Init Modbus
-  modbusClient = new ModbusRTU();
+  inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
+  await inverter.open();
 
-  await modbusClient.connectTCP('192.168.6.11', {port: 502});
-  await modbusClient.setID(1);
+  smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
+  await smartMeter.open();
 
   // #########################################################################
   // Init MQTT
@@ -282,8 +292,6 @@ const handleRate = async function(capacity) {
     try {
       const powerFlow = await froniusClient.powerFlow({format: 'json'});
 
-      // logger.debug({powerFlow});
-
       if(powerFlow) {
         // logger.info({powerFlow});
 
@@ -295,8 +303,32 @@ const handleRate = async function(capacity) {
   }, millisecond('10 seconds'));
 
   // #########################################################################
+  // Handle SmartMeter
+  smartMeterInterval = setInterval(async() => {
+    const leistung     = await smartMeter.readRegister('W');
+    const verbrauchW   = await smartMeter.readRegister('TotWhImp');
+    const einspeisungW = await smartMeter.readRegister('TotWhExp');
+
+    // console.log({leistung, verbrauchW, einspeisungW});
+
+    try {
+      const SML = {
+        Leistung:    leistung,
+        Verbrauch:   verbrauchW / 1000,
+        Einspeisung: einspeisungW / 1000,
+      };
+
+      // console.log(SML);
+
+      await mqttClient.publish('tasmota/espstrom/tele/SENSOR', JSON.stringify({SML}));
+    } catch(err) {
+      logger.error(`Failed to read smartMeter: ${err.message}`);
+    }
+  }, millisecond('5 seconds'));
+
+  // #########################################################################
   // Read battery capacity
-  const capacity = await readRegister(modbusClient, 'WHRtg');
+  const capacity = await inverter.readRegister('WHRtg');
 
   // #########################################################################
   // Handle charge-rate once and scheduled
