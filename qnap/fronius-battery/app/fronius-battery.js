@@ -34,6 +34,7 @@ const {API_KEY, RESOURCE_ID} = config;
 
 let froniusInterval;
 let inverter;
+let lastLog;
 let mqttClient;
 let smartMeter;
 let smartMeterInterval;
@@ -206,7 +207,7 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   highPv  = _.round(highPv);
   limitPv = _.round(limitPv);
 
-  if(toCharge && dcPower) {
+  if(!lastLog || toCharge > 30 && dcPower > 10 && dayjs() - lastLog > millisecond('28 minutes')) {
     logger.debug('getBatteryRate', {
       toCharge:    `${toCharge}Wh`,
       chargeState: `${chargeState}%`,
@@ -218,6 +219,8 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
       limitPvHours,
       rate:        `${rate * 100}% (${capacity * rate}W)`,
     });
+
+    lastLog = dayjs();
   }
 
   return rate;
