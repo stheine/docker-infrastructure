@@ -129,6 +129,8 @@ wfLoadSkin( 'Vector' );
 
 # End of automatically generated settings.
 
+$wgCapitalLinks = false;
+
 $wgGroupPermissions['*']['edit'] = false;
 $wgGroupPermissions['*']['read'] = false;
 
