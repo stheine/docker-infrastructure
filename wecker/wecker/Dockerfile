@@ -59,5 +59,5 @@ COPY docker_container_profile /root/.profile
 
 WORKDIR /app
 
-CMD ["/usr/local/bin/node", "/app/app.js"]
+CMD ["/usr/local/bin/node", "/app/wecker.js"]
 #CMD ["/usr/bin/tail", "-f", "/dev/null"]

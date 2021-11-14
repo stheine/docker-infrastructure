@@ -160,6 +160,9 @@ cd app
 git clone git@github.com:stheine/mpg123.git
 
 amixer set Master 60%
+
+cd ../../docker/watchdog
+git clone git@github.com:stheine/watchdog.git app
 ```
 
 Logout & Login again
@@ -168,6 +171,12 @@ Logout & Login again
 cd docker
 docker-compose build wecker
 docker-compose run --rm wecker /bin/bash -l
+
+npm install
+exit
+
+docker-compose build watchdog
+docker-compose run --rm watchdog /bin/bash -l
 
 npm install
 exit
