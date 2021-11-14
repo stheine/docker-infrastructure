@@ -227,33 +227,72 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
 };
 
 const handleRate = async function(capacity) {
-  // Sanity check
-  await inverter.readRegister('Mn');
+  try {
+    try {
+      // Sanity check
+      await inverter.readRegister('Mn');
+    } catch(err) {
+      throw new Error(`Failed sanity check: ${err.message}`);
+    }
 
-  // Get charge rate
-  const solcast     = await getSolcast();
-  const chargeState = _.round(await inverter.readRegister('ChaState'), 1);
-  const dcPower     = _.round(await inverter.readRegister('1_DCW') + await inverter.readRegister('2_DCW'));
-  const rate        = getBatteryRate({capacity, chargeState, dcPower, solcast});
+    // Get charge rate
+    let solcast;
+    let chargeState;
+    let dcPower;
+    let rate;
 
-  // logger.debug('handleRate', {chargeState, rate});
+    try {
+      solcast = await getSolcast();
+    } catch(err) {
+      throw new Error(`Failed getting solcast: ${err.message}`);
+    }
+    try {
+      chargeState = _.round(await inverter.readRegister('ChaState'), 1);
+      dcPower     = _.round(await inverter.readRegister('1_DCW') + await inverter.readRegister('2_DCW'));
+    } catch(err) {
+      throw new Error(`Failed getting battery state: ${err.message}`);
+    }
+    try {
+      rate        = getBatteryRate({capacity, chargeState, dcPower, solcast});
+    } catch(err) {
+      throw new Error(`Failed getting battery rate: ${err.message}`);
+    }
 
-  // Set charge rate
-  await inverter.writeRegister('StorCtl_Mod', [1]); // Bit0 enable charge control, Bit1 enable discharge control
-  await inverter.writeRegister('InOutWRte_RvrtTms', [3900]); // Timeout for (dis)charge rate in seconds
-  await inverter.writeRegister('InWRte', [rate * 100 * 100]); // rate% von 5120W => max Ladeleistung
-  // await inverter.writeRegister('OutWRte', [10000]); // 0% nicht entladen
+    // logger.debug('handleRate', {chargeState, rate});
 
-  // Display current charge rate
-  // logger.info('Inverter Status (StVnd)', await inverter.readRegister('StVnd'));
-  // logger.info('Inverter Power (VA)', await inverter.readRegister('VA'));
+    // Set charge rate
+    try {
+      await inverter.writeRegister('StorCtl_Mod', [1]); // Bit0 enable charge control, Bit1 enable discharge control
+    } catch(err) {
+      throw new Error(`Failed writing battery charge control: ${err.message}`);
+    }
+    try {
+      await inverter.writeRegister('InOutWRte_RvrtTms', [3900]); // Timeout for (dis)charge rate in seconds
+    } catch(err) {
+      throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
+    }
+    try {
+      const setRate = rate * 100 * 100;
 
-  // logger.info('Battery State (ChaSt)', await inverter.readRegister('ChaSt'));
-  // logger.info('Battery Percent (ChaState)', await inverter.readRegister('ChaState'));
+      await inverter.writeRegister('InWRte', [setRate]); // rate% von 5120W => max Ladeleistung
+    } catch(err) {
+      throw new Error(`Failed writing battery charge rate ${setRate}: ${err.message}`);
+    }
+    // await inverter.writeRegister('OutWRte', [10000]); // 0% nicht entladen
 
-  // logger.info('Battery Control (StorCtl_Mod)', await inverter.readRegister('StorCtl_Mod'));
-  // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await inverter.readRegister('InOutWRte_RvrtTms'));
-  // logger.info('Battery Charge Rate (InWRte)', await inverter.readRegister('InWRte'));
+    // Display current charge rate
+    // logger.info('Inverter Status (StVnd)', await inverter.readRegister('StVnd'));
+    // logger.info('Inverter Power (VA)', await inverter.readRegister('VA'));
+
+    // logger.info('Battery State (ChaSt)', await inverter.readRegister('ChaSt'));
+    // logger.info('Battery Percent (ChaState)', await inverter.readRegister('ChaState'));
+
+    // logger.info('Battery Control (StorCtl_Mod)', await inverter.readRegister('StorCtl_Mod'));
+    // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await inverter.readRegister('InOutWRte_RvrtTms'));
+    // logger.info('Battery Charge Rate (InWRte)', await inverter.readRegister('InWRte'));
+  } catch(err) {
+    logger.error(`Failed to handle battery rate: ${err.message}`);
+  }
 };
 
 (async() => {
@@ -308,11 +347,19 @@ const handleRate = async function(capacity) {
   // #########################################################################
   // Handle SmartMeter
   smartMeterInterval = setInterval(async() => {
-    const leistung     = await smartMeter.readRegister('W');
-    const verbrauchW   = await smartMeter.readRegister('TotWhImp');
-    const einspeisungW = await smartMeter.readRegister('TotWhExp');
+    let leistung;
+    let verbrauchW;
+    let einspeisungW;
 
-    // console.log({leistung, verbrauchW, einspeisungW});
+    try {
+      leistung     = await smartMeter.readRegister('W');
+      verbrauchW   = await smartMeter.readRegister('TotWhImp');
+      einspeisungW = await smartMeter.readRegister('TotWhExp');
+
+      // console.log({leistung, verbrauchW, einspeisungW});
+    } catch(err) {
+      logger.error(`Failed to read smartMeter: ${err.message}`);
+    }
 
     try {
       const SML = {
@@ -325,13 +372,21 @@ const handleRate = async function(capacity) {
 
       await mqttClient.publish('tasmota/espstrom/tele/SENSOR', JSON.stringify({SML}));
     } catch(err) {
-      logger.error(`Failed to read smartMeter: ${err.message}`);
+      logger.error(`Failed to publish smartMeter: ${err.message}`);
     }
   }, millisecond('5 seconds'));
 
   // #########################################################################
   // Read battery capacity
-  const capacity = await inverter.readRegister('WHRtg');
+  let capacity;
+
+  try {
+    capacity = await inverter.readRegister('WHRtg');
+  } catch(err) {
+    logger.error(`Failed to read battery capacity: ${err.message}`);
+
+    throw new Error('Init failed');
+  }
 
   // #########################################################################
   // Handle charge-rate once and scheduled
