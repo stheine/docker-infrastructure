@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-console */
 /* eslint-disable unicorn/no-lonely-if */
 
 import _           from 'lodash';
