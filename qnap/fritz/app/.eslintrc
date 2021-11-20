@@ -10,6 +10,7 @@
     'capitalized-comments': 0,
     'comma-dangle': [2, 'always-multiline'],
     'dot-location': [2, 'property'],
+    'eslint-comments/disable-enable-pair': 0,
     'indent': [
       2,
       2,
@@ -46,6 +47,7 @@
     'space-before-function-paren': [2, 'never'],
     'unicorn/catch-error-name': 0,
     'unicorn/explicit-length-check': 0,
-    'unicorn/no-zero-fractions': 0
+    'unicorn/no-zero-fractions': 0,
+    'unicorn/numeric-separators-style': 0
   }
 }

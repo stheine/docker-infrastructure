@@ -10,21 +10,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "async-mqtt": "^2.4.2",
-    "dayjs": "^1.9.7",
-    "execa": "^4.1.0",
-    "fritz-callmonitor": "^3.1.5",
-    "lodash": "^4.17.15",
-    "millisecond": "^0.1.2",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.8",
-    "tr-064-async": "^1.0.0",
-    "xml-js": "^1.6.11"
+    "async-mqtt": "2.6.1",
+    "dayjs": "1.10.7",
+    "execa": "6.0.0",
+    "fritz-callmonitor": "4.0.1",
+    "lodash": "4.17.21",
+    "millisecond": "0.1.2",
+    "request": "2.88.2",
+    "request-promise-native": "1.0.9",
+    "tr-064-async": "1.0.0",
+    "xml-js": "1.6.11"
   },
   "devDependencies": {
-    "eslint": "^6.6.0",
-    "eslint-config-es": "^3.16.4",
-    "eslint-plugin-json": "^2.0.1",
-    "eslint-plugin-mocha": "^6.2.1"
+    "eslint": "8.2.0",
+    "eslint-config-es": "4.1.0",
+    "eslint-plugin-json": "3.1.0"
   }
 }

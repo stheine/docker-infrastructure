@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
 /* eslint-disable new-cap */
-/* eslint-disable no-underscore-dangle */
 
 import _                        from 'lodash';
 import {CallMonitor, EventKind} from 'fritz-callmonitor';
-import execa                    from 'execa';
+import {execa}                  from 'execa';
 import Fritzbox                 from 'tr-064-async';
 import millisecond              from 'millisecond';
 import mqtt                     from 'async-mqtt';
