@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-'use strict';
-
                                        // DEBUG=* ./mqtt-volumio.js
                                        // https://socket.io/docs/v2/
 import io     from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
@@ -114,7 +112,15 @@ process.on('SIGTERM', () => stopProcess());
                 uri: '',
               },
               list: [
-                {service: 'mpd', type: 'song',  title: 'track a', artist: 'artist a', album: 'album', icon: 'music', uri: 'uri'},
+                {
+                  service: 'mpd',
+                  type: 'song',
+                  title: 'track a',
+                  artist: 'artist a',
+                  album: 'album',
+                  icon: 'music',
+                  uri: 'uri',
+                },
                 {type: 'folder',  title: 'folder a', icon: 'folder-open-o', uri: 'uri'},
                 {type: 'folder',  title: 'folder b', albumart: '//ip/image', uri: 'uri2'},
                 {type: 'playlist',  title: 'playlist', icon: 'bars', uri: 'uri4'},
