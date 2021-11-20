@@ -5,12 +5,16 @@
 /* eslint-disable no-console */
 
 const _           = require('lodash');
+const dayjs       = require('dayjs');
 const fsExtra     = require('fs-extra');
 const millisecond = require('millisecond');
 const moment      = require('moment');
 const mqtt        = require('async-mqtt');
+const utc         = require('dayjs/plugin/utc');
 
 const logger      = require('./logger');
+
+dayjs.extend(utc);
 
 // ###########################################################################
 // Globals
@@ -99,6 +103,9 @@ process.on('SIGTERM', () => stopProcess());
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     const messageRaw = messageBuffer.toString();
+    const now        = dayjs.utc();
+    const maxPvTime  = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+
 
     try {
       let message;
@@ -153,7 +160,7 @@ process.on('SIGTERM', () => stopProcess());
           zaehlerLeistung = message.SML.Leistung;
 
           momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
-          const nowTimestamp = moment();
+          const nowTimestamp = dayjs();
           const payload = {
             momentanLeistung,
           };
@@ -267,8 +274,8 @@ process.on('SIGTERM', () => stopProcess());
                   } else if(batteryLeistung > 1000) {
                     logger.info(`Battery (${batteryLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
-                  } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
-                    logger.info(`13:00. Trigger Spülmaschine.`);
+                  } else if(now > maxPvTime) {
+                    logger.info(`Max sun. Trigger Spülmaschine.`);
                     triggerOn = true;
                   }
 
@@ -320,8 +327,8 @@ process.on('SIGTERM', () => stopProcess());
                   } else if(batteryLeistung > 1000) {
                     logger.info(`Battery (${batteryLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
-                  } else if(moment().isAfter(moment('13:00:00', 'HH:mm:ss'))) {
-                    logger.info(`13:00. Trigger Waschmaschine.`);
+                  } else if(now > maxPvTime) {
+                    logger.info(`Max sun. Trigger Waschmaschine.`);
                     triggerOn = true;
                   }
 
