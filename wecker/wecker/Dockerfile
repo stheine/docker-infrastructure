@@ -44,6 +44,7 @@ RUN \
 
 COPY asound.conf /etc/
 
+COPY npmrc .npmrc
 COPY vimrc .vimrc
 
 #RUN \

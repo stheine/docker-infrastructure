@@ -25,7 +25,7 @@ ENV TZ Europe/Berlin
 
 WORKDIR /root
 
-COPY docker_container_profile /root/.profile
+COPY npmrc .npmrc
 COPY vimrc .vimrc
 RUN \
   apk add \
@@ -40,6 +40,8 @@ RUN \
 # Install and run strom app
 
 WORKDIR /app
+
+COPY docker_container_profile /root/.profile
 
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
 CMD ["/usr/local/bin/node", "/app/watchdog.js"]

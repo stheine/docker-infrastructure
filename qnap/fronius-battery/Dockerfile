@@ -40,6 +40,7 @@ WORKDIR /root
 #RUN \
 #  /sbin/ldconfig
 
+COPY npmrc .npmrc
 COPY vimrc .vimrc
 RUN \
   npm install --global eslint-cli eslint_d && \
