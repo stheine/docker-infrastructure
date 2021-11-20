@@ -1,4 +1,4 @@
-FROM node:14-stretch
+FROM node:16-buster
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -44,6 +44,7 @@ RUN \
     git && \
   /sbin/ldconfig
 
+COPY npmrc .npmrc
 COPY vimrc .vimrc
 RUN \
   npm install --global eslint-cli eslint_d && \
