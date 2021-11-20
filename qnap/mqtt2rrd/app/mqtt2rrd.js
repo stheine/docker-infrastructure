@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /* eslint-disable camelcase */
-/* eslint-disable no-console */
+/* eslint-disable unicorn/no-useless-spread */
 
 import _         from 'lodash';
 import fsExtra   from 'fs-extra';

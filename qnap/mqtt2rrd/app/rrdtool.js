@@ -1,6 +1,6 @@
 import _         from 'lodash';
 import AsyncLock from 'async-lock';
-import execa     from 'execa';
+import {execa}   from 'execa';
 
 import logger    from './logger.js';
 
@@ -34,4 +34,4 @@ export default async function rrdUpdate(rrdFile, rrdUpdates) {
       }
     }
   });
-};
+}
