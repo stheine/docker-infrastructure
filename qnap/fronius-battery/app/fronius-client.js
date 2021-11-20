@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 
-'use strict';
+import _         from 'lodash';
+import check     from 'check-types-2';
+import ModbusRTU from 'modbus-serial';
 
-const _         = require('lodash');
-const check     = require('check-types-2');
-const ModbusRTU = require('modbus-serial');
-
-const logger  = require('./logger.js');
+import logger  from './logger.js';
 
 const toBitfield = function(num, bits) {
   const bitString = _.padStart(num.toString(2), bits, '0');
@@ -206,4 +204,4 @@ class FroniusClient {
   }
 }
 
-module.exports = FroniusClient;
+export default FroniusClient;

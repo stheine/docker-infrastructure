@@ -1,18 +1,16 @@
 #!/usr/bin/env node
 
-'use strict';
-
 /* eslint-disable no-console */
 
-const _           = require('lodash');
-const fsExtra     = require('fs-extra');
-const dayjs       = require('dayjs');
-const mqtt        = require('async-mqtt');
-const nodemailer  = require('nodemailer');
-const utc         = require('dayjs/plugin/utc');
-const timezone    = require('dayjs/plugin/timezone');
+import _           from 'lodash';
+import fsExtra     from 'fs-extra';
+import dayjs       from 'dayjs';
+import mqtt        from 'async-mqtt';
+import nodemailer  from 'nodemailer';
+import utc         from 'dayjs/plugin/utc.js';
+import timezone    from 'dayjs/plugin/timezone.js';
 
-const logger      = require('./logger');
+import logger      from './logger.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

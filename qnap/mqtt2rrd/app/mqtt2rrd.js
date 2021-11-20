@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 
-'use strict';
-
+/* eslint-disable camelcase */
 /* eslint-disable no-console */
 
-const _        = require('lodash');
-const fsExtra  = require('fs-extra');
-const graphviz = require('graphviz');
-const mqtt     = require('async-mqtt');
+import _         from 'lodash';
+import fsExtra   from 'fs-extra';
+import graphviz  from 'graphviz';
+import mqtt      from 'async-mqtt';
 
-const logger   = require('./logger');
-const rrdtool  = require('./rrdtool');
+import logger    from './logger.js';
+import rrdUpdate from './rrdtool.js';
 
 // ###########################################################################
 // Globals
@@ -59,7 +58,7 @@ process.on('SIGTERM', () => stopProcess());
 
       try {
         message = JSON.parse(messageRaw);
-      } catch(err) {
+      } catch {
         // ignore
         // logger.debug('JSON.parse', {messageRaw, errMessage: err.message});
       }
@@ -440,7 +439,7 @@ process.on('SIGTERM', () => stopProcess());
       for(const file of files) {
         // logger.info(file, update[file]);
 
-        await rrdtool.update(file, update[file]);
+        await rrdUpdate(file, update[file]);
       }
     } catch(err) {
       logger.error(`Failed mqtt handling for '${topic}': ${messageRaw}`, err);

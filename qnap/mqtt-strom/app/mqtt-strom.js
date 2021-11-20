@@ -1,18 +1,16 @@
 #!/usr/bin/env node
 
-'use strict';
-
 /* eslint-disable no-console */
+/* eslint-disable unicorn/no-lonely-if */
 
-const _           = require('lodash');
-const dayjs       = require('dayjs');
-const fsExtra     = require('fs-extra');
-const millisecond = require('millisecond');
-const moment      = require('moment');
-const mqtt        = require('async-mqtt');
-const utc         = require('dayjs/plugin/utc');
+import _           from 'lodash';
+import dayjs       from 'dayjs';
+import fsExtra     from 'fs-extra';
+import millisecond from 'millisecond';
+import mqtt        from 'async-mqtt';
+import utc         from 'dayjs/plugin/utc.js';
 
-const logger      = require('./logger');
+import logger      from './logger.js';
 
 dayjs.extend(utc);
 
@@ -74,7 +72,7 @@ process.on('SIGTERM', () => stopProcess());
 
   try {
     status = await fsExtra.readJson('/var/strom/strom.json');
-  } catch(err) {
+  } catch {
     logger.error('Failed to read JSON in /var/strom/strom.json');
 
     process.exit(1);
@@ -118,7 +116,7 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
-          if(batteryLeistung == null ||
+          if(batteryLeistung === null ||
             inverterLeistung === null ||
             solarDachLeistung === null ||
             solarGarageLeistung === null
@@ -173,15 +171,17 @@ process.on('SIGTERM', () => stopProcess());
               //                   Leistung (W)    * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)    positive
               gesamtEinspeisung += zaehlerLeistung * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
             }
-  
+
             if(solarGarageLeistung > 200) {
               // Verbrauch bei Sonne (> 200W)
-              //                   Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
-              verbrauchBeiSonne += Math.max(momentanLeistung, -1) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+              // Leistung (W)                  * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
+              verbrauchBeiSonne +=
+                Math.max(momentanLeistung, -1) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
             } else {
               // Verbrauch im Dunkeln
-              //                    Leistung (W)                  * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)
-              verbrauchImDunkeln += Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+              // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
+              verbrauchImDunkeln +=
+                Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
             }
 
             payload.gesamtEinspeisung  = gesamtEinspeisung;
@@ -198,7 +198,7 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'Fronius/solar/tele/SENSOR':
+        case 'Fronius/solar/tele/SENSOR': {
           const battery  = _.find(message, {observedBy: 'battery/1'});
           const inverter = _.find(message, {observedBy: 'inverter/1'});
           const meter    = _.find(message, {observedBy: 'meter/grid'});
@@ -219,12 +219,13 @@ process.on('SIGTERM', () => stopProcess());
             // logger.debug({inverter});
             if(inverter.powerOutgoing < 0 || inverter.powerOutgoing > 10000) {
               logger.warn(`Ungültige Inverterleistung ${inverter.powerOutgoing}`, message);
-              inverterLeistung = null
+              inverterLeistung = null;
             } else {
               inverterLeistung = inverter.powerOutgoing || -inverter.powerIncoming;
             }
           }
           if(meter) {
+            // logger.debug({meter});
             if(meter.powerIncoming && meter.powerOutgoing) {
               logger.warn('meter.powerIncoming && powerOutgoing', meter);
             }
@@ -232,20 +233,21 @@ process.on('SIGTERM', () => stopProcess());
           if(solar) {
             if(solar.powerIncoming) {
               logger.warn('solar.powerIncoming', solar);
-              solarDachLeistung = null
+              solarDachLeistung = null;
             } else if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
               logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
-              solarDachLeistung = null
+              solarDachLeistung = null;
             } else {
               solarDachLeistung = solar.powerOutgoing;
             }
           }
           break;
+        }
 
         case 'tasmota/solar/tele/SENSOR':
           if(message.ENERGY.Power < 0 || message.ENERGY.Power > 800) {
             logger.warn(`Ungültige Solarleistung Garage ${message.ENERGY.Power}`);
-            solarGarageLeistung = null
+            solarGarageLeistung = null;
           } else {
             solarGarageLeistung = message.ENERGY.Power;
           }

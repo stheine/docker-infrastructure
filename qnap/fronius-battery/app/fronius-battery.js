@@ -1,29 +1,27 @@
 #!/usr/bin/env node
 
-'use strict';
-
 /* eslint-disable camelcase */
 
-const fs                = require('fs/promises');
+import fs                from 'fs/promises';
 
 // const {setTimeout: delay} = require('timers/promises');
 
-const _                 = require('lodash');
-const check             = require('check-types-2');
-const cron              = require('node-cron');
-const dayjs             = require('dayjs');
-const fronius           = require('fronius');
-const fsExtra           = require('fs-extra');
-const millisecond       = require('millisecond');
-const mqtt              = require('async-mqtt');
-const needle            = require('needle');
-const utc               = require('dayjs/plugin/utc');
+import _                 from 'lodash';
+import check             from 'check-types-2';
+import cron              from 'node-cron';
+import dayjs             from 'dayjs';
+import fronius           from 'fronius';
+import fsExtra           from 'fs-extra';
+import millisecond       from 'millisecond';
+import mqtt              from 'async-mqtt';
+import needle            from 'needle';
+import utc               from 'dayjs/plugin/utc.js';
 
-const config            = require('/var/fronius-battery/config.js');
-const FroniusClient     = require('./fronius-client');
-const logger            = require('./logger.js');
-const sunspecInverter   = require('./sunspec_map_inverter.js');
-const sunspecSmartMeter = require('./sunspec_map_smart_meter.js');
+import config            from '/var/fronius-battery/config.js';
+import FroniusClient     from './fronius-client.js';
+import logger            from './logger.js';
+import sunspecInverter   from './sunspec_map_inverter.js';
+import sunspecSmartMeter from './sunspec_map_smart_meter.js';
 
 dayjs.extend(utc);
 
@@ -240,6 +238,7 @@ const handleRate = async function(capacity) {
     let chargeState;
     let dcPower;
     let rate;
+    let setRate;
 
     try {
       solcast = await getSolcast();
@@ -272,7 +271,7 @@ const handleRate = async function(capacity) {
       throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
     }
     try {
-      const setRate = rate * 100 * 100;
+      setRate = rate * 100 * 100;
 
       await inverter.writeRegister('InWRte', [setRate]); // rate% von 5120W => max Ladeleistung
     } catch(err) {

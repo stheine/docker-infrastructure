@@ -2,12 +2,12 @@
 
 'use strict';
 
-                                            // DEBUG=* ./mqtt-volumio.js
-                                            // https://socket.io/docs/v2/
-const io     = require('socket.io-client'); // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
-const mqtt   = require('async-mqtt');
+                                       // DEBUG=* ./mqtt-volumio.js
+                                       // https://socket.io/docs/v2/
+import io     from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
+import mqtt   from 'async-mqtt';
 
-const logger = require('./logger');
+import logger from './logger.js';
 
 // ###########################################################################
 // Globals
@@ -44,7 +44,7 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // Init connections
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
-  volumio    = io('http://192.168.6.10:3000', {transports: ['websocket']});
+  volumio    = io('http://192.168.6.12:3000', {transports: ['websocket']});
 
   // #########################################################################
   // Register MQTT events

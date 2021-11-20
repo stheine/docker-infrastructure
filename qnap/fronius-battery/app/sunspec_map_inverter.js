@@ -1,5 +1,3 @@
-'use strict';
-
 const sunspecMap = [{
 // SunSpec start -----
   name:   'SID',
@@ -615,4 +613,4 @@ const sunspecMap = [{
   expect: 0,
 }];
 
-module.exports = sunspecMap;
+export default sunspecMap;

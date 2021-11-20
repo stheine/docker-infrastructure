@@ -2,6 +2,7 @@
   "name": "mqtt-vito",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "mqtt-vito.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

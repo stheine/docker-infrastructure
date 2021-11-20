@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
-'use strict';
-
 /* eslint-disable new-cap */
 /* eslint-disable no-console */
 
-const Fritzbox     = require('tr-064-async');
+import Fritzbox     from 'tr-064-async';
 
-const tr064Options = require('/var/fritz/tr064Options');
+import tr064Options from '/var/fritz/tr064Options.js';
 
 (async() => {
   try {
@@ -19,7 +17,7 @@ const tr064Options = require('/var/fritz/tr064Options');
 
   //   console.log(fritzbox.services);
 
-    for(const [urn, service] of Object.entries(fritzbox.services)) {
+    for(const [urn] of Object.entries(fritzbox.services)) {
       switch(urn) {
         case 'urn:dslforum-org:service:DeviceInfo:1':
         case 'urn:dslforum-org:service:WANPPPConnection:1':
@@ -72,6 +70,7 @@ const tr064Options = require('/var/fritz/tr064Options');
 
     let service;
 
+    /* eslint-disable max-len */
     // Verbindung:
     //     NewLayer1UpstreamMaxBitRate: '10496000',
     //     NewLayer1DownstreamMaxBitRate: '225280000',
@@ -84,6 +83,7 @@ const tr064Options = require('/var/fritz/tr064Options');
     //   upstream_high:      Newprio_high_bps:     '    0, 6039,29313,29884,7038,944,23,0,0,0,0,0,11,14,0,0,11,0,0,43',
     //   upstream_normal:    Newprio_default_bps:  ' 1251, 1457,1125,3149,3928,4283,771,1405,948,625,983,607,775,932,824,2583,2021,970,1109,1008',
     //   upstream_low:       Newprio_low_bps:      '    0,    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0'
+    /* eslint-enable max-len */
 
     service = fritzbox.services['urn:dslforum-org:service:DeviceInfo:1'];
 //    console.log(await service.actions.GetInfo());
@@ -102,20 +102,19 @@ const tr064Options = require('/var/fritz/tr064Options');
     service = fritzbox.services['urn:dslforum-org:service:LANEthernetInterfaceConfig:1'];
 //    console.log(await service.actions.GetInfo());
 //    console.log(await service.actions.GetStatistics());
-    return;
 
-    for(const serviceName in fritzbox.services) {
-      console.log(`=== ${serviceName} ===`);
-      for(const actionName in fritzbox.services[serviceName].actionsInfo) {
-        console.log(`   # ${actionName}()`);
-        fritzbox.services[serviceName].actionsInfo[actionName].inArgs.forEach(arg => {
-          console.log(`     IN : ${arg}`);
-        });
-        fritzbox.services[serviceName].actionsInfo[actionName].outArgs.forEach(arg => {
-          console.log(`     OUT : ${arg}`);
-        });
-      }
-    }
+//    for(const serviceName in fritzbox.services) {
+//      console.log(`=== ${serviceName} ===`);
+//      for(const actionName in fritzbox.services[serviceName].actionsInfo) {
+//        console.log(`   # ${actionName}()`);
+//        fritzbox.services[serviceName].actionsInfo[actionName].inArgs.forEach(arg => {
+//          console.log(`     IN : ${arg}`);
+//        });
+//        fritzbox.services[serviceName].actionsInfo[actionName].outArgs.forEach(arg => {
+//          console.log(`     OUT : ${arg}`);
+//        });
+//      }
+//    }
 
   //  const wanip = fritzbox.services['urn:dslforum-org:service:WANIPConnection:1'];
 

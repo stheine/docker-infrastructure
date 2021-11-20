@@ -1,4 +1,4 @@
-FROM node:15-buster
+FROM node:16-buster
 
 # ##############################################################################
 # Install all the base packages needed for the following installs

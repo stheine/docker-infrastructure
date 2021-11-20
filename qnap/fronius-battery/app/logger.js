@@ -1,10 +1,8 @@
-'use strict';
-
 /* eslint-disable no-console */
 
-const dayjs = require('dayjs');
+import dayjs from 'dayjs';
 
-module.exports = {
+export default {
   debug(msg, params) {
     if(arguments.length > 1) {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} DEBUG`, msg, params);

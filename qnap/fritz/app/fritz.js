@@ -1,20 +1,18 @@
 #!/usr/bin/env node
 
-'use strict';
-
 /* eslint-disable new-cap */
 /* eslint-disable no-underscore-dangle */
 
-const _                        = require('lodash');
-const {CallMonitor, EventKind} = require('fritz-callmonitor');
-const execa                    = require('execa');
-const Fritzbox                 = require('tr-064-async');
-const millisecond              = require('millisecond');
-const mqtt                     = require('async-mqtt');
+import _                        from 'lodash';
+import {CallMonitor, EventKind} from 'fritz-callmonitor';
+import execa                    from 'execa';
+import Fritzbox                 from 'tr-064-async';
+import millisecond              from 'millisecond';
+import mqtt                     from 'async-mqtt';
 
-const logger                   = require('./logger');
-const phonebookUtils           = require('./phonebookUtils');
-const tr064Options             = require('/var/fritz/tr064Options');
+import logger                   from './logger.js';
+import {refresh, resolve}       from './phonebookUtils.js';
+import tr064Options             from '/var/fritz/tr064Options.js';
 
 // ###########################################################################
 // Globals
@@ -76,7 +74,7 @@ process.on('SIGTERM', () => stopProcess());
         topic = 'FritzBox/callMonitor/call';
         payload = {
           callee:       data.callee,
-          calleeName:   phonebookUtils.resolve({logger, phonebook, number: data.callee}),
+          calleeName:   resolve({logger, phonebook, number: data.callee}),
           caller:       data.caller,
           connectionId: data.connectionId,
           extension:    data.extension,
@@ -88,7 +86,7 @@ process.on('SIGTERM', () => stopProcess());
         payload = {
           caller:       data.caller,
           callee:       data.callee,
-          callerName:   phonebookUtils.resolve({logger, phonebook, number: data.caller}),
+          callerName:   resolve({logger, phonebook, number: data.caller}),
           connectionId: data.connectionId,
         };
         break;
@@ -98,7 +96,7 @@ process.on('SIGTERM', () => stopProcess());
         payload = {
           extension:    data.extension,
           callee:       data.phoneNumber,
-          calleeName:   phonebookUtils.resolve({logger, phonebook, number: data.phoneNumber}),
+          calleeName:   resolve({logger, phonebook, number: data.phoneNumber}),
           connectionId: data.connectionId,
         };
         break;
@@ -136,9 +134,9 @@ process.on('SIGTERM', () => stopProcess());
 
   await fritzbox.initTR064Device();
 
-  phonebook = await phonebookUtils.refresh({fritzbox, logger});
+  phonebook = await refresh({fritzbox, logger});
   phonebookInterval = setInterval(async() => {
-    const refreshResult = await phonebookUtils.refresh({fritzbox, logger});
+    const refreshResult = await refresh({fritzbox, logger});
 
     if(refreshResult) {
       phonebook = refreshResult;

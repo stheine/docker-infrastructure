@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-'use strict';
-
-const FroniusClient  = require('./fronius-client');
-const logger         = require('./logger.js');
-const sunspec        = require('./sunspec_map_inverter.js');
+import FroniusClient  from './fronius-client.js';
+import logger         from './logger.js';
+import sunspec        from './sunspec_map_inverter.js';
 
 (async() => {
   const inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec});
