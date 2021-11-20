@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-console */
-
 import _           from 'lodash';
 import fsExtra     from 'fs-extra';
 import dayjs       from 'dayjs';
@@ -180,7 +178,7 @@ process.on('SIGTERM', () => stopProcess());
 
             if((vorrat < 200 &&
                 (!reportedSpeicher || dayjs(reportedSpeicher).isBefore(twoDaysAgo))
-              ) ||
+            ) ||
               vorrat < 30
             ) {
               try {

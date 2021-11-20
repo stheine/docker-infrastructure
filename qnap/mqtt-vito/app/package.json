@@ -10,15 +10,15 @@
   "author": "stheine@arcor.de",
   "license": "ISC",
   "dependencies": {
-    "async-mqtt": "^2.6.1",
-    "dayjs": "^1.10.4",
-    "fs-extra": "^9.1.0",
-    "lodash": "^4.17.21",
-    "millisecond": "^0.1.2",
-    "nodemailer": "^6.5.0"
+    "async-mqtt": "2.6.1",
+    "dayjs": "1.10.7",
+    "fs-extra": "10.0.0",
+    "lodash": "4.17.21",
+    "millisecond": "0.1.2",
+    "nodemailer": "6.7.1"
   },
   "devDependencies": {
-    "eslint": "7.20.0",
-    "eslint-config-es": "3.28.8"
+    "eslint": "8.2.0",
+    "eslint-config-es": "4.1.0"
   }
 }
