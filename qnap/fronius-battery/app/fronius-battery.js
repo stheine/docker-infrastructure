@@ -170,7 +170,7 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
     rate = wattToRate({capacity, watt: 1000}); // Charge the last few Wh with 1000W.
   } else if(dcPower > 5800) {
     // PV over the limit. Charge what's over the limit.
-    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1000]); // Charge-rate, based on dcPower, at least 1kW.
+    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1]); // Charge-rate, based on dcPower, at least 1kW.
   } else if(limitPv && totalPv - limitPv > 2 * toCharge) {
     // Limit expected for later and enough PV after the limit. Wait to reach limit.
     rate = 0;
