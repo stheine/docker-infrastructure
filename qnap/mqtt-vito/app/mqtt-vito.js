@@ -247,8 +247,12 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
-          await fsExtra.writeJson('/var/vito/vito.json',
-            {reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedZeit});
+          await fsExtra.writeJson('/var/vito/vito.json', {
+            reportedFehlerDateTime,
+            reportedLeerung,
+            reportedSpeicher,
+            reportedZeit
+          }, {spaces: 2});
           break;
         }
 

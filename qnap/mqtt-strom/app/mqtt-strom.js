@@ -77,9 +77,10 @@ process.on('SIGTERM', () => stopProcess());
     process.exit(1);
   }
 
-  let {gesamtEinspeisung, verbrauchBeiSonne, verbrauchImDunkeln} = status;
+  let {gesamtEinspeisung, verbrauchHaus, verbrauchBeiSonne, verbrauchImDunkeln} = status;
 
   gesamtEinspeisung  = gesamtEinspeisung  || 0;
+  verbrauchHaus      = verbrauchHaus      || 0;
   verbrauchBeiSonne  = verbrauchBeiSonne  || 0;
   verbrauchImDunkeln = verbrauchImDunkeln || 0;
 
@@ -165,6 +166,11 @@ process.on('SIGTERM', () => stopProcess());
           // logger.debug({zaehlerLeistung, inverterLeistung, solarGarageLeistung, batteryLeistung, momentanLeistung});
 
           if(lastTimestamp !== null) {
+            // Verbrauch in Haus
+            // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
+            verbrauchHaus +=
+              Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+
             if(zaehlerLeistung < 0) {
               // Einspeisung
               //                   Leistung (W)    * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)    positive
@@ -173,9 +179,9 @@ process.on('SIGTERM', () => stopProcess());
 
             if(solarGarageLeistung > 200) {
               // Verbrauch bei Sonne (> 200W)
-              // Leistung (W)                  * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
+              // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
               verbrauchBeiSonne +=
-                Math.max(momentanLeistung, -1) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+                Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
             } else {
               // Verbrauch im Dunkeln
               // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
@@ -184,6 +190,7 @@ process.on('SIGTERM', () => stopProcess());
             }
 
             payload.gesamtEinspeisung  = gesamtEinspeisung;
+            payload.verbrauchHaus      = verbrauchHaus;
             payload.verbrauchBeiSonne  = verbrauchBeiSonne;
             payload.verbrauchImDunkeln = verbrauchImDunkeln;
           }
@@ -191,7 +198,12 @@ process.on('SIGTERM', () => stopProcess());
           lastTimestamp = nowTimestamp;
 
           await fsExtra.copyFile('/var/strom/strom.json', '/var/strom/strom.json.bak');
-          await fsExtra.writeJson('/var/strom/strom.json', {gesamtEinspeisung, verbrauchBeiSonne, verbrauchImDunkeln});
+          await fsExtra.writeJson('/var/strom/strom.json', {
+            gesamtEinspeisung,
+            verbrauchHaus,
+            verbrauchBeiSonne,
+            verbrauchImDunkeln,
+          }, {spaces: 2});
 
           await mqttClient.publish(`strom/tele/SENSOR`, JSON.stringify(payload));
           break;

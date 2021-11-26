@@ -209,6 +209,9 @@ process.on('SIGTERM', () => stopProcess());
           if(message.gesamtEinspeisung) {
             set.gesamtEinspeisung = message.gesamtEinspeisung;
           }
+          if(message.verbrauchHaus) {
+            set.verbrauchHaus = message.verbrauchHaus;
+          }
           if(message.verbrauchBeiSonne) {
             set.verbrauchBeiSonne = message.verbrauchBeiSonne;
           }
