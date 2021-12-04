@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-import _           from 'lodash';
-import fsExtra     from 'fs-extra';
-import dayjs       from 'dayjs';
-import mqtt        from 'async-mqtt';
-import nodemailer  from 'nodemailer';
-import utc         from 'dayjs/plugin/utc.js';
-import timezone    from 'dayjs/plugin/timezone.js';
+import _          from 'lodash';
+import fsExtra    from 'fs-extra';
+import dayjs      from 'dayjs';
+import mqtt       from 'async-mqtt';
+import utc        from 'dayjs/plugin/utc.js';
+import timezone   from 'dayjs/plugin/timezone.js';
 
-import logger      from './logger.js';
+import logger     from './logger.js';
+import {sendMail} from './mail.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -38,7 +38,6 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let letzterBrennerVerbrauch = 0;
-
   // #########################################################################
   // Startup
 
@@ -49,7 +48,7 @@ process.on('SIGTERM', () => stopProcess());
 
   const status = await fsExtra.readJson('/var/vito/vito.json');
 
-  let {reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedZeit} = status;
+  let {lastLambdaO2, reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedZeit} = status;
 
   // #########################################################################
   // Init MQTT
@@ -81,10 +80,20 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'vito/tele/SENSOR': {
-          const {brennerVerbrauch, dateTime, error01} = message;
+          const {brennerVerbrauch, dateTime, error01, lambdaO2} = message;
           const twoDaysAgo = dayjs().subtract(2, 'days');
 
           // logger.info({brennerVerbrauch, dateTime, error01});
+
+          // Check lambda
+          if(Number(lambdaO2) && !lastLambdaO2) {
+            await sendMail({
+              to:      'stefan@heine7.de',
+              subject: `Heizung Brenner Beginn`,
+              html:    `Heizung Brenner Beginn`,
+            });
+          }
+          lastLambdaO2 = Number(lambdaO2);
 
           // Check neue Fehlermeldung
           // error01: F5 2020-10-05 07:49:20
@@ -96,14 +105,7 @@ process.on('SIGTERM', () => stopProcess());
             await mqttClient.publish(`vito/tele/FEHLER`, JSON.stringify({code, dateTime: fehlerDateTime}));
 
             try {
-              const transport = nodemailer.createTransport({
-                host:   'postfix',
-                port:   25,
-                secure: false,
-                tls:    {rejectUnauthorized: false},
-              });
-
-              await transport.sendMail({
+              await sendMail({
                 to:      'stefan@heine7.de',
                 subject: `Heizung Störung (${code})`,
                 html:    `Störung ${code}: ${fehlerDateTime}`,
@@ -248,6 +250,7 @@ process.on('SIGTERM', () => stopProcess());
           }
 
           await fsExtra.writeJson('/var/vito/vito.json', {
+            lastLambdaO2,
             reportedFehlerDateTime,
             reportedLeerung,
             reportedSpeicher,
