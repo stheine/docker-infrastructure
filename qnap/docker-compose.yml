@@ -8,6 +8,7 @@ version: "3.7"
 #  8008 portainer              http://192.168.6.7:8008/
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
 #  9001 mosquitto-websockets   websockets
+# 16095 uptime-kuma            http://192.168.6.7:16095/
 # 19725 zigbee-assistant       http://192.168.6.7:19725/
 # 31038 watchdog               http://192.168.6.7:31038
 # 59080 nginx (http)           http://192.168.6.7:59080/     Freigabe in FritzBox
@@ -221,6 +222,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/unison
+      o: bind
+
+  uptime-kuma:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/uptime-kuma
       o: bind
 
   vaultwarden:
@@ -524,6 +532,16 @@ services:
       - media_musik:/var/musik:nocopy
       - sshd_certs:/var/sshd_certs:nocopy
       - unison:/root/.unison:nocopy
+
+  uptime-kuma:
+    restart: always
+    # build: uptime-kuma
+    image: louislam/uptime-kuma
+    hostname: qnap-uptime-kuma
+    ports:
+      - 16095:3001
+    volumes:
+      - uptime-kuma:/app/data:nocopy
 
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
