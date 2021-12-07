@@ -10,6 +10,7 @@ import mqtt        from 'async-mqtt';
 import utc         from 'dayjs/plugin/utc.js';
 
 import logger      from './logger.js';
+import {sendMail}  from './mail.js';
 
 dayjs.extend(utc);
 
@@ -36,13 +37,17 @@ process.on('SIGTERM', () => stopProcess());
 
 (async() => {
   // Globals
-  let lastTimestamp       = null;
-  let batteryLeistung     = null;
-  let inverterLeistung    = null;
-  let momentanLeistung    = null;
-  let solarDachLeistung   = null;
-  let solarGarageLeistung = null;
-  let zaehlerLeistung     = null;
+  let lastTimestamp                 = null;
+  let wallboxLaedt                  = false;
+  let wallboxStrom                  = null;
+  let lastWallboxErrorMailTimestamp = null;
+  let lastWallboxStateMailTimestamp = null;
+  let batteryLeistung               = null;
+  let inverterLeistung              = null;
+  let momentanLeistung              = null;
+  let solarDachLeistung             = null;
+  let solarGarageLeistung           = null;
+  let zaehlerLeistung               = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
 
@@ -100,10 +105,10 @@ process.on('SIGTERM', () => stopProcess());
   mqttClient.on('end',        ()  => logger.info('mqtt.end'));
 
   mqttClient.on('message', async(topic, messageBuffer) => {
-    const messageRaw = messageBuffer.toString();
-    const now        = dayjs.utc();
-    const maxPvTime  = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
-
+    const messageRaw   = messageBuffer.toString();
+    const now          = dayjs();
+    const nowUtc       = dayjs.utc();
+    const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
 
     try {
       let message;
@@ -158,7 +163,6 @@ process.on('SIGTERM', () => stopProcess());
           zaehlerLeistung = message.SML.Leistung;
 
           momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
-          const nowTimestamp = dayjs();
           const payload = {
             momentanLeistung,
           };
@@ -169,24 +173,29 @@ process.on('SIGTERM', () => stopProcess());
             // Verbrauch in Haus
             // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
             verbrauchHaus +=
-              Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+              Math.max(momentanLeistung, 0) * (now - lastTimestamp) / 1000 / 3600 / 1000; // kWh
 
             if(zaehlerLeistung < 0) {
               // Einspeisung
               //                   Leistung (W)    * differenzSeitLetzterMessung (ms)     (s)    (h)    (k)    positive
-              gesamtEinspeisung += zaehlerLeistung * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
+              gesamtEinspeisung += zaehlerLeistung * (now - lastTimestamp) / 1000 / 3600 / 1000 * -1; // kWh
+            }
+
+            if(wallboxLaedt) {
+              wallboxStrom = Math.max(wallboxStrom - zaehlerLeistung / 410 * 1000, 0); // Einspeisung(W) / Ladespannung(V) * 1000 => mA;
+              await mqttClient.publish(`Wallbox/evse/current_limit`, JSON.stringify({current: wallboxStrom}));
             }
 
             if(solarGarageLeistung > 200) {
               // Verbrauch bei Sonne (> 200W)
               // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
               verbrauchBeiSonne +=
-                Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+                Math.max(momentanLeistung, 0) * (now - lastTimestamp) / 1000 / 3600 / 1000; // kWh
             } else {
               // Verbrauch im Dunkeln
               // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
               verbrauchImDunkeln +=
-                Math.max(momentanLeistung, 0) * (nowTimestamp - lastTimestamp) / 1000 / 3600 / 1000; // kWh
+                Math.max(momentanLeistung, 0) * (now - lastTimestamp) / 1000 / 3600 / 1000; // kWh
             }
 
             payload.gesamtEinspeisung  = gesamtEinspeisung;
@@ -195,7 +204,7 @@ process.on('SIGTERM', () => stopProcess());
             payload.verbrauchImDunkeln = verbrauchImDunkeln;
           }
 
-          lastTimestamp = nowTimestamp;
+          lastTimestamp = now;
 
           await fsExtra.copyFile('/var/strom/strom.json', '/var/strom/strom.json.bak');
           await fsExtra.writeJson('/var/strom/strom.json', {
@@ -287,7 +296,7 @@ process.on('SIGTERM', () => stopProcess());
                   } else if(batteryLeistung > 1000) {
                     logger.info(`Battery (${batteryLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
-                  } else if(now > maxPvTime) {
+                  } else if(nowUtc > maxPvTimeUtc) {
                     logger.info(`Max sun. Trigger Spülmaschine.`);
                     triggerOn = true;
                   }
@@ -340,7 +349,7 @@ process.on('SIGTERM', () => stopProcess());
                   } else if(batteryLeistung > 1000) {
                     logger.info(`Battery (${batteryLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
-                  } else if(now > maxPvTime) {
+                  } else if(nowUtc > maxPvTimeUtc) {
                     logger.info(`Max sun. Trigger Waschmaschine.`);
                     triggerOn = true;
                   }
@@ -370,6 +379,76 @@ process.on('SIGTERM', () => stopProcess());
           }
           break;
 
+        case 'Wallbox/evse/state': {
+          // iec61851_state: 0,
+          // vehicle_state: 0, // 1 Verbunden, 2 Lädt
+          // charge_release: 1, // 0 Automatisch, 1 Manuell, 2 Deaktiviert
+          // allowed_charging_current: 16000,
+          // error_state: 0,
+          const {allowed_charging_current, charge_release, error_state, iec61851_state, vehicle_state} = message;
+
+          if(error_state) {
+            logger.error('Wallbox error_state', message);
+            if((now - lastWallboxErrorMailTimestamp) / 1000 / 3600 > 1) {
+              await sendMail({
+                to:      'stefan@heine7.de',
+                subject: `Wallbox Fehler`,
+                html:    `<b>Wallbox Fehler</b><br><pre>${JSON.stringify(message, null, 2)}</pre>`,
+              });
+              lastWallboxErrorMailTimestamp = now;
+            }
+          }
+          switch(vehicle_state) {
+            case 0:
+              // Nicht verbunden
+              break;
+
+            case 1:
+              // Verbunden
+              if((now - lastWallboxStateMailTimestamp) / 1000 / 3600 > 1) {
+                await sendMail({
+                  to:      'stefan@heine7.de',
+                  subject: `Wallbox Verbunden`,
+                  html:    `<b>Wallbox Verbunden</b><br><pre>${JSON.stringify(message, null, 2)}</pre>`,
+                });
+                lastWallboxStateMailTimestamp = now;
+              }
+              break;
+
+            case 2:
+              // Lädt
+              if((now - lastWallboxStateMailTimestamp) / 1000 / 3600 > 1) {
+                await sendMail({
+                  to:      'stefan@heine7.de',
+                  subject: `Wallbox Lädt`,
+                  html:    `<b>Wallbox Lädt</b><br><pre>${JSON.stringify(message, null, 2)}</pre>`,
+                });
+                lastWallboxStateMailTimestamp = now;
+              }
+              break;
+
+            case 3:
+              // Fehler
+              logger.error('Wallbox vehicle_state Fehler', message);
+              break;
+
+            default:
+              logger.error(`Unhandled vehicle_state '${vehicle_state}'`, message);
+              break;
+          }
+          if(vehicle_state === 2) {
+            wallboxLaedt = true;
+
+            if(_.isNull(wallboxStrom)) {
+              wallboxStrom = 0;
+            }
+          } else {
+            wallboxLaedt = false;
+            wallboxStrom = null;
+          }
+          break;
+        }
+
         default:
           logger.error(`Unhandled topic '${topic}'`, messageRaw);
           break;
@@ -396,4 +475,5 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
   await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');
+  await mqttClient.subscribe('Wallbox/evse/state');
 })();
