@@ -87,11 +87,11 @@ process.on('SIGTERM', () => stopProcess());
 
           // Check lambda
           if(Number(lambdaO2) && !lastLambdaO2) {
-            await sendMail({
-              to:      'stefan@heine7.de',
-              subject: `Heizung Brenner Beginn`,
-              html:    `Heizung Brenner Beginn`,
-            });
+//            await sendMail({
+//              to:      'stefan@heine7.de',
+//              subject: `Heizung Brenner Beginn`,
+//              html:    `Heizung Brenner Beginn`,
+//            });
           }
           lastLambdaO2 = Number(lambdaO2);
 
