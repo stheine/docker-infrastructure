@@ -127,6 +127,12 @@
     <online-content>
       <AppleTrailers enabled="no" refresh="43200" update-at-start="no" resolution="640"/>
     </online-content>
+    <resources>
+      <fanart>
+        <add-file name="folder.jpg"/>
+        <add-file name="folder.png"/>
+      </fanart>
+    </resources>
   </import>
   <transcoding enabled="no">
     <mimetype-profile-mappings>

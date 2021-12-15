@@ -64,7 +64,6 @@ RUN addgroup -S gerbera 2>/dev/null && \
 
 RUN apk add bash
 COPY docker_container_profile /root/.profile
-COPY config/ /etc/gerbera/config/
 
 COPY gerbera.sh /
 

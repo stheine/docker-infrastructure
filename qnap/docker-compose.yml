@@ -331,6 +331,7 @@ services:
     environment:
       - CONFIG=59158-filme
     volumes:
+      - ./gerbera/config:/etc/gerbera/config
       - media_filme:/media:ro
       - gerbera-filme:/gerbera_home
 
@@ -342,6 +343,7 @@ services:
     environment:
       - CONFIG=59157-fotos
     volumes:
+      - ./gerbera/config:/etc/gerbera/config
       - media_fotos:/media:ro
       - gerbera-fotos:/gerbera_home
 
@@ -353,6 +355,7 @@ services:
     environment:
       - CONFIG=59155-kinder-filme
     volumes:
+      - ./gerbera/config:/etc/gerbera/config
       - media_kinder-filme:/media:ro
       - gerbera-kinder-filme:/gerbera_home
 
@@ -364,6 +367,7 @@ services:
     environment:
       - CONFIG=59156-kinder-cds
     volumes:
+      - ./gerbera/config:/etc/gerbera/config
       - media_kinder-cds:/media:ro
       - gerbera-kinder-cds:/gerbera_home
 
@@ -376,6 +380,7 @@ services:
       - CONFIG=59154-musik
 #      - EXTRA_PARAMETERS=--debug
     volumes:
+      - ./gerbera/config:/etc/gerbera/config
       - media_musik:/media:ro
       - gerbera-musik:/gerbera_home
 
@@ -387,6 +392,7 @@ services:
     environment:
       - CONFIG=59159-video
     volumes:
+      - ./gerbera/config:/etc/gerbera/config
       - media_video:/media:ro
       - gerbera-video:/gerbera_home
 
