@@ -115,6 +115,8 @@ process.on('SIGTERM', () => stopProcess());
             } catch(err) {
               logger.error(`Failed to send error mail: ${err.message}`);
             }
+
+            await fsExtra.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
           }
 
           if(Number(brennerVerbrauch) !== letzterBrennerVerbrauch) {
@@ -155,6 +157,8 @@ process.on('SIGTERM', () => stopProcess());
                     `<form method="post" action="https://heine7.de/vito/ascheGeleert.sh">` +
                     `<input type="submit" value="Asche geleert" />` +
                     `</form>` +
+                    `<br />` +
+                    `<a href="https://heine7.de/vito/ascheGeleert.sh">Asche geleert</a>` +
                     `</p>`,
                 });
 
