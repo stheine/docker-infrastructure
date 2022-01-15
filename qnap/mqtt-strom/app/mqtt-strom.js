@@ -37,6 +37,8 @@ process.on('SIGTERM', () => stopProcess());
 
 (async() => {
   // Globals
+  let now                           = dayjs();
+  let nowUtc                        = dayjs.utc();
   let lastTimestamp                 = null;
   let wallboxLaedt                  = false;
   let wallboxStrom                  = null;
@@ -50,6 +52,8 @@ process.on('SIGTERM', () => stopProcess());
   let zaehlerLeistung               = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
+
+  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
 
   // #########################################################################
   // Signal handling for debug
@@ -106,9 +110,9 @@ process.on('SIGTERM', () => stopProcess());
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     const messageRaw   = messageBuffer.toString();
-    const now          = dayjs();
-    const nowUtc       = dayjs.utc();
-    const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+
+    now    = dayjs();
+    nowUtc = dayjs.utc();
 
     try {
       let message;
