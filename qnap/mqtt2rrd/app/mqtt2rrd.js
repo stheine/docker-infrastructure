@@ -101,8 +101,9 @@ process.on('SIGTERM', () => stopProcess());
           const inverter = _.find(message, {observedBy: 'inverter/1'});
           const meter    = _.find(message, {observedBy: 'meter/grid'});
           const solar    = _.find(message, {observedBy: 'solar/1'});
+          const {storageCharging, storageChargeWh, storageDisChargeWh} = message;
 
-          const updates = {};
+          const updates = {storageCharging, storageChargeWh, storageDisChargeWh};
 
           if(battery) {
             if(battery.powerIncoming && battery.powerOutgoing) {
