@@ -303,6 +303,21 @@ const handleRate = async function(capacity) {
   logger.info(`Startup --------------------------------------------------`);
 
   // #########################################################################
+  // Read static data
+
+  let status;
+
+  try {
+    status = await fsExtra.readJson('/var/fronius-battery/fronius-battery.json');
+  } catch {
+    logger.error('Failed to read JSON in /var/fronius-battery/fronius-battery.json');
+
+    process.exit(1);
+  }
+
+  let {storageChargeWh, storageDisChargeWh} = status;
+
+  // #########################################################################
   // Init Modbus
   inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
   await inverter.open();
@@ -330,50 +345,101 @@ const handleRate = async function(capacity) {
   const froniusClient = new fronius.Client('http://192.168.6.11');
 
   froniusInterval = setInterval(async() => {
+    if(!inverter) {
+      logger.info('Reconnector Modbus inverter');
+      inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
+      await inverter.open();
+    }
+
     try {
-      const powerFlow = await froniusClient.powerFlow({format: 'json'});
+      const powerFlow                 = await froniusClient.powerFlow({format: 'json'});
+      const currentStorageChargeWh    = await inverter.readRegister('3_DCWH');
+      const currentStorageDisChargeWh = await inverter.readRegister('4_DCWH');
+      let   storageCharging;
+
+      if(currentStorageChargeWh && currentStorageDisChargeWh) {
+        throw new Error(`Storage is charging and discharging at the same time`);
+      }
+
+      if(currentStorageChargeWh) {
+        storageChargeWh = currentStorageChargeWh;
+        storageCharging = 1;
+      }
+      if(currentStorageDisChargeWh) {
+        storageDisChargeWh = currentStorageDisChargeWh;
+        storageCharging = -1;
+      }
 
       if(powerFlow) {
         // logger.info({powerFlow});
 
-        await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify(powerFlow));
+        await fsExtra.copyFile('/var/fronius-battery/fronius-battery.json', '/var/fronius-battery/fronius-battery.json.bak');
+        await fsExtra.writeJson('/var/fronius-battery/fronius-battery.json', {
+          storageChargeWh,
+          storageDisChargeWh,
+        }, {spaces: 2});
+
+        await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify({
+          ...powerFlow,
+          storageCharging,
+          storageChargeWh,
+          storageDisChargeWh,
+        }));
       }
     } catch(err) {
       logger.error(`Failed to read powerFlow: ${err.message}`);
+
+      if(err.message === 'Port Not Open') {
+        await inverter.close();
+        logger.info('inverter.closed');
+        inverter = undefined;
+      }
     }
   }, millisecond('10 seconds'));
 
-  // #########################################################################
-  // Handle SmartMeter
-  smartMeterInterval = setInterval(async() => {
-    let leistung;
-    let verbrauchW;
-    let einspeisungW;
-
-    try {
-      leistung     = await smartMeter.readRegister('W');
-      verbrauchW   = await smartMeter.readRegister('TotWhImp');
-      einspeisungW = await smartMeter.readRegister('TotWhExp');
-
-      // console.log({leistung, verbrauchW, einspeisungW});
-    } catch(err) {
-      logger.error(`Failed to read smartMeter: ${err.message}`);
-    }
-
-    try {
-      const SML = {
-        Leistung:    leistung,
-        Verbrauch:   verbrauchW / 1000,
-        Einspeisung: einspeisungW / 1000,
-      };
-
-      // console.log(SML);
-
-      await mqttClient.publish('tasmota/espstrom/tele/SENSOR', JSON.stringify({SML}));
-    } catch(err) {
-      logger.error(`Failed to publish smartMeter: ${err.message}`);
-    }
-  }, millisecond('5 seconds'));
+//  // #########################################################################
+//  // Handle SmartMeter
+//  smartMeterInterval = setInterval(async() => {
+//    if(!smartMeter) {
+//      logger.info('Reconnector Modbus smartMeter');
+//      smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
+//      await smartMeter.open();
+//    }
+//
+//    let leistung;
+//    let verbrauchW;
+//    let einspeisungW;
+//
+//    try {
+//      leistung      = await smartMeter.readRegister('W');
+//      verbrauchWh   = await smartMeter.readRegister('TotWhImp');
+//      einspeisungWh = await smartMeter.readRegister('TotWhExp');
+//
+//      // console.log({leistung, verbrauchW, einspeisungW});
+//    } catch(err) {
+//      logger.error(`Failed to read smartMeter: ${err.message}`);
+//
+//      if(err.message === 'Port Not Open') {
+//        await smartMeter.close();
+//        logger.info('smartMeter.closed');
+//        smartMeter = undefined;
+//      }
+//    }
+//
+//    try {
+//      const SML = {
+//        Leistung:    leistung,
+//        Verbrauch:   verbrauchWh / 1000,
+//        Einspeisung: einspeisungWh / 1000,
+//      };
+//
+//      // console.log(SML);
+//
+//      await mqttClient.publish('tasmota/espstrom/tele/SENSOR', JSON.stringify({SML}));
+//    } catch(err) {
+//      logger.error(`Failed to publish smartMeter: ${err.message}`);
+//    }
+//  }, millisecond('5 seconds'));
 
   // #########################################################################
   // Read battery capacity
