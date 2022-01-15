@@ -36,6 +36,7 @@ WORKDIR /source
 # ##############################################################################
 # Install and run speedtest
 # https://github.com/taganaka/SpeedTest
+# Note, there is another, similar test at https://www.speedtest.net/apps/cli & https://www.speedtest.net/apps/cli
 
 WORKDIR /build
 
