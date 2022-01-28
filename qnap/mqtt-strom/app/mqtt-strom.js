@@ -38,7 +38,6 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let now                           = dayjs();
-  let nowUtc                        = dayjs.utc();
   let lastTimestamp                 = null;
   let wallboxLaedt                  = false;
   let wallboxStrom                  = null;
@@ -53,7 +52,7 @@ process.on('SIGTERM', () => stopProcess());
   let spuelmaschineInterval;
   let waschmaschineInterval;
 
-  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+  const maxPvTimeUtc = dayjs.utc().clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
 
   // #########################################################################
   // Signal handling for debug
@@ -112,7 +111,6 @@ process.on('SIGTERM', () => stopProcess());
     const messageRaw   = messageBuffer.toString();
 
     now    = dayjs();
-    nowUtc = dayjs.utc();
 
     try {
       let message;
@@ -292,7 +290,8 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('spuelmaschineInterval');
 
-                  let triggerOn = false;
+                  const nowUtc = dayjs.utc();
+                  let   triggerOn = false;
 
                   if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
@@ -345,7 +344,8 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('waschmaschineInterval');
 
-                  let triggerOn = false;
+                  const nowUtc = dayjs.utc();
+                  let   triggerOn = false;
 
                   if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
