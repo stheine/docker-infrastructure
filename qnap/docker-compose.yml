@@ -10,7 +10,8 @@ version: "3.7"
 #  9001 mosquitto-websockets   websockets
 # 16095 uptime-kuma            http://192.168.6.7:16095/
 # 19725 zigbee-assistant       http://192.168.6.7:19725/
-# 31038 watchdog               http://192.168.6.7:31038
+# 31038 watchdog               http://192.168.6.7:31038/
+# 45458 node-red               http://192.168.6.7:45458/
 # 59080 nginx (http)           http://192.168.6.7:59080/     Freigabe in FritzBox
 # 59443 nginx (https)          https://192.168.6.7:59443/    Freigabe in FritzBox
 # 59154 gerbera-musik          http://192.168.6.7:59154/
@@ -187,6 +188,13 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/mosquitto/log
+      o: bind
+
+  node-red:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/node-red
       o: bind
 
   portainer:
@@ -508,6 +516,15 @@ services:
       - homer
       - mediawiki
       - vaultwarden
+
+  node-red:
+    restart: always
+    image: nodered/node-red
+    hostname: qnap-node-red
+    ports:
+      - 45458:1880
+    volumes:
+      - node-red:/data
 
   portainer:
     restart: always
