@@ -33,6 +33,7 @@ const {API_KEY, RESOURCE_ID} = config;
 let froniusInterval;
 let inverter;
 let lastLog;
+let lastRate;
 let mqttClient;
 let smartMeter;
 let smartMeterInterval;
@@ -117,7 +118,7 @@ const getSolcast = async function() {
 };
 
 const wattToRate = function({capacity, watt}) {
-  const rate = _.round(_.max([_.min([watt / capacity, 1]), 0]), 2);
+  const rate = _.max([_.min([watt / capacity, 1]), 0]);
 
   return rate;
 };
@@ -129,6 +130,7 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   let   highPvHours  = 0;
   let   limitPv      = 0;
   let   limitPvHours = 0;
+  let   note;
   let   rate;
   const now          = dayjs.utc();
   const maxPvTime    = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
@@ -165,30 +167,33 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   }
 
   if(chargeState < 10) {
-    rate = 1; // Make sure to always have a base load of 10%.
+    note = `Charge to min of 10% (is ${chargeState}%).`;
+    rate = 1;
   } else if(toCharge < 100) {
-    rate = wattToRate({capacity, watt: 1000}); // Charge the last few Wh with 1000W.
+    note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
+    rate = wattToRate({capacity, watt: 1000});
   } else if(dcPower > 5800) {
-    // PV over the limit. Charge what's over the limit.
-    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1]); // Charge-rate, based on dcPower, at least 1kW.
+    note = `PV (${dcPower}W) over the limit. Charge what's over the limit, at least 1kw.`;
+    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1]);
   } else if(limitPv && totalPv - limitPv > 2 * toCharge) {
-    // Limit expected for later and enough PV after the limit. Wait to reach limit.
+    note = `Limit expected for later and enough PV after the limit. Wait to reach limit.`;
     rate = 0;
   } else if(limitPv && limitPvHours > 2) {
-    // Long limit expected. Wait to reach limit.
+    note = `Long limit expected. Wait to reach limit.`;
     rate = 0;
   } else if(limitPv && highPvHours > 4) {
-    // Short limit expected and high PV. Wait to reach limit.
+    note = `Short limit expected and high PV. Wait to reach limit.`;
     rate = 0;
   } else if(highPv && highPvHours > toCharge / 2000) {
-    // High PV for enough hours to charge.
-    if(maxPvTime < now) {
-      rate = wattToRate({capacity, watt: 2000}); // After high PV. Charge 2000W.
-    } else {
+    if(now < maxPvTime) {
+      note = `High PV for enough hours to charge. Before high PV.`;
       rate = wattToRate({capacity, watt: 1000}); // Before high PV. Charge 1000W.
+    } else {
+      note = `High PV for enough hours to charge. After high PV.`;
+      rate = wattToRate({capacity, watt: 2000}); // After high PV. Charge 2000W.
     }
   } else if(totalPv > 3 * toCharge) {
-    // Sufficient for today, but won't even reach the high level.
+    note = `Sufficient for today, but won't even reach the high level.`;
     rate = 1; // Charge-rate 100%;
 
     // if(maxPvTime < now) {
@@ -197,7 +202,7 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
     //   rate = wattToRate({capacity, watt: 1000}); // Before high PV. Sufficient PV for battery charge. Charge 1000W.
     // }
   } else {
-    // Pretty low forecast for today
+    note = `Pretty low forecast for today.`;
     rate = 1; // Charge-rate 100%.
   }
 
@@ -205,7 +210,10 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   highPv  = _.round(highPv);
   limitPv = _.round(limitPv);
 
-  if(!lastLog || toCharge > 30 && dcPower > 10 && dayjs() - lastLog > millisecond('28 minutes')) {
+  if(!lastLog ||
+    (toCharge > 30 && dcPower > 10 && dayjs() - lastLog > millisecond('28 minutes')) ||
+    rate !== lastRate
+  ) {
     logger.debug('getBatteryRate', {
       toCharge:    `${toCharge}Wh`,
       chargeState: `${chargeState}%`,
@@ -215,10 +223,12 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
       highPvHours,
       limitPv,
       limitPvHours,
-      rate:        `${rate * 100}% (${capacity * rate}W)`,
+      note,
+      rate:        `${_.round(rate, 3) * 100}% (${capacity * rate}W)`,
     });
 
-    lastLog = dayjs();
+    lastLog  = dayjs();
+    lastRate = rate;
   }
 
   return rate;
@@ -271,7 +281,7 @@ const handleRate = async function(capacity) {
       throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
     }
     try {
-      setRate = rate * 100 * 100;
+      setRate = _.round(rate, 4) * 100 * 100;
 
       await inverter.writeRegister('InWRte', [setRate]); // rate% von 5120W => max Ladeleistung
     } catch(err) {
