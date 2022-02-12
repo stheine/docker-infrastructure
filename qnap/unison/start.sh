@@ -7,10 +7,10 @@
 ## Start rsyslogd
 #/usr/sbin/rsyslogd
 #
-#if [ $? != 0 ]; then echo "Failed to start rsyslog"; exit 1; fi
+#if [ $? != 0 ]; then echo "$(date +"%Y-%m-%d %H:%M:%S") Failed to start rsyslog"; exit 1; fi
 #
 #sleep 1
-## echo "rsyslog started"
+## echo "$(date +"%Y-%m-%d %H:%M:%S") rsyslog started"
 #
 ## Tail the log to the console so it's displayed in the docker logs
 #touch /var/log/messages
@@ -24,16 +24,16 @@ chmod 600 /root/.ssh/authorized_keys
 /usr/sbin/sshd -D &
 
 if [ $? != 0 ]; then
-  echo "Failed to start sshd"
+  echo "$(date +"%Y-%m-%d %H:%M:%S") Failed to start sshd"
   exit 1
 fi
 
 while [ ! -f /var/run/sshd.pid ]; do
-  echo "Waiting for sshd startup"
+  echo "$(date +"%Y-%m-%d %H:%M:%S") Waiting for sshd startup"
   sleep 1
 done
 
-echo "sshd started"
+echo "$(date +"%Y-%m-%d %H:%M:%S") sshd started"
 
 # Monitor the process
 while kill -0 "`cat /var/run/sshd.pid`"; do
