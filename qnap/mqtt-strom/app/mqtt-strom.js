@@ -52,8 +52,6 @@ process.on('SIGTERM', () => stopProcess());
   let spuelmaschineInterval;
   let waschmaschineInterval;
 
-  const maxPvTimeUtc = dayjs.utc().clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
-
   // #########################################################################
   // Signal handling for debug
   process.on('SIGHUP', () => {
@@ -290,8 +288,9 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('spuelmaschineInterval');
 
-                  const nowUtc = dayjs.utc();
-                  let   triggerOn = false;
+                  const nowUtc       = dayjs.utc();
+                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+                  let   triggerOn    = false;
 
                   if(zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
@@ -344,7 +343,8 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('waschmaschineInterval');
 
-                  const nowUtc = dayjs.utc();
+                  const nowUtc       = dayjs.utc();
+                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
                   let   triggerOn = false;
 
                   if(zaehlerLeistung < -1000) {
