@@ -137,14 +137,7 @@ process.on('SIGTERM', () => stopProcess());
               (!reportedLeerung || dayjs(reportedLeerung).isBefore(twoDaysAgo))
             ) {
               try {
-                const transport = nodemailer.createTransport({
-                  host:   'postfix',
-                  port:   25,
-                  secure: false,
-                  tls:    {rejectUnauthorized: false},
-                });
-
-                await transport.sendMail({
+                await sendMail({
                   to:      'stefan@heine7.de',
                   subject: 'Asche leeren',
                   html:
@@ -188,14 +181,7 @@ process.on('SIGTERM', () => stopProcess());
               vorrat < 30
             ) {
               try {
-                const transport = nodemailer.createTransport({
-                  host:   'postfix',
-                  port:   25,
-                  secure: false,
-                  tls:    {rejectUnauthorized: false},
-                });
-
-                await transport.sendMail({
+                await sendMail({
                   to:      'stefan@heine7.de',
                   subject: 'Speicher bald leer',
                   html:
@@ -229,14 +215,7 @@ process.on('SIGTERM', () => stopProcess());
             (!reportedZeit || dayjs(reportedZeit).isBefore(twoDaysAgo))
           ) {
             try {
-              const transport = nodemailer.createTransport({
-                host:   'postfix',
-                port:   25,
-                secure: false,
-                tls:    {rejectUnauthorized: false},
-              });
-
-              await transport.sendMail({
+              await sendMail({
                 to:      'stefan@heine7.de',
                 subject: 'Vito Uhrzeit falsch',
                 html:
