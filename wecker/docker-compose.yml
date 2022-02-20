@@ -8,6 +8,13 @@ volumes:
       device: /docker-data/portainer
       o: bind
 
+  postfix_creds:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/postfix_creds
+      o: bind
+
   wecker:
     driver: local
     driver_opts:
@@ -29,16 +36,29 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer:/data:nocopy
 
+  postfix:
+    restart: always
+    build: postfix
+    hostname: pi-postfix
+    ports:
+      - "25:25"
+    networks:
+      - backend
+    volumes:
+      - postfix_creds:/postfix_creds:nocopy
+
   watchdog:
     restart: always
     build: watchdog
-    hostname: pi-jalousie-watchdog
+    hostname: pi-wecker-watchdog
     volumes:
       - ./watchdog/app:/app
     networks:
       - backend
     ports:
       - 31038:31038
+    links:
+      - postfix
 
   wecker:
     restart: always
