@@ -20,12 +20,15 @@ import utc               from 'dayjs/plugin/utc.js';
 import config            from '/var/fronius-battery/config.js';
 import FroniusClient     from './fronius-client.js';
 import logger            from './logger.js';
+import {sendMail}        from './mail.js';
 import sunspecInverter   from './sunspec_map_inverter.js';
 import sunspecSmartMeter from './sunspec_map_smart_meter.js';
 
 dayjs.extend(utc);
 
 const {API_KEY, RESOURCE_ID} = config;
+
+const dcLimit = 5500; // Actual limit is 5775, but I start with a little tolerance.
 
 // ###########################################################################
 // Globals
@@ -118,14 +121,23 @@ const getSolcast = async function() {
 };
 
 const wattToRate = function({capacity, watt}) {
+  if(!capacity) {
+    return 0;
+  }
+
   const rate = _.max([_.min([watt / capacity, 1]), 0]);
 
   return rate;
 };
 
 const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
+  if(!capacity) {
+    return 0;
+  }
+
   const toCharge     = _.round(capacity * (100 - chargeState) / 100);
   let   totalPv      = 0;
+  let   totalPvHours = 0;
   let   highPv       = 0;
   let   highPvHours  = 0;
   let   limitPv      = 0;
@@ -134,13 +146,19 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   let   rate;
   const now          = dayjs.utc();
   const maxPvTime    = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+  const midnightTime = now.clone().hour(24).minute(0).second(0);
 
   // Note, the pv_estimate is given in kw. Multiply 1000 to get watt.
-  for(const forecast of _.slice(solcast, 0, 24)) { // Check the next 12 hours
+  for(const forecast of solcast) {
     const {period_end} = forecast;
+    const period_end_date = Date.parse(period_end);
 
-    if(Date.parse(period_end) < Date.now()) {
+    if(period_end_date < Date.now()) {
       // Already passed
+      continue;
+    }
+    if(period_end_date > midnightTime) {
+      // Tomorrow
       continue;
     }
 
@@ -152,14 +170,15 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
 
     if(pv_estimate) {
       // Estimate is for 30 minute period
-      totalPv += pv_estimate / 2;
+      totalPv      += pv_estimate / 2;
+      totalPvHours += 1 / 2;
     }
     if(pv_estimate > 3000) {
       // Estimate is for 30 minute period
       highPv      += pv_estimate / 2;
       highPvHours += 1 / 2;
     }
-    if(pv_estimate > 5800) {
+    if(pv_estimate > dcLimit) {
       // Estimate is for 30 minute period
       limitPv      += pv_estimate / 2;
       limitPvHours += 1 / 2;
@@ -172,9 +191,22 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   } else if(toCharge < 100) {
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
-  } else if(dcPower > 5800) {
-    note = `PV (${dcPower}W) over the limit. Charge what's over the limit, at least 1kw.`;
-    rate = _.max([wattToRate({capacity, watt: dcPower - 5800}), 1]);
+  } else if(dcPower > dcLimit) {
+    if(limitPvHours > 1 || highPvHours > 4) {
+      note = `PV (${dcPower}W) over the limit and good forecast. Charge what's over the limit, at least 500W.`;
+      rate = _.max([wattToRate({capacity, watt: dcPower - dcLimit}), wattToRate({capacity, watt: 500})]);
+    } else if(totalPv > 3 * toCharge) {
+      if(now < maxPvTime) {
+        note = `PV (${dcPower}W) over the limit and sufficient for today. Before high PV.`;
+        rate = wattToRate({capacity, watt: 1000});
+      } else {
+        note = `PV (${dcPower}W) over the limit and sufficient for today. After high PV.`;
+        rate = wattToRate({capacity, watt: 2000});
+      }
+    } else {
+      note = `PV (${dcPower}W) over the limit but low forecast. Charge max.`;
+      rate = 1;
+    }
   } else if(limitPv && totalPv - limitPv > 2 * toCharge) {
     note = `Limit expected for later and enough PV after the limit. Wait to reach limit.`;
     rate = 0;
@@ -187,44 +219,35 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   } else if(highPv && highPvHours > toCharge / 2000) {
     if(now < maxPvTime) {
       note = `High PV for enough hours to charge. Before high PV.`;
-      rate = wattToRate({capacity, watt: 1000}); // Before high PV. Charge 1000W.
+      rate = wattToRate({capacity, watt: 1000});
     } else {
       note = `High PV for enough hours to charge. After high PV.`;
-      rate = wattToRate({capacity, watt: 2000}); // After high PV. Charge 2000W.
+      rate = wattToRate({capacity, watt: 2000});
     }
   } else if(totalPv > 3 * toCharge) {
-    note = `Sufficient for today, but won't even reach the high level.`;
-    rate = 1; // Charge-rate 100%;
-
-    // if(maxPvTime < now) {
-    //   rate = wattToRate({capacity, watt: 2500}); // After high PV. Sufficient PV for battery charge. Charge 2500W.
-    // } else {
-    //   rate = wattToRate({capacity, watt: 1000}); // Before high PV. Sufficient PV for battery charge. Charge 1000W.
-    // }
+    note = `Sufficient for today, but won't reach the limit level.`;
+    rate = 0.4; // Charge-rate 40%;
   } else {
-    note = `Pretty low forecast for today.`;
+    note = `Pretty low forecast for today. Charge max.`;
     rate = 1; // Charge-rate 100%.
   }
-
-  totalPv = _.round(totalPv);
-  highPv  = _.round(highPv);
-  limitPv = _.round(limitPv);
 
   if(!lastLog ||
     (toCharge > 30 && dcPower > 10 && dayjs() - lastLog > millisecond('28 minutes')) ||
     rate !== lastRate
   ) {
     logger.debug('getBatteryRate', {
-      toCharge:    `${toCharge}Wh`,
-      chargeState: `${chargeState}%`,
-      dcPower:     `${dcPower}W`,
-      totalPv,
-      highPv,
+      toCharge:     `${toCharge}Wh`,
+      chargeState:  `${chargeState}%`,
+      dcPower:      `${dcPower}W`,
+      totalPv:      _.round(totalPv),
+      totalPvHours,
+      highPv:       _.round(highPv),
       highPvHours,
-      limitPv,
+      limitPv:      _.round(limitPv),
       limitPvHours,
       note,
-      rate:        `${_.round(rate, 3) * 100}% (${capacity * rate}W)`,
+      rate:         `${_.round(rate, 3) * 100}% (${capacity * rate}W)`,
     });
 
     lastLog  = dayjs();
@@ -460,7 +483,11 @@ const handleRate = async function(capacity) {
   } catch(err) {
     logger.error(`Failed to read battery capacity: ${err.message}`);
 
-    throw new Error('Init failed');
+    await sendMail({
+      to:      'technik@heine7.de',
+      subject: 'Fronius Solar Batterie Fehler',
+      html:    err.message,
+    });
   }
 
   // #########################################################################
@@ -472,6 +499,20 @@ const handleRate = async function(capacity) {
 
   cron.schedule(schedule, async() => {
     // logger.info(`--------------------- Cron ----------------------`);
+
+    if(!capacity) {
+      try {
+        capacity = await inverter.readRegister('WHRtg');
+
+        await sendMail({
+          to:      'technik@heine7.de',
+          subject: 'Fronius Solar Batterie ok',
+          html:    `Batterie ${capacity} ok`,
+        });
+      } catch{
+        logger.error(`Failed to read battery capacity: ${err.message}`);
+      }
+    }
 
     await handleRate(capacity);
   });
