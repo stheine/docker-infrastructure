@@ -103,7 +103,7 @@ process.on('SIGTERM', () => stopProcess());
           const solar    = _.find(message, {observedBy: 'solar/1'});
           const {storageCharging, storageChargeWh, storageDisChargeWh} = message;
 
-          const updates = {storageCharging, storageChargeWh, storageDisChargeWh};
+          const updates = {storageCharging: storageCharging || 0, storageChargeWh, storageDisChargeWh};
 
           if(battery) {
             if(battery.powerIncoming && battery.powerOutgoing) {

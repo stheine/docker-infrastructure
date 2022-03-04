@@ -30,7 +30,7 @@ export default async function rrdUpdate(rrdFile, rrdUpdates) {
       if(err.message.includes('ERROR: could not lock RRD')) {
         logger.error('rrdtool.update() could not lock RRD', rrdFile);
       } else {
-        logger.error('rrdtool.update() execa error:', err.message);
+        logger.error('rrdtool.update() execa error:', err.message.replace(/^(RRDtool|Usage| {17}).*$/gm, '').replace(/\n/g, ''));
       }
     }
   });
