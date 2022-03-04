@@ -216,12 +216,15 @@ process.on('SIGTERM', () => stopProcess());
           'json',
         ]));
 
-        logger.debug(stdout);
+        // logger.debug(stdout);
         const results = JSON.parse(stdout);
 
         ({download, upload} = results);
 
-        logger.info('speedtest', {download, upload});
+        logger.info('speedtest', {
+          download: _.round(download / 1024 / 1024),
+          upload:   _.round(upload   / 1024 / 1024),
+        });
       } catch(err) {
         logger.error(err.message);
       }

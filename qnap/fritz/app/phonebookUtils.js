@@ -81,7 +81,7 @@ export const resolve = function({logger, number, phonebook}) {
   }
 
   if(name) {
-    logger.info(`Resolved '${number}' to '${name}'`);
+    // logger.info(`Resolved '${number}' to '${name}'`);
   }
 
   return name;
