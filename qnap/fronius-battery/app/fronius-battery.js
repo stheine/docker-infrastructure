@@ -4,7 +4,7 @@
 
 import fs                from 'fs/promises';
 
-// const {setTimeout: delay} = require('timers/promises');
+import {setTimeout as delay} from 'timers/promises';
 
 import _                 from 'lodash';
 import check             from 'check-types-2';
@@ -12,9 +12,10 @@ import cron              from 'node-cron';
 import dayjs             from 'dayjs';
 import fronius           from 'fronius';
 import fsExtra           from 'fs-extra';
-import millisecond       from 'millisecond';
+import ms                from 'ms';
 import mqtt              from 'async-mqtt';
 import needle            from 'needle';
+import Ringbuffer        from '@stheine/ringbufferjs';
 import utc               from 'dayjs/plugin/utc.js';
 
 import config            from '/var/fronius-battery/config.js';
@@ -28,18 +29,25 @@ dayjs.extend(utc);
 
 const {API_KEY, RESOURCE_ID} = config;
 
-const dcLimit = 5500; // Actual limit is 5775, but I start with a little tolerance.
+const dcLimit = 5750;
 
 // ###########################################################################
 // Globals
 
+let dcPowers = new Ringbuffer(10);
+let einspeisungen = new Ringbuffer(60);
 let froniusInterval;
+let garageLeistung = 0;
 let inverter;
 let lastLog;
 let lastRate;
+let momentanLeistung = 0;
 let mqttClient;
 let smartMeter;
 let smartMeterInterval;
+
+dcPowers.enq(0);
+einspeisungen.enq(0);
 
 // ###########################################################################
 // Process handling
@@ -97,7 +105,7 @@ const getSolcast = async function() {
     cacheAge = null;
   }
 
-  if(cacheAge && cacheAge < millisecond('30 minutes')) {
+  if(cacheAge && cacheAge < ms('30 minutes')) {
     solcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
   } else {
     // logger.info('Refresh solcast cache');
@@ -130,22 +138,25 @@ const wattToRate = function({capacity, watt}) {
   return rate;
 };
 
-const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
+const getBatteryRate = function({capacity, chargeState, log, solcast}) {
   if(!capacity) {
     return 0;
   }
 
-  const toCharge     = _.round(capacity * (100 - chargeState) / 100);
-  let   totalPv      = 0;
-  let   totalPvHours = 0;
-  let   highPv       = 0;
-  let   highPvHours  = 0;
-  let   limitPv      = 0;
-  let   limitPvHours = 0;
+  const maxDcPower      = _.max(dcPowers.dump());
+  const maxEinspeisung  = _.max(einspeisungen.dump());
+  const toCharge        = _.round(capacity * (100 - chargeState) / 100);
+  let   totalPv         = 0;
+  let   totalPvHours    = 0;
+  let   highPv          = 0;
+  let   highPvHours     = 0;
+  const highPvEstimates = [];
+  let   limitPv         = 0;
+  let   limitPvHours    = 0;
   let   note;
   let   rate;
   const now          = dayjs.utc();
-  const maxPvTime    = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+  const maxSunTime   = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
   const midnightTime = now.clone().hour(24).minute(0).second(0);
 
   // Note, the pv_estimate is given in kw. Multiply 1000 to get watt.
@@ -162,25 +173,26 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
       continue;
     }
 
-    let {pv_estimate} = forecast;
+    let {pv_estimate90: estimate} = forecast;
 
-    pv_estimate *= 1000; // kW to watt
+    estimate *= 1000; // kW to watt
 
-    // console.log({pv_estimate});
+    // console.log({estimate});
 
-    if(pv_estimate) {
+    if(estimate) {
       // Estimate is for 30 minute period
-      totalPv      += pv_estimate / 2;
+      totalPv      += estimate / 2;
       totalPvHours += 1 / 2;
     }
-    if(pv_estimate > 3000) {
+    if(estimate > 3000) {
       // Estimate is for 30 minute period
-      highPv      += pv_estimate / 2;
+      highPv      += estimate / 2;
       highPvHours += 1 / 2;
+      highPvEstimates.push(_.round(estimate));
     }
-    if(pv_estimate > dcLimit) {
+    if(estimate > dcLimit) {
       // Estimate is for 30 minute period
-      limitPv      += pv_estimate / 2;
+      limitPv      += estimate / 2;
       limitPvHours += 1 / 2;
     }
   }
@@ -191,22 +203,25 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   } else if(toCharge < 100) {
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
-  } else if(dcPower > dcLimit) {
+  } else if(maxDcPower + garageLeistung > dcLimit) {
     if(limitPvHours > 1 || highPvHours > 4) {
-      note = `PV (${dcPower}W) over the limit and good forecast. Charge what's over the limit, at least 500W.`;
-      rate = _.max([wattToRate({capacity, watt: dcPower - dcLimit}), wattToRate({capacity, watt: 500})]);
+      note = `PV (${maxDcPower}W + ${garageLeistung}W) over the limit and good forecast. Charge what's over the limit minus momentanLeistung, min 100W.`;
+      rate = wattToRate({capacity, watt: _.max([100, maxDcPower + garageLeistung + 100 - momentanLeistung - dcLimit])});
     } else if(totalPv > 3 * toCharge) {
-      if(now < maxPvTime) {
-        note = `PV (${dcPower}W) over the limit and sufficient for today. Before high PV.`;
-        rate = wattToRate({capacity, watt: 1000});
+      if(now < maxSunTime) {
+        note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
+        rate = wattToRate({capacity, watt: _.max([500, toCharge / highPvHours])});
       } else {
-        note = `PV (${dcPower}W) over the limit and sufficient for today. After high PV.`;
-        rate = wattToRate({capacity, watt: 2000});
+        note = `PV (${maxDcPower}W) over the limit and sufficient for today. After max sun.`;
+        rate = wattToRate({capacity, watt: _.max([1000, toCharge / highPvHours])});
       }
     } else {
-      note = `PV (${dcPower}W) over the limit but low forecast. Charge max.`;
+      note = `PV (${maxDcPower}W) over the limit but low forecast. Charge max.`;
       rate = 1;
     }
+  } else if(maxEinspeisung > 5700) {
+    note = `PV Einspeisung (${maxEinspeisung}W) close to the limit. Charge 500W.`;
+    rate = wattToRate({capacity, watt: 500});
   } else if(limitPv && totalPv - limitPv > 2 * toCharge) {
     note = `Limit expected for later and enough PV after the limit. Wait to reach limit.`;
     rate = 0;
@@ -214,15 +229,15 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
     note = `Long limit expected. Wait to reach limit.`;
     rate = 0;
   } else if(limitPv && highPvHours > 4) {
-    note = `Short limit expected and high PV. Wait to reach limit.`;
+    note = `Short limit expected and max sun. Wait to reach limit.`;
     rate = 0;
   } else if(highPv && highPvHours > toCharge / 2000) {
-    if(now < maxPvTime) {
-      note = `High PV for enough hours to charge. Before high PV.`;
-      rate = wattToRate({capacity, watt: 1000});
+    if(now < maxSunTime) {
+      note = `High PV for enough hours to charge. Before max sun.`;
+      rate = wattToRate({capacity, watt: _.max([500, toCharge / highPvHours])});
     } else {
-      note = `High PV for enough hours to charge. After high PV.`;
-      rate = wattToRate({capacity, watt: 2000});
+      note = `High PV for enough hours to charge. After max sun.`;
+      rate = wattToRate({capacity, watt: _.max([1000, toCharge / highPvHours])});
     }
   } else if(totalPv > 3 * toCharge) {
     note = `Sufficient for today, but won't reach the limit level.`;
@@ -232,22 +247,27 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
     rate = 1; // Charge-rate 100%.
   }
 
-  if(!lastLog ||
-    (toCharge > 30 && dcPower > 10 && dayjs() - lastLog > millisecond('28 minutes')) ||
+  if(log ||
+    !lastLog ||
+    (toCharge > 30 && maxDcPower > 10 && dayjs() - lastLog > ms('28 minutes')) ||
     rate !== lastRate
   ) {
     logger.debug('getBatteryRate', {
-      toCharge:     `${toCharge}Wh`,
-      chargeState:  `${chargeState}%`,
-      dcPower:      `${dcPower}W`,
-      totalPv:      _.round(totalPv),
+      toCharge:         `${toCharge}Wh`,
+      chargeState:      `${chargeState}%`,
+      maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
+      garageLeistung,
+      momentanLeistung: _.round(momentanLeistung),
+      maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
+      totalPv:          _.round(totalPv),
       totalPvHours,
-      highPv:       _.round(highPv),
+      highPv:           _.round(highPv),
       highPvHours,
-      limitPv:      _.round(limitPv),
+      highPvEstimates:  highPvEstimates.join(','),
+      limitPv:          _.round(limitPv),
       limitPvHours,
       note,
-      rate:         `${_.round(rate, 3) * 100}% (${capacity * rate}W)`,
+      rate:             `${_.round(rate * 100, 1)}% (${_.round(capacity * rate)}W)`,
     });
 
     lastLog  = dayjs();
@@ -257,7 +277,7 @@ const getBatteryRate = function({capacity, chargeState, dcPower, solcast}) {
   return rate;
 };
 
-const handleRate = async function(capacity) {
+const handleRate = async function({capacity, log = false}) {
   try {
     try {
       // Sanity check
@@ -281,11 +301,13 @@ const handleRate = async function(capacity) {
     try {
       chargeState = _.round(await inverter.readRegister('ChaState'), 1);
       dcPower     = _.round(await inverter.readRegister('1_DCW') + await inverter.readRegister('2_DCW'));
+
+      dcPowers.enq(dcPower);
     } catch(err) {
       throw new Error(`Failed getting battery state: ${err.message}`);
     }
     try {
-      rate        = getBatteryRate({capacity, chargeState, dcPower, solcast});
+      rate        = getBatteryRate({capacity, chargeState, log, solcast});
     } catch(err) {
       throw new Error(`Failed getting battery rate: ${err.message}`);
     }
@@ -304,7 +326,7 @@ const handleRate = async function(capacity) {
       throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
     }
     try {
-      setRate = _.round(rate, 4) * 100 * 100;
+      setRate = _.round(rate * 100 * 100);
 
       await inverter.writeRegister('InWRte', [setRate]); // rate% von 5120W => max Ladeleistung
     } catch(err) {
@@ -374,6 +396,49 @@ const handleRate = async function(capacity) {
   mqttClient.on('end',        ()  => logger.info('mqtt.end'));
 
   // #########################################################################
+  // Handle Stromzähler data
+  mqttClient.on('message', async(topic, messageBuffer) => {
+    const messageRaw = messageBuffer.toString();
+
+    try {
+      const message = JSON.parse(messageRaw);
+
+      switch(topic) {
+        case 'strom/tele/SENSOR':
+          ({momentanLeistung} = message);
+
+          break;
+
+        case 'tasmota/espstrom/tele/SENSOR': {
+          const zaehlerEinspeisung = -message.SML.Leistung;
+
+          // logger.debug({zaehlerEinspeisung});
+
+          einspeisungen.enq(zaehlerEinspeisung);
+          break;
+        }
+
+        case 'tasmota/solar/tele/SENSOR': {
+          garageLeistung = message.ENERGY.Power;
+
+          // logger.debug({garageLeistung});
+          break;
+        }
+
+        default:
+          logger.error(`Unhandled topic '${topic}'`, message);
+          break;
+      }
+    } catch(err) {
+      logger.eror('mqtt handler failed', {topic, messageRaw, errMessage: err.message});
+    }
+  });
+
+  await mqttClient.subscribe('strom/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
+
+  // #########################################################################
   // Handle Fronius data
   const froniusClient = new fronius.Client('http://192.168.6.11');
 
@@ -428,7 +493,7 @@ const handleRate = async function(capacity) {
         inverter = undefined;
       }
     }
-  }, millisecond('10 seconds'));
+  }, ms('10 seconds'));
 
 //  // #########################################################################
 //  // Handle SmartMeter
@@ -472,7 +537,7 @@ const handleRate = async function(capacity) {
 //    } catch(err) {
 //      logger.error(`Failed to publish smartMeter: ${err.message}`);
 //    }
-//  }, millisecond('5 seconds'));
+//  }, ms('5 seconds'));
 
   // #########################################################################
   // Read battery capacity
@@ -492,10 +557,12 @@ const handleRate = async function(capacity) {
 
   // #########################################################################
   // Handle charge-rate once and scheduled
-  await handleRate(capacity);
+  await delay(ms('10 seconds')); // Await mqtt report cycle
+
+  await handleRate({capacity});
 
   //                s min h d m wd
-  const schedule = '0 */5 * * * *'; // Every 5 minutes
+  const schedule = '0 * * * * *'; // Every minute
 
   cron.schedule(schedule, async() => {
     // logger.info(`--------------------- Cron ----------------------`);
@@ -514,6 +581,8 @@ const handleRate = async function(capacity) {
       }
     }
 
-    await handleRate(capacity);
+    await handleRate({capacity});
   });
+
+  process.on('SIGHUP', () => handleRate({capacity, log: true}));
 })();
