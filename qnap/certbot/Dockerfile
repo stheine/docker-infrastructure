@@ -62,7 +62,7 @@ COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 RUN \
   apt-get install -y \
     cron && \
-  echo '0 10 1,6,11,16,21,26,31 * * /renew.sh' | /usr/bin/crontab -
+  echo '0 10 1,6,11,16,21,26,31 * * /renew.sh >/proc/1/fd/1 2>/proc/1/fd/2\n@reboot /renew.sh >/proc/1/fd/1 2>/proc/1/fd/2' | /usr/bin/crontab -
 
 CMD ["/usr/sbin/cron", "-f"]
 # CMD ["/bin/bash", "-l"]
