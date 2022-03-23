@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
+import fsPromises from 'fs/promises';
+
 import _          from 'lodash';
-import fsExtra    from 'fs-extra';
 import dayjs      from 'dayjs';
+import fsExtra    from 'fs-extra';
 import mqtt       from 'async-mqtt';
 import utc        from 'dayjs/plugin/utc.js';
 import timezone   from 'dayjs/plugin/timezone.js';
@@ -116,7 +118,7 @@ process.on('SIGTERM', () => stopProcess());
               logger.error(`Failed to send error mail: ${err.message}`);
             }
 
-            await fsExtra.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
+            await fsPromises.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
           }
 
           if(Number(brennerVerbrauch) !== letzterBrennerVerbrauch) {
@@ -124,7 +126,7 @@ process.on('SIGTERM', () => stopProcess());
 
             // Check Asche Verbrauch - Leerung noetig?
             // brennerVerbrauch: 30290
-            const leerungenRaw = await fsExtra.readFile('/var/vito/_ascheGeleert.log', 'utf8');
+            const leerungenRaw = await fsPromises.readFile('/var/vito/_ascheGeleert.log', 'utf8');
             const leerungen     = leerungenRaw.split('\n');
             const letzteLeerung = _.last(_.compact(leerungen));
             const letzteLeerungVerbrauch = letzteLeerung.split(' ')[1];
@@ -163,7 +165,7 @@ process.on('SIGTERM', () => stopProcess());
 
             // Check Asche Verbrauch - Speicher leer?
             // brennerVerbrauch: 30290
-            const speicherRaw = await fsExtra.readFile('/var/vito/_pelletsSpeicher.log', 'utf8');
+            const speicherRaw = await fsPromises.readFile('/var/vito/_pelletsSpeicher.log', 'utf8');
             const speicher    = _.compact(speicherRaw.split('\n'));
             const gesamt      = _.reduce(speicher, (summe, line) => {
               const fuellung    = Number(line.split(' ')[1]);
@@ -237,7 +239,7 @@ process.on('SIGTERM', () => stopProcess());
             reportedFehlerDateTime,
             reportedLeerung,
             reportedSpeicher,
-            reportedZeit
+            reportedZeit,
           }, {spaces: 2});
           break;
         }

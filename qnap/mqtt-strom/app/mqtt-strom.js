@@ -2,11 +2,13 @@
 
 /* eslint-disable unicorn/no-lonely-if */
 
+import fsPromises  from 'fs/promises';
+
 import _           from 'lodash';
 import dayjs       from 'dayjs';
 import fsExtra     from 'fs-extra';
-import millisecond from 'millisecond';
 import mqtt        from 'async-mqtt';
+import ms          from 'ms';
 import utc         from 'dayjs/plugin/utc.js';
 
 import logger      from './logger.js';
@@ -157,7 +159,7 @@ process.on('SIGTERM', () => stopProcess());
           await mqttClient.publish(`tasmota/espstrom/cmnd/LedPower1`, '1');
           setTimeout(async() => {
             await mqttClient.publish(`tasmota/espstrom/cmnd/LedPower1`, '0');
-          }, millisecond('0.1 seconds'));
+          }, ms('0.1 seconds'));
 
           // {SML: {Einspeisung, Verbrauch, Leistung}}
           zaehlerLeistung = message.SML.Leistung;
@@ -206,7 +208,7 @@ process.on('SIGTERM', () => stopProcess());
 
           lastTimestamp = now;
 
-          await fsExtra.copyFile('/var/strom/strom.json', '/var/strom/strom.json.bak');
+          await fsPromises.copyFile('/var/strom/strom.json', '/var/strom/strom.json.bak');
           await fsExtra.writeJson('/var/strom/strom.json', {
             gesamtEinspeisung,
             verbrauchHaus,
@@ -306,7 +308,7 @@ process.on('SIGTERM', () => stopProcess());
                   if(triggerOn) {
                     await mqttClient.publish(`tasmota/spuelmaschine/cmnd/POWER`, 'ON');
                   }
-                }, millisecond('5 minutes'));
+                }, ms('5 minutes'));
               }
               break;
 
@@ -361,7 +363,7 @@ process.on('SIGTERM', () => stopProcess());
                   if(triggerOn) {
                     await mqttClient.publish(`tasmota/waschmaschine/cmnd/POWER`, 'ON');
                   }
-                }, millisecond('5 minutes'));
+                }, ms('5 minutes'));
               }
               break;
 

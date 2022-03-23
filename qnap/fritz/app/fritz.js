@@ -6,8 +6,8 @@ import _                        from 'lodash';
 import {CallMonitor, EventKind} from 'fritz-callmonitor';
 import {execa}                  from 'execa';
 import Fritzbox                 from 'tr-064-async';
-import millisecond              from 'millisecond';
 import mqtt                     from 'async-mqtt';
+import ms                       from 'ms';
 
 import logger                   from './logger.js';
 import {refresh, resolve}       from './phonebookUtils.js';
@@ -140,7 +140,7 @@ process.on('SIGTERM', () => stopProcess());
     if(refreshResult) {
       phonebook = refreshResult;
     }
-  }, millisecond('1 hour'));
+  }, ms('1 hour'));
 
   stateInterval = setInterval(async() => {
     let   service;
@@ -197,7 +197,7 @@ process.on('SIGTERM', () => stopProcess());
     if(mqttClient) {
       await mqttClient.publish(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
     }
-  }, millisecond('20 seconds'));
+  }, ms('20 seconds'));
 
   // #########################################################################
   // Speedtest
@@ -237,7 +237,7 @@ process.on('SIGTERM', () => stopProcess());
     }
   };
 
-  speedtestInterval = setInterval(speedtest, millisecond('6 hours'));
+  speedtestInterval = setInterval(speedtest, ms('6 hours'));
 
   speedtest();
 })();

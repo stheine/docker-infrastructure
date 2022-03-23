@@ -3,13 +3,14 @@
 /* eslint-disable camelcase */
 /* eslint-disable unicorn/no-useless-spread */
 
-import _         from 'lodash';
-import fsExtra   from 'fs-extra';
-import graphviz  from 'graphviz';
-import mqtt      from 'async-mqtt';
+import fsPromises from 'fs/promises';
 
-import logger    from './logger.js';
-import rrdUpdate from './rrdtool.js';
+import _          from 'lodash';
+import graphviz   from 'graphviz';
+import mqtt       from 'async-mqtt';
+
+import logger     from './logger.js';
+import rrdUpdate  from './rrdtool.js';
 
 // ###########################################################################
 // Globals
@@ -371,7 +372,7 @@ process.on('SIGTERM', () => stopProcess());
               temperatureOutside: message.tempAussen,
             },
           };
-          await fsExtra.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
+          await fsPromises.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
           break;
         }
 
@@ -424,7 +425,7 @@ process.on('SIGTERM', () => stopProcess());
           await new Promise(resolve => {
             graphviz.parse(messageRaw, graph => {
               graph.render('png', async render => {
-                await fsExtra.writeFile('/var/www/zigbee/map.png', render);
+                await fsPromises.writeFile('/var/www/zigbee/map.png', render);
 
                 logger.info('Updated map at https://heine7.de/zigbee/map.png');
 

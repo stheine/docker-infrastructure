@@ -2,11 +2,12 @@
 
 /* eslint-disable camelcase */
 
-import fs                from 'fs/promises';
+import fsPromises        from 'fs/promises';
 
 import {setTimeout as delay} from 'timers/promises';
 
 import _                 from 'lodash';
+import axios             from 'axios';
 import check             from 'check-types-2';
 import cron              from 'node-cron';
 import dayjs             from 'dayjs';
@@ -14,7 +15,6 @@ import fronius           from 'fronius';
 import fsExtra           from 'fs-extra';
 import ms                from 'ms';
 import mqtt              from 'async-mqtt';
-import needle            from 'needle';
 import Ringbuffer        from '@stheine/ringbufferjs';
 import utc               from 'dayjs/plugin/utc.js';
 
@@ -96,9 +96,9 @@ const getSolcast = async function() {
   let solcast;
 
   try {
-    await fs.access('/var/fronius-battery/solcast-cache.json');
+    await fsPromises.access('/var/fronius-battery/solcast-cache.json');
 
-    const stats = await fs.stat('/var/fronius-battery/solcast-cache.json');
+    const stats = await fsPromises.stat('/var/fronius-battery/solcast-cache.json');
 
     cacheAge = stats ? Date.now() - stats.mtime : null;
   } catch {
@@ -110,14 +110,14 @@ const getSolcast = async function() {
   } else {
     // logger.info('Refresh solcast cache');
 
-    const response = await needle('get',
+    const response = await axios.get(
       `https://api.solcast.com.au/rooftop_sites/${RESOURCE_ID}/forecasts?hours=24`,
       {
         headers: {Authorization: `Bearer ${API_KEY}`},
         json:    true,
       });
 
-    solcast = response.body;
+    solcast = response.data;
 
     await fsExtra.writeJson('/var/fronius-battery/solcast-cache.json', solcast, {spaces: 2});
   }
@@ -179,7 +179,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
 
     // console.log({estimate});
 
-    if(estimate) {
+    if(estimate > 500) {
       // Estimate is for 30 minute period
       totalPv      += estimate / 2;
       totalPvHours += 1 / 2;
@@ -346,6 +346,12 @@ const handleRate = async function({capacity, log = false}) {
     // logger.info('Battery Charge Rate (InWRte)', await inverter.readRegister('InWRte'));
   } catch(err) {
     logger.error(`Failed to handle battery rate: ${err.message}`);
+
+    await sendMail({
+      to:      'technik@heine7.de',
+      subject: 'Fronius Solar Fehler, handleRate()',
+      html:    err.message,
+    });
   }
 };
 
@@ -374,11 +380,28 @@ const handleRate = async function({capacity, log = false}) {
 
   // #########################################################################
   // Init Modbus
-  inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
-  await inverter.open();
+  try {
+    inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
+    await inverter.open();
 
-  smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
-  await smartMeter.open();
+    smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
+    await smartMeter.open();
+  } catch(err) {
+    logger.error(`Failed to open inverter`);
+
+    await sendMail({
+      to:      'technik@heine7.de',
+      subject: 'Fronius Solar Fehler, startup',
+      html:    err.message,
+    });
+
+
+    await delay(ms('10 seconds')); // Delay shutdown
+
+    await stopProcess();
+
+    return;
+  }
 
   // #########################################################################
   // Init MQTT
@@ -471,7 +494,7 @@ const handleRate = async function({capacity, log = false}) {
       if(powerFlow) {
         // logger.info({powerFlow});
 
-        await fsExtra.copyFile('/var/fronius-battery/fronius-battery.json', '/var/fronius-battery/fronius-battery.json.bak');
+        await fsPromises.copyFile('/var/fronius-battery/fronius-battery.json', '/var/fronius-battery/fronius-battery.json.bak');
         await fsExtra.writeJson('/var/fronius-battery/fronius-battery.json', {
           storageChargeWh,
           storageDisChargeWh,
@@ -486,6 +509,12 @@ const handleRate = async function({capacity, log = false}) {
       }
     } catch(err) {
       logger.error(`Failed to read powerFlow: ${err.message}`);
+
+      await sendMail({
+        to:      'technik@heine7.de',
+        subject: 'Fronius Solar Fehler, froniusInterval()',
+        html:    err.message,
+      });
 
       if(err.message === 'Port Not Open') {
         await inverter.close();
