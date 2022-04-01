@@ -200,6 +200,9 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
   if(chargeState < 10) {
     note = `Charge to min of 10% (is ${chargeState}%).`;
     rate = 1;
+  } else if(chargeState > 95 && _.inRange(dayjs().format('M'), 3, 11))  {
+    note = `March to October, limit to 95%.`;
+    rate = 0;
   } else if(toCharge < 100) {
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
@@ -318,12 +321,14 @@ const handleRate = async function({capacity, log = false}) {
     try {
       await inverter.writeRegister('StorCtl_Mod', [1]); // Bit0 enable charge control, Bit1 enable discharge control
     } catch(err) {
-      throw new Error(`Failed writing battery charge control: ${err.message}`);
+      logger.warn(`Failed writing battery charge control: ${err.message}`);
+      // throw new Error(`Failed writing battery charge control: ${err.message}`);
     }
     try {
       await inverter.writeRegister('InOutWRte_RvrtTms', [3900]); // Timeout for (dis)charge rate in seconds
     } catch(err) {
-      throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
+      logger.warn(`Failed writing battery charge rate timeout: ${err.message}`);
+      // throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
     }
     try {
       setRate = _.round(rate * 100 * 100);
@@ -479,6 +484,7 @@ const handleRate = async function({capacity, log = false}) {
       let   storageCharging;
 
       if(currentStorageChargeWh && currentStorageDisChargeWh) {
+        logger.warn('Storage is charging and discharging at the same time', {currentStorageChargeWh, currentStorageDisChargeWh, powerFlow});
         throw new Error(`Storage is charging and discharging at the same time`);
       }
 
@@ -522,7 +528,7 @@ const handleRate = async function({capacity, log = false}) {
         inverter = undefined;
       }
     }
-  }, ms('10 seconds'));
+  }, ms('1 minute'));
 
 //  // #########################################################################
 //  // Handle SmartMeter
