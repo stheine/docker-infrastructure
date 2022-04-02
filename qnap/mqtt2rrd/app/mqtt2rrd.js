@@ -98,15 +98,13 @@ process.on('SIGTERM', () => stopProcess());
         case 'Fronius/solar/tele/SENSOR': {
           const file = '/var/strom/fronius.rrd';
 
-          const battery  = _.find(message, {observedBy: 'battery/1'});
-          const inverter = _.find(message, {observedBy: 'inverter/1'});
-          const meter    = _.find(message, {observedBy: 'meter/grid'});
-          const solar    = _.find(message, {observedBy: 'solar/1'});
-          const {storageCharging, storageChargeWh, storageDisChargeWh} = message;
-
-          const updates = {storageCharging: storageCharging || 0, storageChargeWh, storageDisChargeWh};
+          const {battery, inverter, meter, solar} = message;
+          const updates = {};
 
           if(battery) {
+            updates.storageChargeWh    = battery.storageChargeWh;
+            updates.storageDisChargeWh = battery.storageDisChargeWh;
+
             if(battery.powerIncoming && battery.powerOutgoing) {
               logger.warn('battery.powerIncoming && powerOutgoing', battery);
             } else {
@@ -129,8 +127,8 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
           if(solar) {
-            if(solar.powerIncoming) {
-              logger.warn('solar.powerIncoming', solar);
+            if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
+              logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
             } else {
               updates.solar = solar.powerOutgoing;
             }

@@ -221,10 +221,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Fronius/solar/tele/SENSOR': {
-          const battery  = _.find(message, {observedBy: 'battery/1'});
-          const inverter = _.find(message, {observedBy: 'inverter/1'});
-          const meter    = _.find(message, {observedBy: 'meter/grid'});
-          const solar    = _.find(message, {observedBy: 'solar/1'});
+          const {battery, inverter, meter, solar} = message;
 
           if(battery) {
             if(battery.powerIncoming && battery.powerOutgoing) {
@@ -232,9 +229,6 @@ process.on('SIGTERM', () => stopProcess());
               batteryLeistung = null;
             } else {
               batteryLeistung = battery.powerIncoming;
-            }
-            if(battery.stateOfCharge < 0 || battery.stateOfCharge > 1) {
-              logger.warn('battery.stateOfCharge', battery);
             }
           }
           if(inverter) {
@@ -246,17 +240,8 @@ process.on('SIGTERM', () => stopProcess());
               inverterLeistung = inverter.powerOutgoing || -inverter.powerIncoming;
             }
           }
-          if(meter) {
-            // logger.debug({meter});
-            if(meter.powerIncoming && meter.powerOutgoing) {
-              logger.warn('meter.powerIncoming && powerOutgoing', meter);
-            }
-          }
           if(solar) {
-            if(solar.powerIncoming) {
-              logger.warn('solar.powerIncoming', solar);
-              solarDachLeistung = null;
-            } else if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
+            if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
               logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
               solarDachLeistung = null;
             } else {

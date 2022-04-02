@@ -396,7 +396,7 @@ const handleRate = async function({capacity, log = false}) {
     smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
     await smartMeter.open();
   } catch(err) {
-    logger.error(`Failed to open inverter`);
+    logger.error(`Failed to open inverter or smartMeter`);
 
     await sendMail({
       to:      'technik@heine7.de',
@@ -472,54 +472,57 @@ const handleRate = async function({capacity, log = false}) {
 
   // #########################################################################
   // Handle Fronius data
-  const froniusClient = new fronius.Client('http://192.168.6.11');
-
   froniusInterval = setInterval(async() => {
     if(!inverter) {
       logger.info('Reconnector Modbus inverter');
       inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
       await inverter.open();
     }
+    if(!smartMeter) {
+      smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
+      await smartMeter.open();
+    }
 
     try {
-      const powerFlow = await froniusClient.powerFlow({format: 'json'});
-      const results   = await inverter.readRegisters(['3_DCWH', '4_DCWH']);
-      const currentStorageChargeWh    = results['3_DCWH'];
-      const currentStorageDisChargeWh = results['4_DCWH'];
-      let   storageCharging;
+      const resultsSmartMeter = await smartMeter.readRegisters(['W']);
+      const resultsMppt       = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW', '3_DCWH', '4_DCWH']);
+      const resultsInverter   = await inverter.readRegisters(['W']);
 
-      if(currentStorageChargeWh && currentStorageDisChargeWh) {
-        logger.warn('Storage is charging and discharging at the same time', {currentStorageChargeWh, currentStorageDisChargeWh, powerFlow});
-        throw new Error(`Storage is charging and discharging at the same time`);
+      if(resultsMppt['3_DCWH']) {
+        storageChargeWh = resultsMppt['3_DCWH'];
+      }
+      if(resultsMppt['4_DCWH']) {
+        storageDisChargeWh = resultsMppt['4_DCWH'];
       }
 
-      if(currentStorageChargeWh) {
-        storageChargeWh = currentStorageChargeWh;
-        storageCharging = 1;
-      }
-      if(currentStorageDisChargeWh) {
-        storageDisChargeWh = currentStorageDisChargeWh;
-        storageCharging = -1;
-      }
+      await fsPromises.copyFile('/var/fronius-battery/fronius-battery.json', '/var/fronius-battery/fronius-battery.json.bak');
+      await fsExtra.writeJson('/var/fronius-battery/fronius-battery.json', {
+        storageChargeWh,
+        storageDisChargeWh,
+      }, {spaces: 2});
 
-      if(powerFlow) {
-        // logger.info({powerFlow});
-
-        await fsPromises.copyFile('/var/fronius-battery/fronius-battery.json', '/var/fronius-battery/fronius-battery.json.bak');
-        await fsExtra.writeJson('/var/fronius-battery/fronius-battery.json', {
+      await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify({
+        battery: {
+          powerIncoming:      resultsMppt['3_DCW'],
+          powerOutgoing:      resultsMppt['4_DCW'],
+          stateOfCharge:      resultsMppt.ChaState / 100,
           storageChargeWh,
           storageDisChargeWh,
-        }, {spaces: 2});
-
-        await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify({
-          ...powerFlow,
-          storageCharging,
-          storageChargeWh,
-          storageDisChargeWh,
-        }));
-      }
+        },
+        meter: {
+          powerIncoming: resultsSmartMeter.W > 0 ?  resultsSmartMeter.W : 0,
+          powerOutgoing: resultsSmartMeter.W < 0 ? -resultsSmartMeter.W : 0,
+        },
+        inverter: {
+          powerIncoming: resultsInverter.W < 0 ? -resultsInverter.W : 0,
+          powerOutgoing: resultsInverter.W > 0 ?  resultsInverter.W : 0,
+        },
+        solar: {
+          powerOutgoing: resultsMppt['1_DCW'] + resultsMppt['2_DCW'],
+        },
+      }));
     } catch(err) {
-      logger.error(`Failed to read powerFlow: ${err.message}`);
+      logger.error(`froniusInterval(), failed to read data: ${err.message}`);
 
       await sendMail({
         to:      'technik@heine7.de',
@@ -529,8 +532,10 @@ const handleRate = async function({capacity, log = false}) {
 
       if(err.message === 'Port Not Open') {
         await inverter.close();
-        logger.info('inverter.closed');
         inverter = undefined;
+        await smartMeter.close();
+        smartMeter = undefined;
+        logger.info('inverter and smartMeter closed');
       }
     }
   }, ms('1 minute'));
