@@ -154,12 +154,12 @@ class FroniusClient {
       dataOffset = 0;
       dataEnd    = readLen * 2;
 
-      // console.log({dataStart: dataSpec.start, dataEnd: dataSpec.end, readAddr, readEnd});
+      // console.log({dataStart: dataSpec.start, dataEnd: dataSpec.end, readAddr, readLen});
     }
 
     const registerData = await this.client.readHoldingRegisters(readAddr, readLen);
 
-    // console.log('readHoldingRegister', {readAddr, readLen, dataEnd, registerData});
+    // console.log('readHoldingRegisters', {readAddr, readLen, dataEnd, registerData});
 
     const dataBuffer  = registerData.buffer.slice(dataOffset, dataEnd + 1);
     const scaleBuffer = dataSpec.scale ? registerData.buffer.slice(scaleOffset, scaleEnd + 1) : null;
@@ -178,6 +178,73 @@ class FroniusClient {
     }
 
     return value;
+  }
+
+  async readRegisters(names) {
+    check.assert.object(this.client, 'open() missing');
+
+    const specs = _.map(names, name => this.findSpec(name));
+
+    for(const {scale} of _.filter(specs, spec => Boolean(spec.scale))) {
+      const spec = this.findSpec(scale);
+
+      check.assert.equal(spec.type, 'sunssf', `Unexpected type ${spec.type} for scale ${scale}`);
+
+      specs.push(spec);
+    }
+
+    const minStart = _.min(_.map(specs, 'start'));
+    const maxEnd   = _.max(_.map(specs, 'end'));
+
+    const readAddr = minStart - 1;
+    const readLen  = maxEnd - minStart + 1;
+
+    // logger.debug({specs, minStart, maxEnd});
+    // logger.debug('readHoldingRegisters', {readAddr, readLen});
+
+    const registerData = await this.client.readHoldingRegisters(readAddr, readLen);
+
+    // logger.debug('readHoldingRegisters', {readAddr, readLen, registerData});
+
+    return _.omitBy(_.mapValues(_.keyBy(specs, 'name'), (spec, name) => {
+      if(spec.type === 'sunssf') {
+        return;
+      }
+
+      const dataStart  = (spec.start - readAddr - 1) * 2;
+      const dataEnd    = dataStart + (spec.end - spec.start) * 2;
+
+      const dataBuffer  = registerData.buffer.slice(dataStart, dataEnd + 2);
+      let   value;
+
+      if(spec.scale) {
+        const scaleSpec = _.find(specs, {name: spec.scale});
+
+        check.assert.object(scaleSpec, `Missing scaleSpec for ${spec.scale}`);
+
+        const scaleStart  = (scaleSpec.start - readAddr - 1) * 2;
+        const scaleEnd    = scaleStart + (scaleSpec.end - scaleSpec.start) * 2;
+
+        const scaleBuffer  = registerData.buffer.slice(scaleStart, scaleEnd + 2);
+
+        value = convertData({name, dataBuffer, scaleBuffer, spec});
+      } else {
+        value = convertData({name, dataBuffer, spec});
+      }
+      // logger.debug(`${spec.name} ${spec.type}`, value);
+      // logger.debug({name, dataStart, dataEnd, dataLength, dataBuffer});
+
+      if(spec.expect) {
+        check.assert.equal(value, spec.expect,
+          `Mismatch ${spec.name}, expected '${spec.expect}', received '${value}'`);
+      }
+
+      if(Buffer.isBuffer(value)) {
+        logger.info(`Unhandled ${spec.name} ${spec.type}`, value);
+      }
+
+      return value;
+    }), _.isUndefined);
   }
 
   async writeRegister(name, values) {

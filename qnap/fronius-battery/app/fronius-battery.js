@@ -282,12 +282,12 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
 
 const handleRate = async function({capacity, log = false}) {
   try {
-    try {
-      // Sanity check
-      await inverter.readRegister('Mn');
-    } catch(err) {
-      throw new Error(`Failed sanity check: ${err.message}`);
-    }
+    // try {
+    //   // Sanity check
+    //   await inverter.readRegister('Mn');
+    // } catch(err) {
+    //   throw new Error(`Failed sanity check: ${err.message}`);
+    // }
 
     // Get charge rate
     let solcast;
@@ -302,8 +302,9 @@ const handleRate = async function({capacity, log = false}) {
       throw new Error(`Failed getting solcast: ${err.message}`);
     }
     try {
-      chargeState = _.round(await inverter.readRegister('ChaState'), 1);
-      dcPower     = _.round(await inverter.readRegister('1_DCW') + await inverter.readRegister('2_DCW'));
+      const results = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW']);
+      chargeState = _.round(results.ChaState, 1);
+      dcPower     = _.round(results['1_DCW'] + results['2_DCW']);
 
       dcPowers.enq(dcPower);
     } catch(err) {
@@ -340,15 +341,18 @@ const handleRate = async function({capacity, log = false}) {
     // await inverter.writeRegister('OutWRte', [10000]); // 0% nicht entladen
 
     // Display current charge rate
-    // logger.info('Inverter Status (StVnd)', await inverter.readRegister('StVnd'));
-    // logger.info('Inverter Power (VA)', await inverter.readRegister('VA'));
+    // const results = _.merge({},
+    //   await inverter.readRegisters(['StVnd', 'VA']),
+    //   await inverter.readRegisters(['ChaSt', 'ChaState', 'StorCtl_Mod', 'InOutWRte_RvrtTms', 'InWRte']));
+    // logger.info('Inverter Status (StVnd)', results.StVnd);
+    // logger.info('Inverter Power (VA)', results.VA);
 
-    // logger.info('Battery State (ChaSt)', await inverter.readRegister('ChaSt'));
-    // logger.info('Battery Percent (ChaState)', await inverter.readRegister('ChaState'));
+    // logger.info('Battery State (ChaSt)', results.ChaSt);
+    // logger.info('Battery Percent (ChaState)', results.ChaState);
 
-    // logger.info('Battery Control (StorCtl_Mod)', await inverter.readRegister('StorCtl_Mod'));
-    // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', await inverter.readRegister('InOutWRte_RvrtTms'));
-    // logger.info('Battery Charge Rate (InWRte)', await inverter.readRegister('InWRte'));
+    // logger.info('Battery Control (StorCtl_Mod)', results.StorCtl_Mod);
+    // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', results.InOutWRte_RvrtTms);
+    // logger.info('Battery Charge Rate (InWRte)', results.InWRte);
   } catch(err) {
     logger.error(`Failed to handle battery rate: ${err.message}`);
 
@@ -478,9 +482,10 @@ const handleRate = async function({capacity, log = false}) {
     }
 
     try {
-      const powerFlow                 = await froniusClient.powerFlow({format: 'json'});
-      const currentStorageChargeWh    = await inverter.readRegister('3_DCWH');
-      const currentStorageDisChargeWh = await inverter.readRegister('4_DCWH');
+      const powerFlow = await froniusClient.powerFlow({format: 'json'});
+      const results   = await inverter.readRegisters(['3_DCWH', '4_DCWH']);
+      const currentStorageChargeWh    = results['3_DCWH'];
+      const currentStorageDisChargeWh = results['4_DCWH'];
       let   storageCharging;
 
       if(currentStorageChargeWh && currentStorageDisChargeWh) {
@@ -544,9 +549,11 @@ const handleRate = async function({capacity, log = false}) {
 //    let einspeisungW;
 //
 //    try {
-//      leistung      = await smartMeter.readRegister('W');
-//      verbrauchWh   = await smartMeter.readRegister('TotWhImp');
-//      einspeisungWh = await smartMeter.readRegister('TotWhExp');
+//      const results = await smartMeter.readRegisters(['W', 'TotWhImp', 'TotWhExp']);
+//
+//      leistung      = results.W;
+//      verbrauchWh   = results.TotWhImp;
+//      einspeisungWh = results.TotWhExp;
 //
 //      // console.log({leistung, verbrauchW, einspeisungW});
 //    } catch(err) {
