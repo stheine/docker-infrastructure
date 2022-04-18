@@ -69,44 +69,67 @@ process.on('SIGTERM', () => stopProcess());
 
     // Gets called on every phone event
     switch(data.kind) {
-      case EventKind.Call: // 0
+      case EventKind.Call: { // 0
+        const {callee, caller, connectionId, extension} = data;
+        const calleeName = resolve({logger, phonebook, number: callee});
+
+        logger.info(`call ${calleeName} (${callee})`);
+
         topic = 'FritzBox/callMonitor/call';
         payload = {
-          callee:       data.callee,
-          calleeName:   resolve({logger, phonebook, number: data.callee}),
-          caller:       data.caller,
-          connectionId: data.connectionId,
-          extension:    data.extension,
+          callee,
+          calleeName,
+          caller,
+          connectionId,
+          extension,
         };
         break;
+      }
 
-      case EventKind.Ring: // 1
+      case EventKind.Ring: { // 1
+        const {callee, caller, connectionId} = data;
+        const callerName = resolve({logger, phonebook, number: caller});
+
+        logger.info(`ring ${callerName} (${caller})`);
+
         topic = 'FritzBox/callMonitor/ring';
         payload = {
-          caller:       data.caller,
-          callee:       data.callee,
-          callerName:   resolve({logger, phonebook, number: data.caller}),
-          connectionId: data.connectionId,
+          callee,
+          callerName,
+          caller,
+          connectionId,
         };
         break;
+      }
 
-      case EventKind.PickUp: // 2
+      case EventKind.PickUp: { // 2
+        const {phoneNumber: callee, caller, connectionId, extension} = data;
+        const calleeName = resolve({logger, phonebook, number: callee});
+
+        logger.info(`pickUp ${calleeName} (callee=${callee} caller=${caller})`);
+
         topic = 'FritzBox/callMonitor/pickUp';
         payload = {
-          extension:    data.extension,
-          callee:       data.phoneNumber,
-          calleeName:   resolve({logger, phonebook, number: data.phoneNumber}),
-          connectionId: data.connectionId,
+          callee,
+          calleeName,
+          connectionId,
+          extension,
         };
         break;
+      }
 
-      case EventKind.HangUp: // 4
+      case EventKind.HangUp: { // 4
+        const {callDuration, connectionId} = data;
+
+        logger.info(`hangUp ${callDuration}s`);
+
         topic = 'FritzBox/callMonitor/hangUp';
         payload = {
-          callDuration: data.callDuration,
-          connectionId: data.connectionId,
+          callDuration,
+          connectionId,
         };
         break;
+      }
 
       default:
         logger.error(`Unhandled EventKind=${data.kind}`);
@@ -114,7 +137,7 @@ process.on('SIGTERM', () => stopProcess());
         return;
     }
 
-    logger.info('Publish to mqtt', {topic, payload});
+    // logger.info('Publish to mqtt', {topic, payload});
 
     if(mqttClient) {
       await mqttClient.publish(topic, JSON.stringify(payload));
