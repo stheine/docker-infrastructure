@@ -65,14 +65,14 @@ process.on('SIGTERM', () => stopProcess());
       }
 
       switch(topic) {
-        case 'esp32-wasser/zaehlerstand': {
+        case 'esp32-wasser/zaehlerstand/json': {
           const file = '/var/jalousie/wasser.rrd';
 
           files.push(file);
           update[file] = {
             ...update[file],
             ...{
-              zaehlerstand: message,
+              zaehlerstand: message.value,
             },
           };
           break;
@@ -449,7 +449,7 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  await mqttClient.subscribe('esp32-wasser/zaehlerstand');
+  await mqttClient.subscribe('esp32-wasser/zaehlerstand/json');
   await mqttClient.subscribe('FritzBox/tele/SENSOR');
   await mqttClient.subscribe('FritzBox/speedtest/result');
   await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
