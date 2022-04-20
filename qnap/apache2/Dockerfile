@@ -1,4 +1,4 @@
-FROM httpd:2.4-buster
+FROM httpd:2.4-bullseye
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -43,7 +43,7 @@ RUN \
     libpng-dev \
     libxml2-dev \
     make
-ARG RRDTOOL_VERSION=1.7.2
+ARG RRDTOOL_VERSION=1.8.0
 RUN \
   wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
   tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
