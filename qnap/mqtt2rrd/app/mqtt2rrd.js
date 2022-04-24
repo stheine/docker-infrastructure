@@ -212,12 +212,6 @@ process.on('SIGTERM', () => stopProcess());
           if(message.verbrauchHaus) {
             set.verbrauchHaus = message.verbrauchHaus;
           }
-          if(message.verbrauchBeiSonne) {
-            set.verbrauchBeiSonne = message.verbrauchBeiSonne;
-          }
-          if(message.verbrauchImDunkeln) {
-            set.verbrauchImDunkeln = message.verbrauchImDunkeln;
-          }
 
           files.push(file);
           update[file] = {
@@ -304,20 +298,6 @@ process.on('SIGTERM', () => stopProcess());
               },
             };
           }
-          break;
-        }
-
-        case 'tasmota/solar/tele/SENSOR': {
-          const file = '/var/strom/solar.rrd';
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              power:             message.ENERGY.Power,
-              total:             message.ENERGY.Total,
-            },
-          };
           break;
         }
 
@@ -461,7 +441,6 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espco2klein/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wind/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');

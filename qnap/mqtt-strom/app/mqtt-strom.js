@@ -49,7 +49,6 @@ process.on('SIGTERM', () => stopProcess());
   let inverterLeistung              = null;
   let momentanLeistung              = null;
   let solarDachLeistung             = null;
-  let solarGarageLeistung           = null;
   let zaehlerLeistung               = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
@@ -59,7 +58,6 @@ process.on('SIGTERM', () => stopProcess());
   process.on('SIGHUP', () => {
     logger.debug('Dump', {
       solarDachLeistung,
-      solarGarageLeistung,
       inverterLeistung,
       batteryLeistung,
       zaehlerLeistung,
@@ -85,12 +83,10 @@ process.on('SIGTERM', () => stopProcess());
     process.exit(1);
   }
 
-  let {gesamtEinspeisung, verbrauchHaus, verbrauchBeiSonne, verbrauchImDunkeln} = status;
+  let {gesamtEinspeisung, verbrauchHaus} = status;
 
-  gesamtEinspeisung  = gesamtEinspeisung  || 0;
-  verbrauchHaus      = verbrauchHaus      || 0;
-  verbrauchBeiSonne  = verbrauchBeiSonne  || 0;
-  verbrauchImDunkeln = verbrauchImDunkeln || 0;
+  gesamtEinspeisung  = gesamtEinspeisung || 0;
+  verbrauchHaus      = verbrauchHaus     || 0;
 
   // #########################################################################
   // Init MQTT
@@ -125,8 +121,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'tasmota/espstrom/tele/SENSOR': {
           if(batteryLeistung === null ||
             inverterLeistung === null ||
-            solarDachLeistung === null ||
-            solarGarageLeistung === null
+            solarDachLeistung === null
           ) {
             return;
           }
@@ -164,12 +159,12 @@ process.on('SIGTERM', () => stopProcess());
           // {SML: {Einspeisung, Verbrauch, Leistung}}
           zaehlerLeistung = message.SML.Leistung;
 
-          momentanLeistung = zaehlerLeistung + inverterLeistung + solarGarageLeistung;
+          momentanLeistung = zaehlerLeistung + inverterLeistung;
           const payload = {
             momentanLeistung,
           };
 
-          // logger.debug({zaehlerLeistung, inverterLeistung, solarGarageLeistung, batteryLeistung, momentanLeistung});
+          // logger.debug({zaehlerLeistung, inverterLeistung, batteryLeistung, momentanLeistung});
 
           if(lastTimestamp !== null) {
             // Verbrauch in Haus
@@ -188,22 +183,8 @@ process.on('SIGTERM', () => stopProcess());
               await mqttClient.publish(`Wallbox/evse/current_limit`, JSON.stringify({current: wallboxStrom}));
             }
 
-            if(solarGarageLeistung > 200) {
-              // Verbrauch bei Sonne (> 200W)
-              // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
-              verbrauchBeiSonne +=
-                Math.max(momentanLeistung, 0) * (now - lastTimestamp) / 1000 / 3600 / 1000; // kWh
-            } else {
-              // Verbrauch im Dunkeln
-              // Leistung (W)                 * differenzSeitLetzterMessung (ms)  (s)    (h)    (k)
-              verbrauchImDunkeln +=
-                Math.max(momentanLeistung, 0) * (now - lastTimestamp) / 1000 / 3600 / 1000; // kWh
-            }
-
             payload.gesamtEinspeisung  = gesamtEinspeisung;
             payload.verbrauchHaus      = verbrauchHaus;
-            payload.verbrauchBeiSonne  = verbrauchBeiSonne;
-            payload.verbrauchImDunkeln = verbrauchImDunkeln;
           }
 
           lastTimestamp = now;
@@ -212,8 +193,6 @@ process.on('SIGTERM', () => stopProcess());
           await fsExtra.writeJson('/var/strom/strom.json', {
             gesamtEinspeisung,
             verbrauchHaus,
-            verbrauchBeiSonne,
-            verbrauchImDunkeln,
           }, {spaces: 2});
 
           await mqttClient.publish(`strom/tele/SENSOR`, JSON.stringify(payload));
@@ -250,15 +229,6 @@ process.on('SIGTERM', () => stopProcess());
           }
           break;
         }
-
-        case 'tasmota/solar/tele/SENSOR':
-          if(message.ENERGY.Power < 0 || message.ENERGY.Power > 800) {
-            logger.warn(`Ungültige Solarleistung Garage ${message.ENERGY.Power}`);
-            solarGarageLeistung = null;
-          } else {
-            solarGarageLeistung = message.ENERGY.Power;
-          }
-          break;
 
         case 'tasmota/spuelmaschine/stat/POWER':
           switch(messageRaw) {
@@ -463,7 +433,6 @@ process.on('SIGTERM', () => stopProcess());
 
   await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
   await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
   await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');
   await mqttClient.subscribe('Wallbox/evse/state');

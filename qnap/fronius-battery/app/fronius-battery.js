@@ -37,7 +37,6 @@ const dcLimit = 5750;
 let dcPowers = new Ringbuffer(10);
 let einspeisungen = new Ringbuffer(60);
 let froniusInterval;
-let garageLeistung = 0;
 let inverter;
 let lastLog;
 let lastRate;
@@ -206,10 +205,10 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
   } else if(toCharge < 100) {
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
-  } else if(maxDcPower + garageLeistung > dcLimit) {
+  } else if(maxDcPower > dcLimit) {
     if(limitPvHours > 1 || highPvHours > 4) {
-      note = `PV (${maxDcPower}W + ${garageLeistung}W) over the limit and good forecast. Charge what's over the limit minus momentanLeistung, min 100W.`;
-      rate = wattToRate({capacity, watt: _.max([100, maxDcPower + garageLeistung + 100 - momentanLeistung - dcLimit])});
+      note = `PV (${maxDcPower}W) over the limit and good forecast. Charge what's over the limit minus momentanLeistung, min 100W.`;
+      rate = wattToRate({capacity, watt: _.max([100, maxDcPower + 100 - momentanLeistung - dcLimit])});
     } else if(totalPv > 3 * toCharge) {
       if(now < maxSunTime) {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
@@ -259,7 +258,6 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
       toCharge:         `${toCharge}Wh`,
       chargeState:      `${chargeState}%`,
       maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
-      garageLeistung,
       momentanLeistung: _.round(momentanLeistung),
       maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
       totalPv:          _.round(totalPv),
@@ -450,13 +448,6 @@ const handleRate = async function({capacity, log = false}) {
           break;
         }
 
-        case 'tasmota/solar/tele/SENSOR': {
-          garageLeistung = message.ENERGY.Power;
-
-          // logger.debug({garageLeistung});
-          break;
-        }
-
         default:
           logger.error(`Unhandled topic '${topic}'`, message);
           break;
@@ -468,7 +459,6 @@ const handleRate = async function({capacity, log = false}) {
 
   await mqttClient.subscribe('strom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/solar/tele/SENSOR');
 
   // #########################################################################
   // Handle Fronius data
