@@ -16,7 +16,9 @@ export default async function rrdUpdate(rrdFile, rrdUpdates) {
       `N:${_.values(rrdUpdates).join(':')}`,
     ];
 
-    // logger.info('rrdtool.update', {cmd, params});
+//    if(rrdFile === '/var/wasser/wasser.rrd') {
+//      logger.info('rrdtool.update', {cmd, params});
+//    }
 
     try {
       const {stderr, stdout} = await execa(cmd, params);
@@ -30,7 +32,7 @@ export default async function rrdUpdate(rrdFile, rrdUpdates) {
       if(err.message.includes('ERROR: could not lock RRD')) {
         logger.error('rrdtool.update() could not lock RRD', rrdFile);
       } else {
-        logger.error('rrdtool.update() execa error:', err.message.replace(/^(RRDtool|Usage| {17}).*$/gm, '').replace(/\n/g, ''));
+        logger.error(`rrdtool.update() execa error: ${err.message.replace(/^(RRDtool|Usage| {17}).*$/gm, '').replace(/\n/g, '')}`, {rrdFile, rrdUpdates});
       }
     }
   });
