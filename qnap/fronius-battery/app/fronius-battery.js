@@ -239,7 +239,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
       rate = wattToRate({capacity, watt: _.max([500, toCharge / highPvHours])});
     } else {
       note = `High PV for enough hours to charge. After max sun.`;
-      rate = wattToRate({capacity, watt: _.max([1000, toCharge / highPvHours])});
+      rate = wattToRate({capacity, watt: _.max([1000, toCharge / highPvHours * 2])});
     }
   } else if(totalPv > 3 * toCharge) {
     note = `Sufficient for today, but won't reach the limit level.`;
