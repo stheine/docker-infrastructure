@@ -260,6 +260,13 @@ volumes:
       device: /share/linux/data/vmail
       o: bind
 
+  wasser:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/wasser
+      o: bind
+
   www:
     driver: local
     driver_opts:
@@ -288,6 +295,7 @@ services:
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
+      - wasser:/var/wasser
       - www:/var/www
       - www_auth:/var/www_auth
       - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
@@ -475,6 +483,7 @@ services:
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
+      - wasser:/var/wasser
       - www:/var/www
 
   mqtt-strom:

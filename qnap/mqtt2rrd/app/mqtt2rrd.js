@@ -66,15 +66,19 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'esp32-wasser/zaehlerstand/json': {
-          const file = '/var/jalousie/wasser.rrd';
+          if(message.value) {
+            const file = '/var/wasser/wasser.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              zaehlerstand: message.value,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                zaehlerstand: message.value,
+              },
+            };
+          } else {
+            logger.error('wasser', {topic, message, messageRaw});
+          }
           break;
         }
 
