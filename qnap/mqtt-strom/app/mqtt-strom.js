@@ -16,6 +16,8 @@ import {sendMail}  from './mail.js';
 
 dayjs.extend(utc);
 
+const dcLimit = 5750;
+
 // ###########################################################################
 // Globals
 
@@ -46,12 +48,15 @@ process.on('SIGTERM', () => stopProcess());
   let lastWallboxErrorMailTimestamp = null;
   let lastWallboxStateMailTimestamp = null;
   let batteryLeistung               = null;
+  let batteryLevel                  = null;
   let inverterLeistung              = null;
   let momentanLeistung              = null;
   let solarDachLeistung             = null;
   let zaehlerLeistung               = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
+  let solcastForecasts              = [];
+  let solcastLimitPvHours           = 0;
 
   // #########################################################################
   // Signal handling for debug
@@ -60,6 +65,7 @@ process.on('SIGTERM', () => stopProcess());
       solarDachLeistung,
       inverterLeistung,
       batteryLeistung,
+      batteryLevel,
       zaehlerLeistung,
       momentanLeistung,
     });
@@ -120,6 +126,7 @@ process.on('SIGTERM', () => stopProcess());
       switch(topic) {
         case 'tasmota/espstrom/tele/SENSOR': {
           if(batteryLeistung === null ||
+            batteryLevel === null ||
             inverterLeistung === null ||
             solarDachLeistung === null
           ) {
@@ -209,6 +216,7 @@ process.on('SIGTERM', () => stopProcess());
             } else {
               batteryLeistung = battery.powerIncoming;
             }
+            batteryLevel = battery.stateOfCharge;
           }
           if(inverter) {
             // logger.debug({inverter});
@@ -230,6 +238,40 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'solcast/forecasts': {
+          solcastForecasts = message;
+
+          const now          = dayjs.utc();
+          const midnightTime = now.clone().hour(24).minute(0).second(0);
+          let   limitPvHours;
+
+          for(const forecast of solcastForecasts) {
+            const {period_end} = forecast;
+            const period_end_date = Date.parse(period_end);
+
+            if(period_end_date < Date.now()) {
+              // Already passed
+              continue;
+            }
+            if(period_end_date > midnightTime) {
+              // Tomorrow
+              continue;
+            }
+
+            let {pv_estimate90: estimate} = forecast;
+
+            estimate *= 1000; // kW to watt
+
+            if(estimate > dcLimit) {
+              // Estimate is for 30 minute period
+              limitPvHours += 1 / 2;
+            }
+          }
+
+          solcastLimitPvHours = limitPvHours;
+          break;
+        }
+
         case 'tasmota/spuelmaschine/stat/POWER':
           switch(messageRaw) {
             case 'OFF':
@@ -239,7 +281,7 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
 
                 spuelmaschineInterval = setInterval(async() => {
-                  if(zaehlerLeistung === null || batteryLeistung === null) {
+                  if(zaehlerLeistung === null || batteryLeistung === null || batteryLevel === null) {
                     return;
                   }
 
@@ -249,11 +291,11 @@ process.on('SIGTERM', () => stopProcess());
                   const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
                   let   triggerOn    = false;
 
-                  if(zaehlerLeistung < -1000) {
+                  if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
-                  } else if(batteryLeistung > 1000) {
-                    logger.info(`Battery (${batteryLeistung}W). Trigger Spülmaschine.`);
+                  } else if(batteryLeistung > 800 || batteryLevel > 0.7) {
+                    logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxPvTimeUtc) {
                     logger.info(`Max sun. Trigger Spülmaschine.`);
@@ -294,7 +336,7 @@ process.on('SIGTERM', () => stopProcess());
                 await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
 
                 waschmaschineInterval = setInterval(async() => {
-                  if(zaehlerLeistung === null || batteryLeistung === null) {
+                  if(zaehlerLeistung === null || batteryLeistung === null || batteryLevel === null) {
                     return;
                   }
 
@@ -304,11 +346,11 @@ process.on('SIGTERM', () => stopProcess());
                   const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
                   let   triggerOn = false;
 
-                  if(zaehlerLeistung < -1000) {
+                  if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
-                  } else if(batteryLeistung > 1000) {
-                    logger.info(`Battery (${batteryLeistung}W). Trigger Waschmaschine.`);
+                  } else if(batteryLeistung > 800 || batteryLevel > 0.7) {
+                    logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxPvTimeUtc) {
                     logger.info(`Max sun. Trigger Waschmaschine.`);
@@ -432,6 +474,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.publish('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
   await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
+  await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
   await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');

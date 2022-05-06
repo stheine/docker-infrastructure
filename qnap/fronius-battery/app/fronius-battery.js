@@ -90,7 +90,7 @@ process.on('SIGTERM', () => stopProcess());
 // ###########################################################################
 // Solcast, weather forecast
 
-const getSolcast = async function() {
+const getSolcastForecasts = async function() {
   let cacheAge;
   let solcast;
 
@@ -106,6 +106,9 @@ const getSolcast = async function() {
 
   if(cacheAge && cacheAge < ms('30 minutes')) {
     solcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
+
+    check.assert.object(solcast);
+    check.assert.array(solcast.forecasts);
   } else {
     // logger.info('Refresh solcast cache');
 
@@ -118,11 +121,13 @@ const getSolcast = async function() {
 
     solcast = response.data;
 
-    await fsExtra.writeJson('/var/fronius-battery/solcast-cache.json', solcast, {spaces: 2});
-  }
+    check.assert.object(solcast);
+    check.assert.array(solcast.forecasts);
 
-  check.assert.object(solcast);
-  check.assert.array(solcast.forecasts);
+    await fsExtra.writeJson('/var/fronius-battery/solcast-cache.json', solcast, {spaces: 2});
+
+    await mqttClient.publish('solcast/forecasts', JSON.stringify(solcast.forecasts), {retain: true});
+  }
 
   return solcast.forecasts;
 };
@@ -137,7 +142,7 @@ const wattToRate = function({capacity, watt}) {
   return rate;
 };
 
-const getBatteryRate = function({capacity, chargeState, log, solcast}) {
+const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) {
   if(!capacity) {
     return 0;
   }
@@ -159,7 +164,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
   const midnightTime = now.clone().hour(24).minute(0).second(0);
 
   // Note, the pv_estimate is given in kw. Multiply 1000 to get watt.
-  for(const forecast of solcast) {
+  for(const forecast of solcastForecasts) {
     const {period_end} = forecast;
     const period_end_date = Date.parse(period_end);
 
@@ -208,7 +213,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
   } else if(maxDcPower > dcLimit) {
     if(limitPvHours > 1 || highPvHours > 4) {
       note = `PV (${maxDcPower}W) over the limit and good forecast. Charge what's over the limit minus momentanLeistung, min 100W.`;
-      rate = wattToRate({capacity, watt: _.max([100, maxDcPower + 100 - momentanLeistung - dcLimit])});
+      rate = wattToRate({capacity, watt: _.max([100, maxDcPower + 10 - _.max([0, momentanLeistung]) - dcLimit])});
     } else if(totalPv > 3 * toCharge) {
       if(now < maxSunTime) {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
@@ -258,14 +263,14 @@ const getBatteryRate = function({capacity, chargeState, log, solcast}) {
       toCharge:         `${toCharge}Wh`,
       chargeState:      `${chargeState}%`,
       maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
-      momentanLeistung: _.round(momentanLeistung),
+      momentanLeistung: `${_.round(momentanLeistung)}W`,
       maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
-      totalPv:          _.round(totalPv),
+      totalPv:          `${_.round(totalPv) / 1000}kWh`,
       totalPvHours,
-      highPv:           _.round(highPv),
+      highPv:           `${_.round(highPv) / 1000}kWh`,
       highPvHours,
       highPvEstimates:  highPvEstimates.join(','),
-      limitPv:          _.round(limitPv),
+      limitPv:          `${_.round(limitPv) / 1000}kWh`,
       limitPvHours,
       note,
       rate:             `${_.round(rate * 100, 1)}% (${_.round(capacity * rate)}W)`,
@@ -288,16 +293,16 @@ const handleRate = async function({capacity, log = false}) {
     // }
 
     // Get charge rate
-    let solcast;
+    let solcastForecasts;
     let chargeState;
     let dcPower;
     let rate;
     let setRate;
 
     try {
-      solcast = await getSolcast();
+      solcastForecasts = await getSolcastForecasts();
     } catch(err) {
-      throw new Error(`Failed getting solcast: ${err.message}`);
+      throw new Error(`Failed getting solcastForecasts: ${err.message}`);
     }
     try {
       const results = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW']);
@@ -309,7 +314,7 @@ const handleRate = async function({capacity, log = false}) {
       throw new Error(`Failed getting battery state: ${err.message}`);
     }
     try {
-      rate        = getBatteryRate({capacity, chargeState, log, solcast});
+      rate        = getBatteryRate({capacity, chargeState, log, solcastForecasts});
     } catch(err) {
       throw new Error(`Failed getting battery rate: ${err.message}`);
     }
@@ -383,7 +388,7 @@ const handleRate = async function({capacity, log = false}) {
     process.exit(1);
   }
 
-  let {storageChargeWh, storageDisChargeWh} = status;
+  let {solarWh, storageChargeWh, storageDisChargeWh} = status;
 
   // #########################################################################
   // Init Modbus
@@ -475,9 +480,12 @@ const handleRate = async function({capacity, log = false}) {
 
     try {
       const resultsSmartMeter = await smartMeter.readRegisters(['W']);
-      const resultsMppt       = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW', '3_DCWH', '4_DCWH']);
+      const resultsMppt       = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW', '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']);
       const resultsInverter   = await inverter.readRegisters(['W']);
 
+      if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
+        solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
+      }
       if(resultsMppt['3_DCWH']) {
         storageChargeWh = resultsMppt['3_DCWH'];
       }
@@ -495,6 +503,7 @@ const handleRate = async function({capacity, log = false}) {
         battery: {
           powerIncoming:      resultsMppt['3_DCW'],
           powerOutgoing:      resultsMppt['4_DCW'],
+          solarWh,
           stateOfCharge:      resultsMppt.ChaState / 100,
           storageChargeWh,
           storageDisChargeWh,

@@ -106,6 +106,7 @@ process.on('SIGTERM', () => stopProcess());
           const updates = {};
 
           if(battery) {
+            updates.solarWh            = battery.solarWh;
             updates.storageChargeWh    = battery.storageChargeWh;
             updates.storageDisChargeWh = battery.storageDisChargeWh;
 
