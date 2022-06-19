@@ -207,6 +207,9 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   } else if(chargeState > 95 && _.inRange(dayjs().format('M'), 3, 11))  {
     note = `March to October, limit to 95%.`;
     rate = 0;
+  } else if(chargeState > 80 && _.inRange(dayjs().format('M'), 5, 9))  {
+    note = `May to August, limit to 80%.`;
+    rate = 0;
   } else if(toCharge < 100) {
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
@@ -300,7 +303,23 @@ const handleRate = async function({capacity, log = false}) {
     let setRate;
 
     try {
-      solcastForecasts = await getSolcastForecasts();
+      let retries = 3;
+
+      do {
+        try {
+          solcastForecasts = await getSolcastForecasts();
+
+          check.assert.array(solcastForecasts, `Not an array returned from getSolcastForecasts(): ${JSON.stringify(solcastForecasts)}`);
+        } catch(err) {
+          retries--;
+
+          if(retries) {
+            await delay(ms('3 seconds'));
+          } else {
+            throw new Error(`Failed after retries: ${err.message}`);
+          }
+        }
+      } while(!solcastForecasts && retries)
     } catch(err) {
       throw new Error(`Failed getting solcastForecasts: ${err.message}`);
     }
