@@ -554,6 +554,11 @@ services:
     volumes:
       - postfix_creds:/postfix_creds
 
+  snowflake-proxy:
+    restart: always
+    image: thetorproject/snowflake-proxy:latest
+    network_mode: host
+
   unison:
     restart: always
     build: unison
