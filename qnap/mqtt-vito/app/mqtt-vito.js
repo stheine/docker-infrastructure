@@ -82,20 +82,22 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'vito/tele/SENSOR': {
-          const {brennerVerbrauch, dateTime, error01, lambdaO2} = message;
+          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01, lambdaO2: lambdaO2String} = message;
+          const brennerVerbrauch = Number(brennerVerbrauchString);
+          const lambdaO2         = Number(lambdaO2String);
           const twoDaysAgo = dayjs().subtract(2, 'days');
 
           // logger.info({brennerVerbrauch, dateTime, error01});
 
           // Check lambda
-          if(Number(lambdaO2) && !lastLambdaO2) {
+          if(lambdaO2 && !lastLambdaO2) {
 //            await sendMail({
 //              to:      'stefan@heine7.de',
 //              subject: `Heizung Brenner Beginn`,
 //              html:    `Heizung Brenner Beginn`,
 //            });
           }
-          lastLambdaO2 = Number(lambdaO2);
+          lastLambdaO2 = lambdaO2;
 
           // Check neue Fehlermeldung
           // error01: F5 2020-10-05 07:49:20
@@ -121,18 +123,15 @@ process.on('SIGTERM', () => stopProcess());
             await fsPromises.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
           }
 
-          if(Number(brennerVerbrauch) !== letzterBrennerVerbrauch) {
-            letzterBrennerVerbrauch = Number(brennerVerbrauch);
+          if(brennerVerbrauch !== letzterBrennerVerbrauch) {
+            letzterBrennerVerbrauch = brennerVerbrauch;
 
             // Check Asche Verbrauch - Leerung noetig?
-            // brennerVerbrauch: 30290
             const leerungenRaw = await fsPromises.readFile('/var/vito/_ascheGeleert.log', 'utf8');
             const leerungen     = leerungenRaw.split('\n');
             const letzteLeerung = _.last(_.compact(leerungen));
-            const letzteLeerungVerbrauch = letzteLeerung.split(' ')[1];
-            const verbrauchSeitLetzterLeerung = Number(brennerVerbrauch) - Number(letzteLeerungVerbrauch);
-
-            logger.info({verbrauchSeitLetzterLeerung});
+            const letzteLeerungVerbrauch = Number(letzteLeerung.split(' ')[1]);
+            const verbrauchSeitLetzterLeerung = brennerVerbrauch - letzteLeerungVerbrauch;
 
             if(((verbrauchSeitLetzterLeerung > 500 && verbrauchSeitLetzterLeerung < 510) ||
               verbrauchSeitLetzterLeerung > 580) &&
@@ -164,7 +163,6 @@ process.on('SIGTERM', () => stopProcess());
             }
 
             // Check Asche Verbrauch - Speicher leer?
-            // brennerVerbrauch: 30290
             const speicherRaw = await fsPromises.readFile('/var/vito/_pelletsSpeicher.log', 'utf8');
             const speicher    = _.compact(speicherRaw.split('\n'));
             const gesamt      = _.reduce(speicher, (summe, line) => {
@@ -173,9 +171,9 @@ process.on('SIGTERM', () => stopProcess());
 
               return gesamtSumme;
             }, 0);
-            const vorrat = gesamt - Number(brennerVerbrauch);
+            const vorrat = gesamt - brennerVerbrauch;
 
-            logger.info({gesamt, brennerVerbrauch, vorrat});
+            logger.info('status', {verbrauchSeitLetzterLeerung, gesamt, brennerVerbrauch, vorrat});
 
             if((vorrat < 200 &&
                 (!reportedSpeicher || dayjs(reportedSpeicher).isBefore(twoDaysAgo))
@@ -213,9 +211,11 @@ process.on('SIGTERM', () => stopProcess());
 
           // logger.info(`systemZeit=${now}   vitoZeit=${vitoDateTime}   zeitDiff=${diffSeconds}`);
 
-          if(diffSeconds > 60 &&
+          if(diffSeconds > 600 &&
             (!reportedZeit || dayjs(reportedZeit).isBefore(twoDaysAgo))
           ) {
+            logger.warn(`Uhrzeit geht falsch um ${diffSeconds} Sekunden.`);
+
             try {
               await sendMail({
                 to:      'stefan@heine7.de',
