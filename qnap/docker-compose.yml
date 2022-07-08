@@ -463,7 +463,7 @@ services:
 
   mosquitto:
     restart: always
-    image: eclipse-mosquitto:2.0.12
+    image: eclipse-mosquitto:latest
     hostname: qnap-mosquitto
     ports:
       - 1883:1883
@@ -602,7 +602,7 @@ services:
 
   zigbee2mqtt-assistant:
     restart: always
-    image: carldebilly/zigbee2mqttassistant:0.3.178
+    image: carldebilly/zigbee2mqttassistant:linux-arm32
     hostname: zigbee2mqtt-assistant
     ports:
       - 19725:80
