@@ -2,6 +2,7 @@
 
                                        // DEBUG=* ./mqtt-volumio.js
                                        // https://socket.io/docs/v2/
+import _      from 'lodash';
 import io     from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
 import mqtt   from 'async-mqtt';
 
@@ -49,11 +50,11 @@ process.on('SIGTERM', () => stopProcess());
 
   mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
   mqttClient.on('reconnect',  ()  => logger.info('mqtt.reconnect'));
-  mqttClient.on('close',      ()  => logger.info('mqtt.close'));
+  mqttClient.on('close',      ()  => _.noop() /* logger.info('mqtt.close') */);
   mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
   mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
-  mqttClient.on('end',        ()  => logger.info('mqtt.end'));
+  mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     const messageRaw = messageBuffer.toString();
@@ -151,7 +152,7 @@ process.on('SIGTERM', () => stopProcess());
   });
 
   volumio.on('disconnect', () => {
-    logger.info('Disconnected from volumio');
+    // logger.info('Disconnected from volumio');
   });
 
   volumio.on('pushState', data => {

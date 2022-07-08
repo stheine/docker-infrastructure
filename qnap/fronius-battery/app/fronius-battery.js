@@ -54,13 +54,13 @@ einspeisungen.enq(0);
 const stopProcess = async function() {
   if(froniusInterval) {
     clearInterval(froniusInterval);
-    logger.info('fronius.closed');
+    // logger.info('fronius.closed');
     froniusInterval = undefined;
   }
 
   if(inverter) {
     await inverter.close();
-    logger.info('inverter.closed');
+    // logger.info('inverter.closed');
     inverter = undefined;
   }
 
@@ -71,7 +71,7 @@ const stopProcess = async function() {
     }
 
     await smartMeter.close();
-    logger.info('smartMeter.closed');
+    // logger.info('smartMeter.closed');
     smartMeter = undefined;
   }
 
@@ -443,11 +443,11 @@ const handleRate = async function({capacity, log = false}) {
 
   mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
   mqttClient.on('reconnect',  ()  => logger.info('mqtt.reconnect'));
-  // mqttClient.on('close',      ()  => logger.info('mqtt.close'));
+  mqttClient.on('close',      ()  => _.noop() /* logger.info('mqtt.close') */);
   mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
   mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
-  mqttClient.on('end',        ()  => logger.info('mqtt.end'));
+  mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   // #########################################################################
   // Handle Stromzähler data

@@ -103,11 +103,11 @@ process.on('SIGTERM', () => stopProcess());
 
   mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
   mqttClient.on('reconnect',  ()  => logger.info('mqtt.reconnect'));
-  mqttClient.on('close',      ()  => logger.info('mqtt.close'));
+  mqttClient.on('close',      ()  => _.noop() /* logger.info('mqtt.close') */);
   mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
   mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
-  mqttClient.on('end',        ()  => logger.info('mqtt.end'));
+  mqttClient.on('end',        ()  => _.noop() */ logger.info('mqtt.end') */);
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     const messageRaw   = messageBuffer.toString();
@@ -216,7 +216,7 @@ process.on('SIGTERM', () => stopProcess());
             } else {
               batteryLeistung = battery.powerIncoming;
             }
-            batteryLevel = battery.stateOfCharge;
+            batteryLevel = _.round(battery.stateOfCharge * 100, 1);
           }
           if(inverter) {
             // logger.debug({inverter});
@@ -294,7 +294,7 @@ process.on('SIGTERM', () => stopProcess());
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
-                  } else if(batteryLeistung > 800 || batteryLevel > 0.7) {
+                  } else if(batteryLeistung > 800 || batteryLevel > 70) {
                     logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxPvTimeUtc) {
@@ -349,7 +349,7 @@ process.on('SIGTERM', () => stopProcess());
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
-                  } else if(batteryLeistung > 800 || batteryLevel > 0.7) {
+                  } else if(batteryLeistung > 800 || batteryLevel > 70) {
                     logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxPvTimeUtc) {
