@@ -25,6 +25,13 @@ volumes:
       device: /docker-data/pihole/etc_dnsmasq.d
       o: bind
 
+  pihole_etc_lighttpd:
+    driver: local
+    driver_opts:
+      type: none
+      device: /docker-data/pihole/etc_lighttpd
+      o: bind
+
   pihole_etc_pihole:
     driver: local
     driver_opts:
@@ -109,6 +116,7 @@ services:
     volumes:
       - pihole_etc_dnsmasq_d:/etc/dnsmasq.d
       - pihole_etc_pihole:/etc/pihole
+      - pihole_etc_lighttpd:/etc/lighttpd
 
   postfix:
     restart: always
