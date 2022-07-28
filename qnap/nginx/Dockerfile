@@ -1,4 +1,4 @@
-FROM nginx:1.21.1-alpine
+FROM nginx:alpine
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
