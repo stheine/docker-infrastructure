@@ -28,7 +28,7 @@ ENV LC_ALL en_US.UTF-8
 
 # ##############################################################################
 # Configure and run dovecot
-# https://github.com/dovecot/core/releases
+# https://github.com/dovecot/core/tags
 
 RUN \
   apt-get install -y \
@@ -44,7 +44,7 @@ RUN \
 
 WORKDIR /source
 
-ARG DOVECOT_VERSION=2.3.16
+ARG DOVECOT_VERSION=2.3.19.1
 RUN \
   wget https://github.com/dovecot/core/archive/$DOVECOT_VERSION.tar.gz && \
   tar xf $DOVECOT_VERSION.tar.gz && \
