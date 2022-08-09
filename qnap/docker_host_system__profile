@@ -1,16 +1,20 @@
-export ESC=`echo "\\033"`
-export CTLG=`echo "\\007"`
+#!/bin/bash
+
+# shellcheck disable=SC2155
+
+export ESC="\\033"
+export CTLG="\\007"
 export HEADER="$ESC]2;"
-BOLDRED="$ESC[1;31m"
-BGGREEN="$ESC[48;5;2m$ESC[38;5;7m"
-INVERSE="$ESC[7m"
+BOLDRED="${ESC}[1;31m"
+BGGREEN="${ESC}[48;5;2m${ESC}[38;5;7m"
+INVERSE="${ESC}[7m"
 FAILEDX='\342\234\227'
-NORMAL="$ESC[0m"
+NORMAL="${ESC}[0m"
 
 ###############################################################################
 # Prompt
 
-function set_ps1 {
+set_ps1() {
   LAST_RESULT=$? # Must come first!
 
   PS1=""
@@ -26,18 +30,18 @@ PROMPT_COMMAND='set_ps1'
 
 ###############################################################################
 # Functions for konsole and xterm title
-function start_vi {
-  for PARAM in $*; do
+start_vi() {
+  for PARAM in "$@"; do
     if [ -z "$START_VI_DISPLAY_TITLE" ]; then
       if [[ "$PARAM" != -* ]]; then
-        START_VI_DISPLAY_TITLE=`basename "$PARAM" |
+        START_VI_DISPLAY_TITLE=$(basename "$PARAM" |
           sed -e 's/^include\.//' \
               -e 's/\.js$//' \
               -e 's/\.jsx$//' \
               -e 's/\.php$//' \
               -e 's/\.p[ml]$//' \
               -e 's/^.phptime.log$/time/'
-        `
+        )
 
         echo -e "${HEADER}${START_VI_DISPLAY_TITLE}${CTLG}\c"
       fi
@@ -46,7 +50,7 @@ function start_vi {
 
   unset START_VI_DISPLAY_TITLE
 
-  nice -15 $EDITOR "$@"
+  nice -15 "$EDITOR" "$@"
 
   echo -e "${HEADER}${TITLE_PREFIX}${TITLE}${CTLG}\c"
 }
