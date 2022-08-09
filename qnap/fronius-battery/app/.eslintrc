@@ -8,7 +8,12 @@
   rules : {
     'array-bracket-spacing': [2, 'never'],
     'capitalized-comments': 0,
-    'comma-dangle': [2, 'always-multiline'],
+    'comma-dangle': ['error', {
+      arrays: 'always-multiline',
+      objects: 'always-multiline',
+      imports: 'always-multiline',
+      exports: 'always-multiline',
+    }],
     'dot-location': [2, 'property'],
     'eslint-comments/disable-enable-pair': 0,
     'function-call-argument-newline': 0,

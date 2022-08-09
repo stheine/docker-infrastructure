@@ -11,7 +11,6 @@ import axios             from 'axios';
 import check             from 'check-types-2';
 import cron              from 'node-cron';
 import dayjs             from 'dayjs';
-import fronius           from 'fronius';
 import fsExtra           from 'fs-extra';
 import ms                from 'ms';
 import mqtt              from 'async-mqtt';
@@ -29,17 +28,17 @@ dayjs.extend(utc);
 // ###########################################################################
 // Globals
 
-let config;
-let dcPowers = new Ringbuffer(10);
-let einspeisungen = new Ringbuffer(60);
-let froniusInterval;
-let inverter;
-let lastLog;
-let lastRate;
-let momentanLeistung = 0;
-let mqttClient;
-let smartMeter;
-let smartMeterInterval;
+let   config;
+const dcPowers = new Ringbuffer(10);
+const einspeisungen = new Ringbuffer(60);
+let   froniusInterval;
+let   inverter;
+let   lastLog;
+let   lastRate;
+let   momentanLeistung = 0;
+let   mqttClient;
+let   smartMeter;
+let   smartMeterInterval;
 
 dcPowers.enq(0);
 einspeisungen.enq(0);
@@ -113,7 +112,8 @@ const getSolcastForecasts = async function() {
       {
         headers: {Authorization: `Bearer ${config.API_KEY}`},
         json:    true,
-      });
+      }
+    );
 
     solcast = response.data;
 
@@ -204,10 +204,13 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   if(chargeState < 10) {
     note = `Charge to min of 10% (is ${chargeState}%).`;
     rate = 1;
-  } else if(now.format('ddd') !== 'Sun' && _.inRange(now.format('M'), 3, 11) && chargeState > config.springChargeGoal)  {
+  } else if(now.format('ddd') !== 'Sun' &&
+    _.inRange(now.format('M'), 3, 11) &&
+    chargeState > config.springChargeGoal
+  ) {
     note = `March to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
-  } else if(now.format('ddd') !== 'Sun' && _.inRange(now.format('M'), 5, 9) && chargeState > config.summerChargeGoal)  {
+  } else if(now.format('ddd') !== 'Sun' && _.inRange(now.format('M'), 5, 9) && chargeState > config.summerChargeGoal) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
   } else if(toCharge < 100) {
@@ -215,8 +218,12 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     rate = wattToRate({capacity, watt: 1000});
   } else if(maxDcPower > config.dcLimit) {
     if(limitPvHours > 1 || highPvHours > 4) {
-      note = `PV (${maxDcPower}W) over the limit and good forecast. Charge what's over the limit minus momentanLeistung, min 100W.`;
-      rate = wattToRate({capacity, watt: _.max([100, maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit])});
+      note = `PV (${maxDcPower}W) over the limit and good forecast. ` +
+        `Charge what's over the limit minus momentanLeistung, min 100W.`;
+      rate = wattToRate({
+        capacity,
+        watt:     _.max([100, maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit]),
+      });
     } else if(totalPv > 3 * toCharge) {
       if(now < maxSunTime) {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
@@ -309,7 +316,8 @@ const handleRate = async function({capacity, log = false}) {
         try {
           solcastForecasts = await getSolcastForecasts();
 
-          check.assert.array(solcastForecasts, `Not an array returned from getSolcastForecasts(): ${JSON.stringify(solcastForecasts)}`);
+          check.assert.array(solcastForecasts,
+            `Not an array returned from getSolcastForecasts(): ${JSON.stringify(solcastForecasts)}`);
         } catch(err) {
           retries--;
 
@@ -319,12 +327,13 @@ const handleRate = async function({capacity, log = false}) {
             throw new Error(`Failed after retries: ${err.message}`);
           }
         }
-      } while(!solcastForecasts && retries)
+      } while(!solcastForecasts && retries);
     } catch(err) {
       throw new Error(`Failed getting solcastForecasts: ${err.message}`);
     }
     try {
       const results = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW']);
+
       chargeState = _.round(results.ChaState, 1);
       dcPower     = _.round(results['1_DCW'] + results['2_DCW']);
 
@@ -513,7 +522,8 @@ const handleRate = async function({capacity, log = false}) {
 
     try {
       const resultsSmartMeter = await smartMeter.readRegisters(['W']);
-      const resultsMppt       = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW', '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']);
+      const resultsMppt       = await inverter.readRegisters(['ChaState',
+        '1_DCW', '2_DCW', '3_DCW', '4_DCW', '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']);
       const resultsInverter   = await inverter.readRegisters(['W']);
 
       if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
@@ -526,7 +536,8 @@ const handleRate = async function({capacity, log = false}) {
         storageDisChargeWh = resultsMppt['4_DCWH'];
       }
 
-      await fsPromises.copyFile('/var/fronius-battery/fronius-battery.json', '/var/fronius-battery/fronius-battery.json.bak');
+      await fsPromises.copyFile('/var/fronius-battery/fronius-battery.json',
+        '/var/fronius-battery/fronius-battery.json.bak');
       await fsExtra.writeJson('/var/fronius-battery/fronius-battery.json', {
         ...froniusBatteryStatus,
         solarWh,
@@ -657,7 +668,7 @@ const handleRate = async function({capacity, log = false}) {
           subject: 'Fronius Solar Batterie ok',
           html:    `Batterie ${capacity} ok`,
         });
-      } catch{
+      } catch(err) {
         logger.error(`Failed to read battery capacity: ${err.message}`);
       }
     }
