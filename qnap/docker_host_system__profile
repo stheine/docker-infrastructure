@@ -65,4 +65,4 @@ echo -e "${HEADER}${TITLE_PREFIX}${TITLE}${CTLG}\c"
 # Alias etc..
 alias ll='ls -l'
 set -o vi
-export PATH=/share/linux/tools/busybox/:$PATH:/share/CACHEDEV1_DATA/.qpkg/container-station/bin/:/share/CACHEDEV1_DATA/.qpkg/Entware/bin/
+export PATH=/share/linux/tools/busybox/:/share/CACHEDEV1_DATA/.qpkg/Entware/bin/:$PATH:/share/CACHEDEV1_DATA/.qpkg/container-station/bin/

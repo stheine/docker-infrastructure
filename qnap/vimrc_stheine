@@ -1,0 +1,19 @@
+" ------------------------------------------------------------------------
+" stheine settings
+
+set backupcopy=yes
+set ic
+set tabstop=80
+set sw=2
+
+" ALE config
+let g:ale_javascript_eslint_executable = 'eslint_d'
+let g:ale_javascript_eslint_use_global = 1
+let b:ale_linters = {'javascript': ['eslint']}
+
+" Load all plugins now.
+" Plugins need to be added to runtimepath before helptags can be generated.
+" packloadall
+" Load all of the helptags now, after plugins have been loaded.
+" All messages and errors will be ignored.
+silent! helptags ALL
