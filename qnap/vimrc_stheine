@@ -1,6 +1,7 @@
 " ------------------------------------------------------------------------
 " stheine settings
 
+set background=light
 set backupcopy=yes
 set ic
 set tabstop=80
