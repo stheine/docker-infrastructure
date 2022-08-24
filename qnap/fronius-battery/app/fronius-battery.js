@@ -87,7 +87,8 @@ process.on('SIGTERM', () => stopProcess());
 
 const getSolcastForecasts = async function() {
   let cacheAge;
-  let solcast;
+  let cachedSolcast;
+  let newSolcast;
 
   try {
     await fsPromises.access('/var/fronius-battery/solcast-cache.json');
@@ -95,16 +96,23 @@ const getSolcastForecasts = async function() {
     const stats = await fsPromises.stat('/var/fronius-battery/solcast-cache.json');
 
     cacheAge = stats ? Date.now() - stats.mtime : null;
+
+    if(cacheAge) {
+      cachedSolcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
+
+      check.assert.object(cachedSolcast);
+      check.assert.array(cachedSolcast.forecasts);
+    }
+
+    if(cacheAge && cacheAge < ms('30 minutes')) {
+      // Return cached data
+      return cachedSolcast.forecasts;
+    }
   } catch {
     cacheAge = null;
   }
 
-  if(cacheAge && cacheAge < ms('30 minutes')) {
-    solcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
-
-    check.assert.object(solcast);
-    check.assert.array(solcast.forecasts);
-  } else {
+  try {
     // logger.info('Refresh solcast cache');
 
     const response = await axios.get(
@@ -115,17 +123,25 @@ const getSolcastForecasts = async function() {
       }
     );
 
-    solcast = response.data;
+    newSolcast = response.data;
 
-    check.assert.object(solcast);
-    check.assert.array(solcast.forecasts);
+    check.assert.object(newSolcast);
+    check.assert.array(newSolcast.forecasts);
 
-    await fsExtra.writeJson('/var/fronius-battery/solcast-cache.json', solcast, {spaces: 2});
+    await fsExtra.writeJson('/var/fronius-battery/solcast-cache.json', newSolcast, {spaces: 2});
 
-    await mqttClient.publish('solcast/forecasts', JSON.stringify(solcast.forecasts), {retain: true});
+    await mqttClient.publish('solcast/forecasts', JSON.stringify(newSolcast.forecasts), {retain: true});
+
+    return newSolcast.forecasts;
+  } catch(err) {
+    // Failed to update the solcast data
+    if(cacheAge && cacheAge < ms('90 minutes')) {
+      // Return cached data
+      return cachedSolcast.forecasts;
+    }
+
+    throw new Error(`Failed to refresh solcast data and cache outdated: ${err.message}`);
   }
-
-  return solcast.forecasts;
 };
 
 const wattToRate = function({capacity, watt}) {
@@ -217,12 +233,18 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
   } else if(maxDcPower > config.dcLimit) {
-    if(limitPvHours > 1 || highPvHours > 4) {
+    if(limitPvHours || highPvHours > 4) {
       note = `PV (${maxDcPower}W) over the limit and good forecast. ` +
-        `Charge what's over the limit minus momentanLeistung, min 100W.`;
+        `Charge what's over the limit minus momentanLeistung, min 100W, max ${toCharge / (limitPvHours || 1)}W.`;
       rate = wattToRate({
         capacity,
-        watt:     _.max([100, maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit]),
+        watt: _.min([
+          _.max([
+            100,
+            maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit,
+          ]),
+          toCharge / (limitPvHours || 1),
+        ]),
       });
     } else if(totalPv > 3 * toCharge) {
       if(now < maxSunTime) {
