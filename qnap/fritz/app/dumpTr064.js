@@ -5,7 +5,7 @@
 
 import Fritzbox     from 'tr-064-async';
 
-import tr064Options from '/var/fritz/tr064Options.js';
+import tr064Options from '/share/linux/data/fritz/tr064Options.js';
 
 (async() => {
   try {

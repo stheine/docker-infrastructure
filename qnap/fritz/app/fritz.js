@@ -144,8 +144,8 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-//  callMonitor.on('close', () => logger.info('Connection closed.'));
-//  callMonitor.on('connect', () => logger.info('Connected to device.'));
+  callMonitor.on('close', () => logger.info('Connection closed.'));
+  callMonitor.on('connect', () => logger.info('Connected to device.'));
   callMonitor.on('error', err => logger.error(err));
 
   callMonitor.connect();
