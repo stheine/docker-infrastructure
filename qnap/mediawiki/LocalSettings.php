@@ -136,7 +136,7 @@ $wgGroupPermissions['*']['read'] = false;
 
 # -----------------------------------------------------------------------------
 # https://www.mediawiki.org/wiki/Extension:ConfirmAccount/de
-require_once "$IP/extensions/ConfirmAccount/ConfirmAccount.php";
+wfLoadExtension('ConfirmAccount');
 $wgMakeUserPageFromBio = false;
 $wgAutoWelcomeNewUsers = false;
 $wgConfirmAccountRequestFormItems = array(
