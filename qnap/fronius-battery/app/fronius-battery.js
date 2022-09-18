@@ -214,22 +214,25 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   }
 
   // Charge to at least 10%
-  // Once per week (Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
+  // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
   // In March/ April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
   if(chargeState < 10) {
     note = `Charge to min of 10% (is ${chargeState}%).`;
     rate = 1;
-  } else if(now.format('ddd') !== 'Sun' &&
+  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 3, 11) &&
     chargeState > config.springChargeGoal
   ) {
     note = `March to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
-  } else if(now.format('ddd') !== 'Sun' && _.inRange(now.format('M'), 5, 9) && chargeState > config.summerChargeGoal) {
+  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
+    _.inRange(now.format('M'), 5, 9) &&
+    chargeState > config.summerChargeGoal
+  ) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
-  } else if(toCharge < 100) {
+  } else if(toCharge < 250) {
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
   } else if(maxDcPower > config.dcLimit) {
