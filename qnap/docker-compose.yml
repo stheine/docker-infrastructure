@@ -37,11 +37,11 @@ volumes:
       device: /share/linux/data/fritz
       o: bind
 
-  fronius-battery:
+  fronius:
     driver: local
     driver_opts:
       type: none
-      device: /share/linux/data/fronius-battery
+      device: /share/linux/data/fronius
       o: bind
 
   gerbera-filme:
@@ -307,6 +307,7 @@ services:
     hostname: qnap-apache2
     volumes:
       - fritz:/var/fritz
+      - fronius:/var/fronius
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito
@@ -350,7 +351,7 @@ services:
     hostname: qnap-fronius-battery
     volumes:
       - ./fronius-battery/app:/app
-      - fronius-battery:/var/fronius-battery
+      - fronius:/var/fronius
 
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
@@ -495,6 +496,7 @@ services:
     volumes:
       - ./mqtt2rrd/app:/app
       - fritz:/var/fritz
+      - fronius:/var/fronius
       - jalousie:/var/jalousie
       - strom:/var/strom
       - vito:/var/vito

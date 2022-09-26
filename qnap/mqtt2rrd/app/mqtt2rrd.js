@@ -100,7 +100,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Fronius/solar/tele/SENSOR': {
-          const file = '/var/strom/fronius.rrd';
+          const file = '/var/fronius/fronius.rrd';
 
           const {battery, inverter, meter, solar} = message;
           const updates = {};

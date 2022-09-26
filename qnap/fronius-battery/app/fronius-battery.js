@@ -91,14 +91,14 @@ const getSolcastForecasts = async function() {
   let newSolcast;
 
   try {
-    await fsPromises.access('/var/fronius-battery/solcast-cache.json');
+    await fsPromises.access('/var/fronius/solcast-cache.json');
 
-    const stats = await fsPromises.stat('/var/fronius-battery/solcast-cache.json');
+    const stats = await fsPromises.stat('/var/fronius/solcast-cache.json');
 
     cacheAge = stats ? Date.now() - stats.mtime : null;
 
     if(cacheAge) {
-      cachedSolcast = await fsExtra.readJSON('/var/fronius-battery/solcast-cache.json');
+      cachedSolcast = await fsExtra.readJSON('/var/fronius/solcast-cache.json');
 
       check.assert.object(cachedSolcast);
       check.assert.array(cachedSolcast.forecasts);
@@ -128,7 +128,7 @@ const getSolcastForecasts = async function() {
     check.assert.object(newSolcast);
     check.assert.array(newSolcast.forecasts);
 
-    await fsExtra.writeJson('/var/fronius-battery/solcast-cache.json', newSolcast, {spaces: 2});
+    await fsExtra.writeJson('/var/fronius/solcast-cache.json', newSolcast, {spaces: 2});
 
     await mqttClient.publish('solcast/forecasts', JSON.stringify(newSolcast.forecasts), {retain: true});
 
@@ -213,12 +213,12 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     }
   }
 
-  // Charge to at least 10%
+  // Charge to at least 12%
   // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
   // In March/ April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
-  if(chargeState < 10) {
-    note = `Charge to min of 10% (is ${chargeState}%).`;
+  if(chargeState < 12) {
+    note = `Charge to min of 12% (is ${chargeState}%).`;
     rate = 1;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 3, 11) &&
@@ -243,10 +243,11 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
         capacity,
         watt: _.min([
           _.max([
-            100,
-            maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit,
+            100,                                                             // At least 100W
+            maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit, // Over the limit
+            toCharge / highPvHours,                                          // Remaining by highPvHours
           ]),
-          toCharge / (limitPvHours || 1),
+          toCharge / (limitPvHours || 1),                                    // Remaining by limitPvHours
         ]),
       });
     } else if(totalPv > 3 * toCharge) {
@@ -295,10 +296,10 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     rate !== lastRate
   ) {
     logger.debug('getBatteryRate', {
-      toCharge:         `${toCharge}Wh`,
+      toCharge:         `${_.round(toCharge / 1000, 1)}kWh`,
       chargeState:      `${chargeState}%`,
       maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
-      momentanLeistung: `${_.round(momentanLeistung)}W`,
+      momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
       maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
       totalPv:          `${_.round(totalPv) / 1000}kWh`,
       totalPvHours,
@@ -434,7 +435,7 @@ const handleRate = async function({capacity, log = false}) {
   let froniusBatteryStatus;
 
   try {
-    config = await fsExtra.readJson('/var/fronius-battery/config.json');
+    config = await fsExtra.readJson('/var/fronius/config.json');
 
     check.assert.object(config);
     check.assert.string(config.API_KEY);
@@ -442,15 +443,15 @@ const handleRate = async function({capacity, log = false}) {
     check.assert.number(config.springChargeGoal);
     check.assert.number(config.summerChargeGoal);
   } catch(err) {
-    logger.error('Failed to read JSON in /var/fronius-battery/config.json', err.message);
+    logger.error('Failed to read JSON in /var/fronius/config.json', err.message);
 
     process.exit(1);
   }
 
   try {
-    froniusBatteryStatus = await fsExtra.readJson('/var/fronius-battery/fronius-battery.json');
+    froniusBatteryStatus = await fsExtra.readJson('/var/fronius/fronius-battery.json');
   } catch(err) {
-    logger.error('Failed to read JSON in /var/fronius-battery/fronius-battery.json', err.message);
+    logger.error('Failed to read JSON in /var/fronius/fronius-battery.json', err.message);
 
     process.exit(1);
   }
@@ -561,9 +562,9 @@ const handleRate = async function({capacity, log = false}) {
         storageDisChargeWh = resultsMppt['4_DCWH'];
       }
 
-      await fsPromises.copyFile('/var/fronius-battery/fronius-battery.json',
-        '/var/fronius-battery/fronius-battery.json.bak');
-      await fsExtra.writeJson('/var/fronius-battery/fronius-battery.json', {
+      await fsPromises.copyFile('/var/fronius/fronius-battery.json',
+        '/var/fronius/fronius-battery.json.bak');
+      await fsExtra.writeJson('/var/fronius/fronius-battery.json', {
         ...froniusBatteryStatus,
         solarWh,
         storageChargeWh,
@@ -703,7 +704,7 @@ const handleRate = async function({capacity, log = false}) {
 
   process.on('SIGHUP', async() => {
     try {
-      config = await fsExtra.readJson('/var/fronius-battery/config.json');
+      config = await fsExtra.readJson('/var/fronius/config.json');
 
       check.assert.object(config);
 
@@ -711,7 +712,7 @@ const handleRate = async function({capacity, log = false}) {
 
       await handleRate({capacity, log: true});
     } catch(err) {
-      logger.error('Failed to read JSON in /var/fronius-battery/fronius-battery.json in SIGHUP handler', err.message);
+      logger.error('Failed to read JSON in /var/fronius/fronius-battery.json in SIGHUP handler', err.message);
     }
   });
 })();
