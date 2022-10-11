@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 
-import fsPromises from 'fs/promises';
+/* eslint-disable camelcase */
 
-import _          from 'lodash';
-import dayjs      from 'dayjs';
-import fsExtra    from 'fs-extra';
-import mqtt       from 'async-mqtt';
-import utc        from 'dayjs/plugin/utc.js';
-import timezone   from 'dayjs/plugin/timezone.js';
+import {setTimeout as delay} from 'timers/promises';
+import fsPromises            from 'fs/promises';
 
-import logger     from './logger.js';
-import {sendMail} from './mail.js';
+import _                     from 'lodash';
+import dayjs                 from 'dayjs';
+import fsExtra               from 'fs-extra';
+import isBetween             from 'dayjs/plugin/isBetween.js';
+import mqtt                  from 'async-mqtt';
+import ms                    from 'ms';
+import utc                   from 'dayjs/plugin/utc.js';
+import timezone              from 'dayjs/plugin/timezone.js';
 
-dayjs.extend(utc);
+import logger                from './logger.js';
+import {sendMail}            from './mail.js';
+
+dayjs.extend(isBetween);
 dayjs.extend(timezone);
+dayjs.extend(utc);
 dayjs.tz.setDefault(dayjs.tz.guess());
 
 // ###########################################################################
@@ -40,6 +46,9 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let letzterBrennerVerbrauch = 0;
+  let tempAussen              = null;
+  let tempInnen               = null;
+
   // #########################################################################
   // Startup
 
@@ -81,8 +90,102 @@ process.on('SIGTERM', () => stopProcess());
       }
 
       switch(topic) {
+        case 'solcast/forecasts': {
+          const solcastForecasts = message;
+          const now            = dayjs();
+          const nowUtc         = dayjs.utc();
+          const midnightTime   = nowUtc.clone().hour(24).minute(0).second(0);
+          const todaySeven     = now.clone().hour(7).minute(0).second(0);
+          const todayEleven    = now.clone().hour(11).minute(0).second(0);
+          const estimates      = [];
+          const sunnyEstimates = [];
+          let   sunnyHours     = 0;
+
+          if(tempAussen === null || tempInnen === null) {
+            let retries = 60;
+
+            do {
+              retries--;
+
+              let log = 'solcast/forecasts. ';
+
+              if(tempAussen === null) {
+                log += 'Waiting for tempAussen. ';
+              }
+              if(tempInnen === null) {
+                log += 'Waiting for tempInnen. ';
+              }
+              if(tempAussen !== null && tempInnen !== null) {
+                retries = 0;
+              }
+              if(retries) {
+                logger.debug(log);
+
+                await delay(ms('10s'));
+              }
+            } while(retries);
+
+            if(tempAussen === null || tempInnen === null) {
+              return;
+            }
+          }
+
+          if(!now.isBetween(todaySeven, todayEleven, 'minute')) {
+            return;
+          }
+
+          for(const forecast of solcastForecasts) {
+            const {period_end} = forecast;
+            const period_end_date = Date.parse(period_end);
+
+            if(period_end_date < nowUtc) {
+              // Already passed
+              continue;
+            }
+            if(period_end_date > midnightTime) {
+              // Tomorrow
+              continue;
+            }
+
+            let {pv_estimate90: estimate} = forecast;
+
+            estimate = _.round(estimate * 1000); // kW to watt
+
+            estimates.push(estimate);
+
+            if(estimate > 3500) {
+              // Estimate is for 30 minute period
+              sunnyHours += 1 / 2;
+              sunnyEstimates.push(estimate);
+            }
+          }
+
+          if(sunnyHours > 4) {
+            await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
+
+            logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
+              `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
+
+//            await sendMail({
+//              to:      'stefan@heine7.de',
+//              subject: `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne`,
+//              html:    `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne<p>${sunnyEstimates.join(',')}`,
+//            });
+          } else if(sunnyHours > 0) {
+            logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
+              `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
+          } else {
+            logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
+              `keine Sonne: ${estimates.join(',')}`);
+          }
+          break;
+        }
+
         case 'vito/tele/SENSOR': {
           const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01, lambdaO2: lambdaO2String} = message;
+
+          ({tempAussen} = message);
+
           const brennerVerbrauch = Number(brennerVerbrauchString);
           const lambdaO2         = Number(lambdaO2String);
           const twoDaysAgo = dayjs().subtract(2, 'days');
@@ -244,6 +347,12 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'Wohnzimmer/tele/SENSOR': {
+          ({temperature: tempInnen} = message);
+
+          break;
+        }
+
         default:
           logger.error(`Unhandled topic '${topic}'`, messageRaw);
           break;
@@ -253,5 +362,7 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
+  await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('vito/tele/SENSOR');
+  await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
 })();
