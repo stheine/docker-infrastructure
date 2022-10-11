@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* eslint-disable unicorn/no-lonely-if */
+/* eslint-disable camelcase */
 
 import fsPromises  from 'fs/promises';
 
@@ -55,7 +55,6 @@ process.on('SIGTERM', () => stopProcess());
   let zaehlerLeistung               = null;
   let spuelmaschineInterval;
   let waschmaschineInterval;
-  let solcastForecasts              = [];
   let solcastLimitPvHours           = 0;
 
   // #########################################################################
@@ -107,7 +106,7 @@ process.on('SIGTERM', () => stopProcess());
   mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
   mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
-  mqttClient.on('end',        ()  => _.noop() */ logger.info('mqtt.end') */);
+  mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   mqttClient.on('message', async(topic, messageBuffer) => {
     const messageRaw   = messageBuffer.toString();
@@ -186,7 +185,8 @@ process.on('SIGTERM', () => stopProcess());
             }
 
             if(wallboxLaedt) {
-              wallboxStrom = Math.max(wallboxStrom - zaehlerLeistung / 410 * 1000, 0); // Einspeisung(W) / Ladespannung(V) * 1000 => mA;
+              // Einspeisung(W) / Ladespannung(V) * 1000 => mA;
+              wallboxStrom = Math.max(wallboxStrom - zaehlerLeistung / 410 * 1000, 0);
               await mqttClient.publish(`Wallbox/evse/current_limit`, JSON.stringify({current: wallboxStrom}));
             }
 
@@ -207,7 +207,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Fronius/solar/tele/SENSOR': {
-          const {battery, inverter, meter, solar} = message;
+          const {battery, inverter, solar} = message;
 
           if(battery) {
             if(battery.powerIncoming && battery.powerOutgoing) {
@@ -239,17 +239,17 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'solcast/forecasts': {
-          solcastForecasts = message;
+          const solcastForecasts = message;
 
-          const now          = dayjs.utc();
-          const midnightTime = now.clone().hour(24).minute(0).second(0);
+          const nowUtc          = dayjs.utc();
+          const midnightTime = nowUtc.clone().hour(24).minute(0).second(0);
           let   limitPvHours;
 
           for(const forecast of solcastForecasts) {
             const {period_end} = forecast;
             const period_end_date = Date.parse(period_end);
 
-            if(period_end_date < Date.now()) {
+            if(period_end_date < nowUtc) {
               // Already passed
               continue;
             }
@@ -287,8 +287,10 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('spuelmaschineInterval');
 
+                  // 11:25 UTC is the expected max sun
                   const nowUtc       = dayjs.utc();
-                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0);
+
                   let   triggerOn    = false;
 
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
@@ -342,8 +344,10 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('waschmaschineInterval');
 
+                  // 11:25 UTC is the expected max sun
                   const nowUtc       = dayjs.utc();
-                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0);
+
                   let   triggerOn = false;
 
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
@@ -388,7 +392,7 @@ process.on('SIGTERM', () => stopProcess());
           // charge_release: 1, // 0 Automatisch, 1 Manuell, 2 Deaktiviert
           // allowed_charging_current: 16000,
           // error_state: 0,
-          const {allowed_charging_current, charge_release, error_state, iec61851_state, vehicle_state} = message;
+          const {error_state, vehicle_state} = message;
 
           if(error_state) {
             logger.error('Wallbox error_state', message);
