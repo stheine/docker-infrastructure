@@ -675,33 +675,78 @@ const handleRate = async function({capacity, log = false}) {
 
   // #########################################################################
   // Handle charge-rate once and scheduled
-  await delay(ms('10 seconds')); // Await mqtt report cycle
-
-  await handleRate({capacity});
-
-  //                s min h d m wd
-  const schedule = '0 * * * * *'; // Every minute
-
-  cron.schedule(schedule, async() => {
-    // logger.info(`--------------------- Cron ----------------------`);
-
-    if(!capacity) {
-      try {
-        capacity = await inverter.readRegister('WHRtg');
-
-        await sendMail({
-          to:      'technik@heine7.de',
-          subject: 'Fronius Solar Batterie ok',
-          html:    `Batterie ${capacity} ok`,
-        });
-      } catch(err) {
-        logger.error(`Failed to read battery capacity: ${err.message}`);
-      }
-    }
+  {
+    await delay(ms('10 seconds')); // Await mqtt report cycle
 
     await handleRate({capacity});
-  });
 
+    //                s min h d m wd
+    const schedule = '0 * * * * *'; // Every minute
+
+    cron.schedule(schedule, async() => {
+      // logger.info(`--------------------- Cron ----------------------`);
+
+      if(!capacity) {
+        try {
+          capacity = await inverter.readRegister('WHRtg');
+
+          await sendMail({
+            to:      'technik@heine7.de',
+            subject: 'Fronius Solar Batterie ok',
+            html:    `Batterie ${capacity} ok`,
+          });
+        } catch(err) {
+          logger.error(`Failed to read battery capacity: ${err.message}`);
+        }
+      }
+
+      await handleRate({capacity});
+    });
+  }
+
+  // #########################################################################
+  // Check for software version update
+  {
+    //                s min h  d m wd
+    const schedule = '0 04   17 * * *'; // Once per day at 18:00
+
+    cron.schedule(schedule, async() => {
+      // logger.info(`--------------------- Cron ----------------------`);
+
+      try {
+        const runningVersion = await inverter.readRegister('Vr');
+        const url = 'https://www.fronius.com/de-de/germany/solarenergie/installateure-partner/technische-daten/alle-produkte/wechselrichter/fronius-symo-gen24-plus/fronius-symo-gen24-8-0-plus';
+        const response = await axios.get(url);
+        const latestVersion = response.data.replace(/^[\s\S]*Firmware Changelog Fronius Gen24 Tauro /, '').replace(/<\/span>[\s\S]*$/, '');
+
+        logger.info({runningVersion, latestVersion});
+
+        if(runningVersion !== latestVersion) {
+          await sendMail({
+            to:      'technik@heine7.de',
+            subject: 'Fronius Software Version update',
+            html:    `
+              <table>
+                <tr>
+                  <td>Running</td><td>${runningVersion}</td>
+                </tr>
+                <tr>
+                  <td>Latest</td><td>${latestVersion}</td>
+                </tr>
+                <tr>
+                  <td colspan='2'><a href='${url}'>Fronius Product Download</a></td>
+                </tr>
+              </table>`,
+          });
+        }
+      } catch(err) {
+        logger.error(`Failed to read software version: ${err.message}`);
+      }
+    });
+  }
+
+  // #########################################################################
+  // Signal handler (SIGHUP) to manually trigger a re-read of the config and call handleRate().
   process.on('SIGHUP', async() => {
     try {
       config = await fsExtra.readJson('/var/fronius/config.json');
