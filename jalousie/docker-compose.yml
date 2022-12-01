@@ -95,6 +95,7 @@ services:
   pihole:
     restart: always
     image: pihole/pihole:latest
+    shm_size: '200mb'
     hostname: pi-pihole
     dns:
       - 192.168.6.1
