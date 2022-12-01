@@ -294,22 +294,22 @@ volumes:
 #     driver: bridge
 
 services:
-#  apache2:
-#    restart: always
-#    build: apache2
-#    hostname: qnap-apache2
-#    volumes:
-#      - fritz:/var/fritz
-#      - fronius:/var/fronius
-#      - jalousie:/var/jalousie
-#      - strom:/var/strom
-#      - vito:/var/vito
-#      - wasser:/var/wasser
-#      - www:/var/www
-#      - www_auth:/var/www_auth
-#      - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
-#    # healthcheck:
-#    #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
+  apache2:
+    restart: always
+    build: apache2
+    hostname: qnap-apache2
+    volumes:
+      - fritz:/var/fritz
+      - fronius:/var/fronius
+      - jalousie:/var/jalousie
+      - strom:/var/strom
+      - vito:/var/vito
+      - wasser:/var/wasser
+      - www:/var/www
+      - www_auth:/var/www_auth
+      - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+    # healthcheck:
+    #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
 
   certbot:
     restart: always
