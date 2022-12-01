@@ -46,13 +46,6 @@ volumes:
       device: /mnt/qnap_linux/data/postfix_creds
       o: bind
 
-  strom:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/strom
-      o: bind
-
   zigbee2mqtt:
     driver: local
     driver_opts:
