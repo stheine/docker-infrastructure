@@ -657,12 +657,11 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.24.0-alpine
+    image: vaultwarden/server:1.26.0-alpine
     hostname: vaultwarden
     volumes:
       - vaultwarden:/data
     environment:
-      # - ADMIN_TOKEN=ChangeInAdmin
       - WEBSOCKET_ENABLED=true
 
   watchdog:
