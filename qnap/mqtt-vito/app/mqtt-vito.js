@@ -59,7 +59,7 @@ process.on('SIGTERM', () => stopProcess());
 
   const status = await fsExtra.readJson('/var/vito/vito.json');
 
-  let {lastLambdaO2, reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedZeit} = status;
+  let {/* lastLambdaO2, */ reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedTempKessel, reportedZeit} = status;
 
   // #########################################################################
   // Init MQTT
@@ -91,15 +91,16 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'solcast/forecasts': {
-          const solcastForecasts = message;
-          const now            = dayjs();
-          const nowUtc         = dayjs.utc();
-          const midnightTime   = nowUtc.clone().hour(24).minute(0).second(0);
-          const todaySeven     = now.clone().hour(7).minute(0).second(0);
-          const todayEleven    = now.clone().hour(11).minute(0).second(0);
-          const estimates      = [];
-          const sunnyEstimates = [];
-          let   sunnyHours     = 0;
+          const solcastForecasts  = message;
+          const now               = dayjs();
+          const nowUtc            = dayjs.utc();
+          const midnightTime      = nowUtc.clone().hour(24).minute(0).second(0);
+          const todaySeven        = now.clone().hour(7).minute(0).second(0);
+          const todayTwelve       = now.clone().hour(12).minute(0).second(0);
+          const estimates         = [];
+          const sunnyEstimates    = [];
+          let   sunnyHours        = 0;
+          let   sunnyHoursStartIn = null;
 
           if(tempAussen === null || tempInnen === null) {
             let retries = 60;
@@ -130,7 +131,7 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
-          if(!now.isBetween(todaySeven, todayEleven, 'minute')) {
+          if(!now.isBetween(todaySeven, todayTwelve, 'minute')) {
             return;
           }
 
@@ -157,20 +158,30 @@ process.on('SIGTERM', () => stopProcess());
               // Estimate is for 30 minute period
               sunnyHours += 1 / 2;
               sunnyEstimates.push(estimate);
+
+              if(sunnyHoursStartIn === null) {
+                sunnyHoursStartIn = _.round((period_end_date - nowUtc) / 3600 / 1000, 1);
+              }
             }
           }
 
-          if(sunnyHours > 4) {
-            await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
+          if(sunnyHours > 4 || tempAussen > 10 && sunnyHours > 2) {
+            if(sunnyHoursStartIn < 1) {
+              await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
 
-            logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
-              `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
+              logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
+                `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')} beginnend in ` +
+                `${sunnyHoursStartIn} Stunden`);
 
 //            await sendMail({
 //              to:      'stefan@heine7.de',
 //              subject: `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne`,
 //              html:    `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne<p>${sunnyEstimates.join(',')}`,
 //            });
+            } else {
+              logger.info(`Heizung wartet auf Sparmodus wegen Sonne beginnend in ` +
+                `${sunnyHoursStartIn} Stunden`);
+            }
           } else if(sunnyHours > 0) {
             logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
               `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
@@ -182,26 +193,50 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'vito/tele/SENSOR': {
-          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01, lambdaO2: lambdaO2String} = message;
+          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01 /* , lambdaO2: lambdaO2String */} = message;
 
           ({tempAussen} = message);
 
+          const {tempKessel} = message;
+          const now = dayjs();
           const brennerVerbrauch = Number(brennerVerbrauchString);
-          const lambdaO2         = Number(lambdaO2String);
+//          const lambdaO2         = Number(lambdaO2String);
           const twoDaysAgo = dayjs().subtract(2, 'days');
 
           // logger.info({brennerVerbrauch, dateTime, error01});
 
-          // Check lambda
-          if(lambdaO2 && !lastLambdaO2) {
+          // #######################################################################################
+//          // Check lambda - to detect the Brenner Beginn
+//          if(lambdaO2 && !lastLambdaO2) {
 //            await sendMail({
 //              to:      'stefan@heine7.de',
 //              subject: `Heizung Brenner Beginn`,
 //              html:    `Heizung Brenner Beginn`,
 //            });
-          }
-          lastLambdaO2 = lambdaO2;
+//          }
+//          lastLambdaO2 = lambdaO2;
 
+          // #######################################################################################
+          // Check Kessel Temperatur - Überhitzung?
+          if(tempKessel > 80 &&
+            (!reportedTempKessel || dayjs(reportedTempKessel).isBefore(twoDaysAgo))
+          ) {
+            try {
+              await sendMail({
+                to:      'stefan@heine7.de',
+                subject: `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`,
+                html:    `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`,
+              });
+
+              reportedTempKessel = now;
+            } catch(err) {
+              logger.error(`Failed to send error mail: ${err.message}`);
+            }
+          } else {
+            reportedTempKessel = null;
+          }
+
+          // #######################################################################################
           // Check neue Fehlermeldung
           // error01: F5 2020-10-05 07:49:20
           const [code, date, time] = error01.split(' ');
@@ -226,10 +261,11 @@ process.on('SIGTERM', () => stopProcess());
             await fsPromises.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
           }
 
+          // #######################################################################################
+          // Check Asche Verbrauch - Leerung noetig?
           if(brennerVerbrauch !== letzterBrennerVerbrauch) {
             letzterBrennerVerbrauch = brennerVerbrauch;
 
-            // Check Asche Verbrauch - Leerung noetig?
             const leerungenRaw = await fsPromises.readFile('/var/vito/_ascheGeleert.log', 'utf8');
             const leerungen     = leerungenRaw.split('\n');
             const letzteLeerung = _.last(_.compact(leerungen));
@@ -305,14 +341,15 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
+          // #######################################################################################
           // Uhrzeit Einstellung prüfen
           // dateTime: 2021-03-01 14:00:23
-          const now = dayjs();
+          const nowCompare = dayjs();
           const vitoDateTime = dayjs(dateTime);
 
-          const diffSeconds = Math.abs(now.diff(vitoDateTime) / 1000);
+          const diffSeconds = Math.abs(nowCompare.diff(vitoDateTime) / 1000);
 
-          // logger.info(`systemZeit=${now}   vitoZeit=${vitoDateTime}   zeitDiff=${diffSeconds}`);
+          // logger.info(`systemZeit=${nowCompare}   vitoZeit=${vitoDateTime}   zeitDiff=${diffSeconds}`);
 
           if(diffSeconds > 600 &&
             (!reportedZeit || dayjs(reportedZeit).isBefore(twoDaysAgo))
@@ -328,7 +365,7 @@ process.on('SIGTERM', () => stopProcess());
                   `<p>` +
                   `vito: ${vitoDateTime}` +
                   `<br>` +
-                  `system: ${now}`,
+                  `system: ${nowCompare}`,
               });
 
               reportedZeit = dayjs();
@@ -337,11 +374,13 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
+          // #######################################################################################
           await fsExtra.writeJson('/var/vito/vito.json', {
-            lastLambdaO2,
+//            lastLambdaO2,
             reportedFehlerDateTime,
             reportedLeerung,
             reportedSpeicher,
+            reportedTempKessel,
             reportedZeit,
           }, {spaces: 2});
           break;
