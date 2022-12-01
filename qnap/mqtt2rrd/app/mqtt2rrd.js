@@ -314,36 +314,25 @@ process.on('SIGTERM', () => stopProcess());
           update[file] = {
             ...update[file],
             ...{
-              tempAussen:        message.tempAussen,
-              tempKessel:        message.tempKessel,
-              tempPufferOben:    message.tempPufferOben,
-              tempPufferUnten:   message.tempPufferUnten,
-              tempWarmwasser:    message.tempWarmwasser,
-              tempFlamme:        message.tempFlamme,
-              brennerStarts:     message.brennerStarts,
-              brennerStunden:    message.brennerStunden,
-              brennerVerbrauch:  message.brennerVerbrauch,
-              kesselLeistung:    message.kesselLeistung,
-              lambda:            message.lambdaO2,
-            },
-          };
-
-          file = '/var/vito/vito2d.rrd';
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              tempAussen:        message.tempAussen,
-              tempKessel:        message.tempKessel,
-              tempPufferOben:    message.tempPufferOben,
-              tempPufferUnten:   message.tempPufferUnten,
-              tempWarmwasser:    message.tempWarmwasser,
-              tempFlamme:        message.tempFlamme,
-              brennerStarts:     message.brennerStarts,
-              brennerStunden:    message.brennerStunden,
-              brennerVerbrauch:  message.brennerVerbrauch,
-              kesselLeistung:    message.kesselLeistung,
-              lambda:            message.lambdaO2,
+              tempAussen:          message.tempAussen,
+              tempKessel:          message.tempKessel,
+              tempPufferOben:      message.tempPufferOben,
+              tempPufferUnten:     message.tempPufferUnten,
+              tempWarmwasser:      message.tempWarmwasser,
+              tempFlamme:          message.tempFlamme,
+              brennerStarts:       message.brennerStarts,
+              brennerStunden:      message.brennerStunden,
+              brennerVerbrauch:    message.brennerVerbrauch,
+              kesselLeistung:      message.kesselLeistung,
+              lambda:              message.lambdaO2,
+              heizkreisPumpe:      message.heizkreisPumpe,
+              zirkulationsPumpe:   message.zirkulationsPumpe,
+              speicherladePumpe:   message.speicherladePumpe,
+              primaerluftklappe:   message.primaerluftklappe,
+              sekundaerluftklappe: message.sekundaerluftklappe,
+              drehzahl:            message.drehzahlIst,
+              betriebsart:         message.hk1Betriebsart,
+              betriebsartSpar:     message.hk1BetriebsartSpar,
             },
           };
 
