@@ -23,13 +23,6 @@ version: "3.7"
 # 59159 gerbera-video          http://192.168.6.7:59159/
 
 volumes:
-  collectd-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/collectd-data
-      o: bind
-
   fritz:
     driver: local
     driver_opts:
