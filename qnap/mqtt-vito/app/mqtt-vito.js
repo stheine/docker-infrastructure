@@ -169,7 +169,7 @@ process.on('SIGTERM', () => stopProcess());
             if(sunnyHoursStartIn < 1) {
               await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
 
-              logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
+              logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
                 `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')} beginnend in ` +
                 `${sunnyHoursStartIn} Stunden`);
 
@@ -183,10 +183,10 @@ process.on('SIGTERM', () => stopProcess());
                 `${sunnyHoursStartIn} Stunden`);
             }
           } else if(sunnyHours > 0) {
-            logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
+            logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
               `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
           } else {
-            logger.info(`Heizung (aussen: ${tempAussen}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
+            logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
               `keine Sonne: ${estimates.join(',')}`);
           }
           break;
