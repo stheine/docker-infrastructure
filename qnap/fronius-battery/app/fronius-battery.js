@@ -684,7 +684,7 @@ const handleRate = async function({capacity, log = false}) {
     const schedule = '0 * * * * *'; // Every minute
 
     cron.schedule(schedule, async() => {
-      // logger.info(`--------------------- Cron ----------------------`);
+      // logger.info(`--------------------- Cron handleRate ----------------------`);
 
       if(!capacity) {
         try {
@@ -708,10 +708,10 @@ const handleRate = async function({capacity, log = false}) {
   // Check for software version update
   {
     //                s min h  d m wd
-    const schedule = '0 04   17 * * *'; // Once per day at 18:00
+    const schedule = '0 0   18 * * *'; // Once per day at 18:00
 
     cron.schedule(schedule, async() => {
-      // logger.info(`--------------------- Cron ----------------------`);
+      // logger.info(`--------------------- Cron SW Version ----------------------`);
 
       try {
         const runningVersion = await inverter.readRegister('Vr');
@@ -719,7 +719,7 @@ const handleRate = async function({capacity, log = false}) {
         const response = await axios.get(url);
         const latestVersion = response.data.replace(/^[\s\S]*Firmware Changelog Fronius Gen24 Tauro /, '').replace(/<\/span>[\s\S]*$/, '');
 
-        logger.info({runningVersion, latestVersion});
+        logger.info('Software version check', {runningVersion, latestVersion});
 
         if(runningVersion !== latestVersion) {
           await sendMail({
