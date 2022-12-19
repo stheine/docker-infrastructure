@@ -378,24 +378,26 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Zigbee/LuftSensor Büro': {
-          // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd';
+          if(message.humidity && message.temperature) {
+            // logger.info(topic, message);
+            const file = '/var/jalousie/jalousie.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              bueroHumidity:    message.humidity,
-              bueroTemperature: message.temperature,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                bueroHumidity:    message.humidity,
+                bueroTemperature: message.temperature,
+              },
+            };
+          }
           break;
         }
 
-        case 'Zigbee/bridge/networkmap/graphviz': {
-          // Trigger by mosquitto_pub -h 192.168.6.7 -t Zigbee/bridge/networkmap -m graphviz
+        case 'Zigbee/bridge/response/networkmap': {
+          // Trigger by mosquitto_pub -h 192.168.6.7 -t Zigbee/bridge/request/networkmap -m graphviz
           await new Promise(resolve => {
-            graphviz.parse(messageRaw, graph => {
+            graphviz.parse(message?.data?.value, graph => {
               graph.render('png', async render => {
                 await fsPromises.writeFile('/var/www/zigbee/map.png', render);
 
@@ -438,6 +440,6 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wind/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
-  await mqttClient.subscribe('Zigbee/bridge/networkmap/graphviz');
+  await mqttClient.subscribe('Zigbee/bridge/response/networkmap');
   await mqttClient.subscribe('Zigbee/LuftSensor Büro');
 })();
