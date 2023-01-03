@@ -657,7 +657,7 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.26.0-alpine
+    image: vaultwarden/server:1.27.0-alpine
     hostname: vaultwarden
     volumes:
       - vaultwarden:/data
