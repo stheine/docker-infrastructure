@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=alpine:3.15
+ARG BASE_IMAGE=alpine:3.17
 FROM ${BASE_IMAGE} AS builder
 
 RUN apk add --no-cache  \
@@ -35,7 +35,7 @@ RUN apk add --no-cache  \
 # ##############################################################################
 # Install and run from https://github.com/gerbera/gerbera
 
-ARG GERBERA_VERSION=1.10.0
+ARG GERBERA_VERSION=1.12.1
 WORKDIR /source
 
 RUN \
