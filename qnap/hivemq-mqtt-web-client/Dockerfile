@@ -1,4 +1,4 @@
-FROM nginx:1.19.6
+FROM nginx:1.23.3
 
 # ##############################################################################
 # Set up timezone
@@ -28,6 +28,10 @@ RUN \
   rm master.zip
 
 RUN \
-  sed -i -e 's/broker.mqttdashboard.com/192.168.6.7/' -e 's/8000/9001/' hivemq-mqtt-web-client/config.js 
+  sed -i \
+    -e 's%<input id="subscribeTopic" type="text" value="testtopic/#">%<input id="subscribeTopic" type="text" value="Zigbee/#">%' \
+    -e 's%<input id="urlInput" type="text" value="broker.mqttdashboard.com">%<input id="urlInput" type="text" value="192.168.6.7">%' \
+    -e 's%<input id="portInput" type="text" value="8000"/>%<input id="portInput" type="text" value="9001"/>%' \
+    hivemq-mqtt-web-client/index.html
 
 COPY docker_container_profile /root/.profile
