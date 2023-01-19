@@ -406,6 +406,7 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
           switch(vehicle_state) {
+            case undefined:
             case 0:
               // Nicht verbunden
               break;

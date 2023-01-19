@@ -59,7 +59,8 @@ process.on('SIGTERM', () => stopProcess());
 
   const status = await fsExtra.readJson('/var/vito/vito.json');
 
-  let {/* lastLambdaO2, */ reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedTempKessel, reportedZeit} = status;
+  let {/* lastLambdaO2, */ reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedTempKessel,
+    reportedZeit} = status;
 
   // #########################################################################
   // Init MQTT
@@ -165,7 +166,10 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
-          if(sunnyHours > 4 || tempAussen > 10 && sunnyHours > 2) {
+          if(sunnyHours >= 4 ||
+            tempAussen >= 5  && sunnyHours >= 3 ||
+            tempAussen >= 10 && sunnyHours >= 2
+          ) {
             if(sunnyHoursStartIn < 1) {
               await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
 
@@ -193,7 +197,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'vito/tele/SENSOR': {
-          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01 /* , lambdaO2: lambdaO2String */} = message;
+          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01 /* ,lambdaO2: lambdaO2String */} = message;
 
           ({tempAussen} = message);
 
@@ -401,7 +405,7 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
+  await mqttClient.subscribe('solcast/forecasts');      // Subscribe the two SENSORs first
 })();
