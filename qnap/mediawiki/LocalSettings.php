@@ -134,6 +134,8 @@ $wgCapitalLinks = false;
 $wgGroupPermissions['*']['edit'] = false;
 $wgGroupPermissions['*']['read'] = false;
 
+$wgUrlProtocols[] = "file://";
+
 # -----------------------------------------------------------------------------
 # https://www.mediawiki.org/wiki/Extension:ConfirmAccount/de
 wfLoadExtension('ConfirmAccount');

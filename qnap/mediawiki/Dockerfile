@@ -6,7 +6,7 @@
 # - run upgrade script
 #   docker-compose exec mediawiki /usr/local/bin/php /var/www/html/maintenance/update.php
 
-FROM mediawiki:1.37
+FROM mediawiki:1.39.1
 
 RUN \
   apt-get update && \
@@ -35,19 +35,19 @@ RUN \
 WORKDIR /addons
 
 # https://www.mediawiki.org/wiki/Extension:ConfirmAccount
-ARG CONFIRM_ACCOUNT_URL=ConfirmAccount-REL1_37-45a306d.tar.gz
+ARG CONFIRM_ACCOUNT_URL=ConfirmAccount-REL1_39-2e03690.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$CONFIRM_ACCOUNT_URL && \
   tar -xzf $CONFIRM_ACCOUNT_URL -C /var/www/html/extensions
 
 # https://www.mediawiki.org/wiki/Extension:WikiCategoryTagCloud
-ARG CATEGORY_CLOUD_URL=WikiCategoryTagCloud-REL1_37-85595e5.tar.gz
+ARG CATEGORY_CLOUD_URL=WikiCategoryTagCloud-REL1_39-0f0fef6.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$CATEGORY_CLOUD_URL && \
   tar -xzf $CATEGORY_CLOUD_URL -C /var/www/html/extensions
 
 # https://www.mediawiki.org/wiki/Extension:UploadWizard
-ARG UPLOAD_WIZARD_URL=UploadWizard-REL1_37-5a3186c.tar.gz
+ARG UPLOAD_WIZARD_URL=UploadWizard-REL1_39-1431150.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$UPLOAD_WIZARD_URL && \
   tar -xzf $UPLOAD_WIZARD_URL -C /var/www/html/extensions
