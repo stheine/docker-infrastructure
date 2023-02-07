@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import {setTimeout as delay} from 'timers/promises';
+
                                        // DEBUG=* ./mqtt-volumio.js
                                        // https://socket.io/docs/v2/
 import _      from 'lodash';
@@ -90,7 +92,74 @@ process.on('SIGTERM', () => stopProcess());
       // addToQueue {uri:'uri'}
       // moveQueue {from:N,to:N2}
 
+      // logger.debug('handle', {topic, cmnd, message});
+
       switch(cmnd) {
+        case 'playPause': {
+          volumio.once('pushState', async data => {
+            // logger.info('playPause:pushState', data);
+            const {status, trackType} = data;
+            let   newStatus;
+
+            switch(trackType) {
+              case 'webradio':
+                switch(status) {
+                  case 'pause':
+                    volumio.emit('stop');
+
+                    await delay(100);
+
+                    newStatus = 'play';
+                    break;
+
+                  case 'play':
+                    newStatus = 'stop';
+                    break;
+
+                  case 'stop':
+                    newStatus = 'play';
+                    break;
+
+                  default:
+                    logger.error(`Unhandled ${trackType} status='${status}'`);
+                    break;
+                }
+                break;
+
+              case 'mp3':
+                switch(status) {
+                  case 'play':
+                    newStatus = 'pause';
+                    break;
+
+                  case 'pause':
+                  case 'stop':
+                    newStatus = 'play';
+                    break;
+
+                  default:
+                    logger.error(`Unhandled ${trackType} status='${status}'`);
+                    break;
+                }
+                break;
+
+              default:
+                logger.error(`Unhandled trackType='${trackType}'`);
+                break;
+            }
+
+            if(newStatus) {
+              logger.info('playPause:toggle', {status, newStatus});
+
+              volumio.emit(newStatus);
+            }
+
+          });
+
+          volumio.emit('getState');
+          break;
+        }
+
         case 'getBrowseSources': // ?
         case 'getQueue':
         case 'next':
