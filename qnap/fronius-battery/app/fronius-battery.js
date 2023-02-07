@@ -591,7 +591,7 @@ const handleRate = async function({capacity, log = false}) {
         solar: {
           powerOutgoing: resultsMppt['1_DCW'] + resultsMppt['2_DCW'],
         },
-      }));
+      }), {retain: true});
     } catch(err) {
       logger.error(`froniusInterval(), failed to read data: ${err.message}`);
 
