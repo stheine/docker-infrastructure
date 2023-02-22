@@ -2,26 +2,27 @@
 
 /* eslint-disable camelcase */
 
-import fsPromises        from 'fs/promises';
+import fsPromises            from 'fs/promises';
 
 import {setTimeout as delay} from 'timers/promises';
 
-import _                 from 'lodash';
-import axios             from 'axios';
-import check             from 'check-types-2';
-import cron              from 'node-cron';
-import dayjs             from 'dayjs';
-import fsExtra           from 'fs-extra';
-import ms                from 'ms';
-import mqtt              from 'async-mqtt';
-import Ringbuffer        from '@stheine/ringbufferjs';
-import utc               from 'dayjs/plugin/utc.js';
+import _                     from 'lodash';
+import axios                 from 'axios';
+import check                 from 'check-types-2';
+import cron                  from 'node-cron';
+import dayjs                 from 'dayjs';
+import fsExtra               from 'fs-extra';
+import ms                    from 'ms';
+import mqtt                  from 'async-mqtt';
+import promiseAllByKeys      from 'promise-results/allKeys.js';
+import Ringbuffer            from '@stheine/ringbufferjs';
+import utc                   from 'dayjs/plugin/utc.js';
 
-import FroniusClient     from './fronius-client.js';
-import logger            from './logger.js';
-import {sendMail}        from './mail.js';
-import sunspecInverter   from './sunspec_map_inverter.js';
-import sunspecSmartMeter from './sunspec_map_smart_meter.js';
+import FroniusClient         from './fronius-client.js';
+import logger                from './logger.js';
+import {sendMail}            from './mail.js';
+import sunspecInverter       from './sunspec_map_inverter.js';
+import sunspecSmartMeter     from './sunspec_map_smart_meter.js';
 
 dayjs.extend(utc);
 
@@ -547,10 +548,14 @@ const handleRate = async function({capacity, log = false}) {
     }
 
     try {
-      const resultsSmartMeter = await smartMeter.readRegisters(['W']);
-      const resultsMppt       = await inverter.readRegisters(['ChaState',
-        '1_DCW', '2_DCW', '3_DCW', '4_DCW', '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']);
-      const resultsInverter   = await inverter.readRegisters(['W']);
+      const results = await promiseAllByKeys({
+        resultsSmartMeter: smartMeter.readRegisters(['W']),
+        resultsMppt:       inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW',
+          '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']),
+        resultsInverter:   inverter.readRegisters(['W']),
+      });
+
+      const {resultsSmartMeter, resultsMppt, resultsInverter} = results;
 
       if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
         solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
@@ -609,7 +614,7 @@ const handleRate = async function({capacity, log = false}) {
         logger.info('inverter and smartMeter closed');
       }
     }
-  }, ms('1 minute'));
+  }, ms('10 seconds'));
 
 //  // #########################################################################
 //  // Handle SmartMeter
@@ -715,9 +720,11 @@ const handleRate = async function({capacity, log = false}) {
 
       try {
         const runningVersion = await inverter.readRegister('Vr');
-        const url = 'https://www.fronius.com/de-de/germany/solarenergie/installateure-partner/technische-daten/alle-produkte/wechselrichter/fronius-symo-gen24-plus/fronius-symo-gen24-8-0-plus';
+        const url = 'https://www.fronius.com/de-de/germany/solarenergie/installateure-partner/' +
+          'technische-daten/alle-produkte/wechselrichter/fronius-symo-gen24-plus/fronius-symo-gen24-8-0-plus';
         const response = await axios.get(url);
-        const latestVersion = response.data.replace(/^[\s\S]*Firmware Changelog Fronius Gen24 Tauro /, '').replace(/<\/span>[\s\S]*$/, '');
+        const latestVersion = response.data.replace(/^[\S\s]*Firmware Changelog Fronius Gen24 Tauro /, '')
+          .replace(/<\/span>[\S\s]*$/, '');
 
         logger.info('Software version check', {runningVersion, latestVersion});
 
