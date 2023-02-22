@@ -276,6 +276,13 @@ volumes:
       device: /share/linux/data/wasser
       o: bind
 
+  wetter:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/wetter
+      o: bind
+
   www:
     driver: local
     driver_opts:
@@ -519,6 +526,14 @@ services:
     hostname: qnap-mqtt-volumio
     volumes:
       - ./mqtt-volumio/app:/app
+
+  mqtt-wetter:
+    restart: always
+    build: mqtt-wetter
+    hostname: qnap-mqtt-wetter
+    volumes:
+      - ./mqtt-wetter/app:/app
+      - wetter:/var/wetter
 
   nginx:
     restart: always
