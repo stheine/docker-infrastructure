@@ -13,6 +13,7 @@ version: "3.7"
 # 19725 zigbee-assistant       http://192.168.6.7:19725/
 # 31038 watchdog               http://192.168.6.7:31038/
 # 45458 node-red               http://192.168.6.7:45458/
+# 57699 proxy                  http://192.168.6.7:57699/
 # 59080 nginx (http)           http://192.168.6.7:59080/     Freigabe in FritzBox
 # 59443 nginx (https)          https://192.168.6.7:59443/    Freigabe in FritzBox
 # 59154 gerbera-musik          http://192.168.6.7:59154/
@@ -627,6 +628,17 @@ services:
       - "25:25"
     volumes:
       - postfix_creds:/postfix_creds
+
+  proxy:
+    restart: always
+    build: proxy
+    hostname: qnap-proxy
+    ports:
+      - "57699:3128"
+#    environment:
+#      SQUID_CONFIG_FILE: /etc/squid/my-squid.conf
+#    volumes:
+#      - ./proxy/my-squid.conf:/etc/squid/my-squid.conf:ro
 
   snowflake-proxy:
     restart: always
