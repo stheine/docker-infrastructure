@@ -199,6 +199,24 @@ process.on('SIGTERM', () => stopProcess());
           });
           break;
 
+        case 'DLF':
+          volumio.once('pushQueue', async queue => {
+            const dlfKey = _.findKey(queue, {service: 'webradio', name: 'DLF'});
+
+            if(dlfKey === undefined) {
+              volumio.emit('addToQueue', {
+                name: 'DLF',
+                service: 'webradio',
+                uri: 'https://st01.sslstream.dlf.de/dlf/01/high/aac/stream.aac',
+              });
+            } else {
+              volumio.emit('play', {value: dlfKey});
+            }
+          });
+
+          volumio.emit('getQueue');
+          break;
+
         default:
           logger.error(`Unhandled cmnd '${cmnd}'`, message);
           break;
@@ -230,16 +248,20 @@ process.on('SIGTERM', () => stopProcess());
     logger.info('pushState', data);
   });
 
-//  volumio.on('browseLibrary', data => {
-//    logger.info('browseLibrary', data);
-//  });
+  volumio.on('browseLibrary', data => {
+    logger.info('browseLibrary', data);
+  });
+
+  volumio.on('pushBrowseFilters', data => {
+    logger.info('pushBrowseFilters', data);
+  });
 
   volumio.on('pushBrowseSources', data => {
     logger.info('pushBrowseSources', data);
   });
 
   volumio.on('pushQueue', data => {
-    logger.info('pushQueue', data);
+    // logger.info('pushQueue', data);
   });
 })();
 
@@ -248,4 +270,3 @@ process.on('SIGTERM', () => stopProcess());
 // 3.1.0 only volumio.onAny((event, data) => {
 //    logger.info('Unhandled', {event, data});
 //  });
-
