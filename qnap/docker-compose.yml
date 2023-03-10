@@ -328,6 +328,14 @@ services:
       - letsencrypt:/etc/letsencrypt:nocopy
       - letsencrypt_www:/var/letsencrypt
 
+  delete-video:
+    restart: always
+    build: delete-video
+    hostname: qnap-delete-video
+    volumes:
+      - /share/CACHEDEV1_DATA/Sat-Rekorder:/video
+      - ./delete-video/app:/app
+
   dovecot:
     restart: always
     build: dovecot

@@ -1,0 +1,21 @@
+{
+  "name": "delete-video",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "delete-video.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "stheine@arcor.de",
+  "license": "ISC",
+  "dependencies": {
+    "croner": "6.0.2",
+    "dayjs": "1.11.7",
+    "ms": "2.1.3"
+  },
+  "devDependencies": {
+    "eslint": "8.11.0",
+    "eslint-config-es": "4.1.0"
+  }
+}
