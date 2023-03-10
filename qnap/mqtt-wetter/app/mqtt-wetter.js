@@ -148,6 +148,8 @@ const handleWeather = async function() {
     dayMaxWind,
     dayMinTemp,
     dayMaxTemp,
+    eveningStartsHour,
+    morningEndsHour,
     nightMaxWind,
     nightMinTemp,
     nightMaxTemp,
