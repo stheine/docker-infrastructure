@@ -614,7 +614,7 @@ const handleRate = async function({capacity, log = false}) {
         logger.info('inverter and smartMeter closed');
       }
     }
-  }, ms('10 seconds'));
+  }, ms('5 seconds'));
 
 //  // #########################################################################
 //  // Handle SmartMeter
