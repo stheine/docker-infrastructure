@@ -214,18 +214,18 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     }
   }
 
-  // Charge to at least 12%
+  // Charge to at least 15%
   // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
-  // In March/ April/ September/ October charge to springChargeGoal (95%)
+  // In April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
-  if(chargeState < 12) {
-    note = `Charge to min of 12% (is ${chargeState}%).`;
+  if(chargeState < 15) {
+    note = `Charge to min of 15% (is ${chargeState}%).`;
     rate = 1;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
-    _.inRange(now.format('M'), 3, 11) &&
+    _.inRange(now.format('M'), 4, 11) &&
     chargeState > config.springChargeGoal
   ) {
-    note = `March to October, limit to ${config.springChargeGoal}%.`;
+    note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 5, 9) &&
@@ -577,6 +577,7 @@ const handleRate = async function({capacity, log = false}) {
       }, {spaces: 2});
 
       await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify({
+        time: Date.now(),
         battery: {
           powerIncoming:      resultsMppt['3_DCW'],
           powerOutgoing:      resultsMppt['4_DCW'],
