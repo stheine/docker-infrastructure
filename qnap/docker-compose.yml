@@ -10,7 +10,6 @@ version: "3.7"
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
 #  9001 mosquitto-websockets   websockets
 # 16095 uptime-kuma            http://192.168.6.7:16095/
-# 19725 zigbee-assistant       http://192.168.6.7:19725/
 # 31038 watchdog               http://192.168.6.7:31038/
 # 45458 node-red               http://192.168.6.7:45458/
 # 57699 proxy                  http://192.168.6.7:57699/
@@ -692,7 +691,7 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.27.0-alpine
+    image: vaultwarden/server:1.28.0-alpine
     hostname: vaultwarden
     volumes:
       - vaultwarden:/data
@@ -707,13 +706,3 @@ services:
       - ./watchdog/app:/app
     ports:
       - 31038:31038
-
-  zigbee2mqtt-assistant:
-    restart: always
-    image: carldebilly/zigbee2mqttassistant:linux-arm32
-    hostname: zigbee2mqtt-assistant
-    ports:
-      - 19725:80
-    environment:
-      - Z2MA_SETTINGS__MQTTSERVER=192.168.6.7
-      - Z2MA_SETTINGS__BASETOPIC=Zigbee
