@@ -10,6 +10,7 @@ version: "3.7"
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
 #  9001 mosquitto-websockets   websockets
 # 16095 uptime-kuma            http://192.168.6.7:16095/
+# 26687 control-ui             http://192.168.6.7:26687/
 # 31038 watchdog               http://192.168.6.7:31038/
 # 45458 node-red               http://192.168.6.7:45458/
 # 57699 proxy                  http://192.168.6.7:57699/
@@ -326,6 +327,16 @@ services:
       - ./certbot/renew.sh:/renew.sh:ro
       - letsencrypt:/etc/letsencrypt:nocopy
       - letsencrypt_www:/var/letsencrypt
+
+  control-ui:
+    restart: always
+    build: control-ui
+    hostname: qnap-control-ui
+    ports:
+      - 26687:26687
+    volumes:
+      - ./control-ui/app:/app
+      # - wetter:/var/wetter
 
   delete-video:
     restart: always
