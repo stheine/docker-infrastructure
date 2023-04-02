@@ -99,6 +99,13 @@ process.on('SIGTERM', () => stopProcess());
           caller,
           connectionId,
         };
+
+        if(mqttClient) {
+          await mqttClient.publish('control-ui/cmnd/dialog', JSON.stringify({
+            header: 'Telefon',
+            data:   [callerName || caller],
+          }));
+        }
         break;
       }
 
