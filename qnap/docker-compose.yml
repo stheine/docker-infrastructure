@@ -702,7 +702,7 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.28.0-alpine
+    image: vaultwarden/server:1.28.1-alpine
     hostname: vaultwarden
     volumes:
       - vaultwarden:/data
