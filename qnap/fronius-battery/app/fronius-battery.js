@@ -552,7 +552,7 @@ const handleRate = async function({capacity, log = false}) {
         resultsSmartMeter: smartMeter.readRegisters(['W']),
         resultsMppt:       inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW',
           '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']),
-        resultsInverter:   inverter.readRegisters(['W']),
+        resultsInverter:   inverter.readRegisters(['W', 'TmpCab']),
       });
 
       const {resultsSmartMeter, resultsMppt, resultsInverter} = results;
@@ -593,6 +593,7 @@ const handleRate = async function({capacity, log = false}) {
         inverter: {
           powerIncoming: resultsInverter.W < 0 ? -resultsInverter.W : 0,
           powerOutgoing: resultsInverter.W > 0 ?  resultsInverter.W : 0,
+          tmpCab:        _.round(resultsInverter.TmpCab),
         },
         solar: {
           powerOutgoing: resultsMppt['1_DCW'] + resultsMppt['2_DCW'],
