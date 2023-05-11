@@ -123,6 +123,7 @@ process.on('SIGTERM', () => stopProcess());
           }
           if(inverter) {
             updates.inverter = inverter.powerOutgoing || -inverter.powerIncoming;
+            updates.tmpCab   = inverter.tmpCab;
           }
           if(meter) {
             if(meter.powerIncoming && meter.powerOutgoing) {
