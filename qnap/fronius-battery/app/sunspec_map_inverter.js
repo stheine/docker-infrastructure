@@ -148,6 +148,21 @@ const sunspecMap = [{
   end:    40111,
   type:  'float32',
 }, {
+  name:   'TmpSnk',
+  start:  40112,
+  end:    40113,
+  type:  'float32',
+}, {
+  name:   'TmpTrns',
+  start:  40114,
+  end:    40115,
+  type:  'float32',
+}, {
+  name:   'TmpOt',
+  start:  40116,
+  end:    40117,
+  type:  'float32',
+}, {
   name:   'St',
   start:  40118,
   end:    40118,
