@@ -1,4 +1,4 @@
-FROM node:16-buster
+FROM node:18-bullseye
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
