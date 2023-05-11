@@ -206,6 +206,7 @@ process.on('SIGTERM', () => stopProcess());
           const brennerVerbrauch = Number(brennerVerbrauchString);
 //          const lambdaO2         = Number(lambdaO2String);
           const twoDaysAgo = dayjs().subtract(2, 'days');
+          const stats = {};
 
           // logger.info({brennerVerbrauch, dateTime, error01});
 
@@ -318,6 +319,9 @@ process.on('SIGTERM', () => stopProcess());
 
             logger.info('status', {verbrauchSeitLetzterLeerung, gesamt, brennerVerbrauch, vorrat});
 
+            stats.gesamt = gesamt;
+            stats.vorrat = vorrat;
+
             if((vorrat < 200 &&
                 (!reportedSpeicher || dayjs(reportedSpeicher).isBefore(twoDaysAgo))
             ) ||
@@ -376,6 +380,12 @@ process.on('SIGTERM', () => stopProcess());
             } catch(err) {
               logger.error(`Failed to send error mail: ${err.message}`);
             }
+          }
+
+          // #######################################################################################
+          // Publish to mqtt
+          if(!_.isEmpty(stats)) {
+            await mqttClient.publish('vito/tele/STATS', JSON.stringify(stats), {retain: true});
           }
 
           // #######################################################################################
