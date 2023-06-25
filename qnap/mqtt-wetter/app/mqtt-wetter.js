@@ -9,6 +9,7 @@ import ms         from 'ms';
 import configFile from './configFile.js';
 import logger     from './logger.js';
 import {
+  getMaxSun,
   getSunTimes,
   getWeather,
 } from './wetter.js';
@@ -36,7 +37,7 @@ const stopProcess = async function() {
 process.on('SIGTERM', () => stopProcess());
 
 const handleWeatherDWD = async function() {
-  const {eveningStartsHour, morningEndsHour, dwdStationId} = config;
+  const {eveningStartsHour, morningEndsHour, dwdStationId, suncalcLocation} = config;
 
   // Timestamp calculation, local time to UTC
   // - now hours
@@ -75,12 +76,12 @@ const handleWeatherDWD = async function() {
   nextMorning.setUTCMinutes(0);
 
 
-  logger.debug('Timestamps', {
-    local:       {eveningStartsHour, morningEndsHour},
-    utc:         {nowUTCHour, eveningStartsUTCHour, morningEndsUTCHour},
-    nextMorning,
-    nextEvening,
-  });
+//  logger.debug('Timestamps', {
+//    local:       {eveningStartsHour, morningEndsHour},
+//    utc:         {nowUTCHour, eveningStartsUTCHour, morningEndsUTCHour},
+//    nextMorning,
+//    nextEvening,
+//  });
 
   // Get weather data
   let results;
@@ -91,7 +92,10 @@ const handleWeatherDWD = async function() {
         // Current
         const host = 'api.open-meteo.com';
         const base = '/v1/dwd-icon';
-        const url  = `https://${host}${base}?latitude=48.6207&longitude=8.8988&current_weather=true`; // TODO location config
+        const url  = `https://${host}${base}` +
+          `?latitude=${encodeURIComponent(suncalcLocation.latitude)}` +
+          `&longitude=${encodeURIComponent(suncalcLocation.longitude)}` +
+          `&current_weather=true`;
         const result = await await axios.get(url, {timeout: ms('2 seconds')});
 
         check.assert.object(result, `result not an object`);
@@ -225,10 +229,10 @@ const handleWeather = async function() {
 
   const morningEndsUTCHour = date.getUTCHours();
 
-  logger.debug('Timestamps', {
-    local: {eveningStartsHour, morningEndsHour},
-    utc: {eveningStartsUTCHour, morningEndsUTCHour},
-  });
+//  logger.debug('Timestamps', {
+//    local: {eveningStartsHour, morningEndsHour},
+//    utc: {eveningStartsUTCHour, morningEndsUTCHour},
+//  });
 
   // Get weather data
   const weather = await getWeather({openWeatherLocation, suncalcLocation});
@@ -272,7 +276,7 @@ const handleWeather = async function() {
   nextMorning.setUTCHours(morningEndsUTCHour);
   nextMorning.setUTCMinutes(0);
 
-  logger.debug({nextMorning, nextEvening});
+//  logger.debug({nextMorning, nextEvening});
 
   let dayHourly;
   let nightHourly;
@@ -310,16 +314,16 @@ const handleWeather = async function() {
   // console.log(Night.map(set => new Date(set.dt * 1000).toISOString()));
   // console.log({DayMaxWind, DayMinTemp, DayMaxTemp, NightMaxWind, NightMinTemp, NightMaxTemp});
 
-  logger.debug('Day', {
-    first: new Date(dayHourly.at(0).dt  * 1000).toISOString(),
-    last:  new Date(dayHourly.at(-1).dt * 1000).toISOString(),
-    temp:  _.map(dayHourly, 'temp'),
-  });
-  logger.debug('Night', {
-    first: new Date(nightHourly.at(0).dt  * 1000).toISOString(),
-    last:  new Date(nightHourly.at(-1).dt * 1000).toISOString(),
-    temp:  _.map(nightHourly, 'temp'),
-  });
+//  logger.debug('Day', {
+//    first: new Date(dayHourly.at(0).dt  * 1000).toISOString(),
+//    last:  new Date(dayHourly.at(-1).dt * 1000).toISOString(),
+//    temp:  _.map(dayHourly, 'temp'),
+//  });
+//  logger.debug('Night', {
+//    first: new Date(nightHourly.at(0).dt  * 1000).toISOString(),
+//    last:  new Date(nightHourly.at(-1).dt * 1000).toISOString(),
+//    temp:  _.map(nightHourly, 'temp'),
+//  });
 
   await mqttClient.publish('wetter/openweather/INFO', JSON.stringify({
     ...weather,
@@ -332,6 +336,12 @@ const handleWeather = async function() {
     nightMinTemp,
     nightMaxTemp,
   }), {retain: true});
+};
+
+const handleMaxSun = async function() {
+  const maxSun = await getMaxSun({suncalcLocation: config.suncalcLocation});
+
+  await mqttClient.publish('maxSun/INFO', JSON.stringify(maxSun), {retain: true});
 };
 
 const handleSunTimes = async function() {
@@ -365,6 +375,7 @@ const handleSunTimes = async function() {
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   setInterval(handleWeather, ms('1 hour'));
+  setInterval(handleMaxSun, ms('8 hours'));
   setInterval(handleSunTimes, ms('4 hours'));
   handleWeather(); // on startup
 

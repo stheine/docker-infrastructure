@@ -36,8 +36,10 @@ let   froniusInterval;
 let   inverter;
 let   lastLog;
 let   lastRate;
+let   maxSun = 0;
 let   momentanLeistung = 0;
 let   mqttClient;
+const notified = {};
 let   smartMeter;
 let   smartMeterInterval;
 
@@ -173,7 +175,10 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   let   note;
   let   rate;
   const now          = dayjs.utc();
-  const maxSunTime   = now.clone().hour(11).minute(25).second(0); // 11:25 UTC is the expected max sun
+  const maxSunTime   = now.clone()
+    .hour(new Date(maxSun).getUTCHours())
+    .minute(new Date(maxSun).getUTCMinutes)
+    .second(0);
   const midnightTime = now.clone().hour(24).minute(0).second(0);
 
   // Note, the pv_estimate is given in kw. Multiply 1000 to get watt.
@@ -237,7 +242,17 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     note = `Charge the last few Wh with 1000W (${toCharge}Wh toCharge).`;
     rate = wattToRate({capacity, watt: 1000});
   } else if(maxDcPower > config.dcLimit) {
-    if(limitPvHours || highPvHours > 4) {
+    if(limitPvHours || maxDcPower > config.dcLimit) {
+      note = `PV (${maxDcPower}W) over the limit and very good forecast. ` +
+        `Charge what's over the limit minus momentanLeistung, min 100W, max ${toCharge / (limitPvHours || 1)}W.`;
+      rate = wattToRate({
+        capacity,
+        watt: _.max([
+          100,                                                             // At least 100W
+          maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit, // Over the limit
+        ]),
+      });
+    } else if(highPvHours > 4) {
       note = `PV (${maxDcPower}W) over the limit and good forecast. ` +
         `Charge what's over the limit minus momentanLeistung, min 100W, max ${toCharge / (limitPvHours || 1)}W.`;
       rate = wattToRate({
@@ -309,6 +324,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
       highPvEstimates:  highPvEstimates.join(','),
       limitPv:          `${_.round(limitPv) / 1000}kWh`,
       limitPvHours,
+      maxSun,
       note,
       rate:             `${_.round(rate * 100, 1)}% (${_.round(capacity * rate)}W)`,
     });
@@ -411,14 +427,20 @@ const handleRate = async function({capacity, log = false}) {
     // logger.info('Battery Control (StorCtl_Mod)', results.StorCtl_Mod);
     // logger.info('Battery Rate Timeout (InOutWRte_RvrtTms)', results.InOutWRte_RvrtTms);
     // logger.info('Battery Charge Rate (InWRte)', results.InWRte);
+
+    Reflect.deleteProperty(notified, 'handleRate');
   } catch(err) {
     logger.error(`Failed to handle battery rate: ${err.message}`);
 
-    await sendMail({
-      to:      'technik@heine7.de',
-      subject: 'Fronius Solar Fehler, handleRate()',
-      html:    err.message,
-    });
+    if(!notified.handleRate) {
+      await sendMail({
+        to:      'technik@heine7.de',
+        subject: 'Fronius Solar Fehler, handleRate()',
+        html:    err.message,
+      });
+
+      notified.handleRate = true;
+    }
   }
 };
 
@@ -477,7 +499,7 @@ const handleRate = async function({capacity, log = false}) {
     });
 
 
-    await delay(ms('10 seconds')); // Delay shutdown
+    await delay(ms('1 minute')); // Delay shutdown (Version update & restart takes ~10 minutes)
 
     await stopProcess();
 
@@ -508,6 +530,10 @@ const handleRate = async function({capacity, log = false}) {
       const message = JSON.parse(messageRaw);
 
       switch(topic) {
+        case 'maxSun/INFO':
+          maxSun = message;
+          break;
+
         case 'strom/tele/SENSOR':
           ({momentanLeistung} = message);
 
@@ -531,6 +557,7 @@ const handleRate = async function({capacity, log = false}) {
     }
   });
 
+  await mqttClient.subscribe('maxSun/INFO');
   await mqttClient.subscribe('strom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
 
@@ -599,14 +626,20 @@ const handleRate = async function({capacity, log = false}) {
           powerOutgoing: resultsMppt['1_DCW'] + resultsMppt['2_DCW'],
         },
       }), {retain: true});
+
+      Reflect.deleteProperty(notified, 'froniusInterval');
     } catch(err) {
       logger.error(`froniusInterval(), failed to read data: ${err.message}`);
 
-      await sendMail({
-        to:      'technik@heine7.de',
-        subject: 'Fronius Solar Fehler, froniusInterval()',
-        html:    err.message,
-      });
+      if(!notified.froniusInterval) {
+        await sendMail({
+          to:      'technik@heine7.de',
+          subject: 'Fronius Solar Fehler, froniusInterval()',
+          html:    err.message,
+        });
+
+        notified.froniusInterval = true;
+      }
 
       if(err.message === 'Port Not Open') {
         await inverter.close();
@@ -724,29 +757,38 @@ const handleRate = async function({capacity, log = false}) {
         const runningVersion = await inverter.readRegister('Vr');
         const url = 'https://www.fronius.com/de-de/germany/solarenergie/installateure-partner/' +
           'technische-daten/alle-produkte/wechselrichter/fronius-symo-gen24-plus/fronius-symo-gen24-8-0-plus';
+        // Alternative URL: https://www.fronius.com/en/solar-energy/installers-partners/
+        //   service-support/tech-support/software-and-updates/symo-gen24plus-update
         const response = await axios.get(url);
         const latestVersion = response.data.replace(/^[\S\s]*Firmware Changelog Fronius Gen24 Tauro /, '')
           .replace(/<\/span>[\S\s]*$/, '');
 
         logger.info('Software version check', {runningVersion, latestVersion});
 
-        if(runningVersion !== latestVersion) {
-          await sendMail({
-            to:      'technik@heine7.de',
-            subject: 'Fronius Software Version update',
-            html:    `
-              <table>
-                <tr>
-                  <td>Running</td><td>${runningVersion}</td>
-                </tr>
-                <tr>
-                  <td>Latest</td><td>${latestVersion}</td>
-                </tr>
-                <tr>
-                  <td colspan='2'><a href='${url}'>Fronius Product Download</a></td>
-                </tr>
-              </table>`,
-          });
+        if(runningVersion === latestVersion) {
+          Reflect.deleteProperty(notified, 'softwareVersion');
+        } else if(!notified.softwareVersion) {
+          (async() => { // Do not await this async handler!
+            await delay(ms('5days'));
+            await sendMail({
+              to:      'technik@heine7.de',
+              subject: 'Fronius Software Version update',
+              html:    `
+                <table>
+                  <tr>
+                    <td>Running</td><td>${runningVersion}</td>
+                  </tr>
+                  <tr>
+                    <td>Latest</td><td>${latestVersion}</td>
+                  </tr>
+                  <tr>
+                    <td colspan='2'><a href='${url}'>Fronius Product Download</a></td>
+                  </tr>
+                </table>`,
+            });
+          })();
+
+          notified.softwareVersion = true;
         }
       } catch(err) {
         logger.error(`Failed to read software version: ${err.message}`);

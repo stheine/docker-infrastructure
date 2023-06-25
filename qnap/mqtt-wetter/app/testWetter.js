@@ -3,6 +3,7 @@
 import configFile from './configFile.js';
 import logger     from './logger.js';
 import {
+  getMaxSun,
   getSunTimes,
   getWeather,
 }  from './wetter.js';
@@ -11,6 +12,10 @@ import {
 
 (async() => {
   const config = await configFile.read();
+
+  const maxSun = await getMaxSun({
+    suncalcLocation:     config.suncalcLocation,
+  });
 
   const sunTimes = await getSunTimes({
     suncalcLocation:     config.suncalcLocation,
@@ -21,5 +26,7 @@ import {
     suncalcLocation:     config.suncalcLocation,
   });
 
-  logger.info({sunTimes, weather});
+  logger.info({maxSun, sunTimes, weather});
+  logger.info(typeof maxSun);
+  logger.info(typeof sunTimes.solarNoon);
 })();
