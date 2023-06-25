@@ -1,4 +1,4 @@
-FROM armv7/armhf-ubuntu:xenial
+FROM ubuntu:22.04
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -12,6 +12,7 @@ RUN \
     apt-utils && \
   apt-get install -y \
     dnsutils \
+    locales \
     sudo \
     tzdata \
     unzip \
@@ -32,27 +33,31 @@ ENV LC_ALL en_US.UTF-8
 
 RUN \
   apt-get install -y \
+    wget \
     autoconf \
     automake \
+    libtool \
+    pkg-config \
+    gettext \
+    pandoc \
     bison \
     flex \
-    gettext \
-    libssl-dev \
-    libtool \
-    pandoc \
-    pkg-config
+    make \
+    libssl-dev
 
 WORKDIR /source
 
-ARG DOVECOT_VERSION=2.3.19.1
+ARG DOVECOT_VERSION=2.3.20
 RUN \
   wget https://github.com/dovecot/core/archive/$DOVECOT_VERSION.tar.gz && \
-  tar xf $DOVECOT_VERSION.tar.gz && \
-  cd core-$DOVECOT_VERSION && \
+  tar xf $DOVECOT_VERSION.tar.gz
+WORKDIR /source/core-$DOVECOT_VERSION
+RUN \
   ./autogen.sh && \
   ./configure --enable-maintainer-mode --with-ssl=openssl && \
   make && \
-  sudo make install && \
+  sudo make install
+RUN \
   useradd -m -p vmail -s /bin/false vmail && \
   useradd -m -p dovecot -s /bin/false dovecot && \
   useradd -m -p dovenull -s /bin/false dovenull
