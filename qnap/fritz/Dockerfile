@@ -1,4 +1,4 @@
-FROM node:16-buster
+FROM node:20-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -44,6 +44,7 @@ RUN \
   apt-get install -y \
     build-essential \
     cmake \
+    git \
     libcurl4-openssl-dev \
     libssl-dev \
     libxml2-dev

@@ -3,9 +3,9 @@
 /* eslint-disable new-cap */
 /* eslint-disable no-underscore-dangle */
 
-import _       from 'lodash';
-import request from 'request-promise-native';
-import xmlJs   from 'xml-js';
+import _     from 'lodash';
+import axios from 'axios';
+import xmlJs from 'xml-js';
 
 // ###########################################################################
 // Refresh phonebook
@@ -21,8 +21,8 @@ export const refresh = async function({fritzbox, logger}) {
 
     // logger.info(phonebookData);
 
-    const phonebookXml = await request(NewPhonebookURL);
-    const phonebookRaw = xmlJs.xml2js(phonebookXml, {compact: true});
+    const phonebookXml = await axios.get(NewPhonebookURL);
+    const phonebookRaw = xmlJs.xml2js(phonebookXml.data, {compact: true});
 
     // logger.info(phonebookRaw);
 
