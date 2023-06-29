@@ -177,7 +177,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   const now          = dayjs.utc();
   const maxSunTime   = now.clone()
     .hour(new Date(maxSun).getUTCHours())
-    .minute(new Date(maxSun).getUTCMinutes)
+    .minute(new Date(maxSun).getUTCMinutes())
     .second(0);
   const midnightTime = now.clone().hour(24).minute(0).second(0);
 
