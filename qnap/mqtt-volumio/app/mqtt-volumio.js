@@ -127,6 +127,7 @@ process.on('SIGTERM', () => stopProcess());
                 break;
 
               case 'mp3':
+              case 'Podcast':
                 switch(status) {
                   case 'play':
                     newStatus = 'pause';
