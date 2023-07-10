@@ -7,6 +7,7 @@ import fsPromises            from 'fs/promises';
 import {setTimeout as delay} from 'timers/promises';
 
 import _                     from 'lodash';
+import AsyncLock             from 'async-lock';
 import axios                 from 'axios';
 import check                 from 'check-types-2';
 import cron                  from 'node-cron';
@@ -32,10 +33,12 @@ dayjs.extend(utc);
 let   config;
 const dcPowers = new Ringbuffer(10);
 const einspeisungen = new Ringbuffer(60);
+let   froniusBatteryStatus;
 let   froniusInterval;
 let   inverter;
 let   lastLog;
 let   lastRate;
+const lock = new AsyncLock();
 let   maxSun = 0;
 let   momentanLeistung = 0;
 let   mqttClient;
@@ -45,6 +48,20 @@ let   smartMeterInterval;
 
 dcPowers.enq(0);
 einspeisungen.enq(0);
+
+const updateFroniusBatteryStatus = async function(set) {
+  await lock.acquire('fronius-battery.json', async() => {
+    froniusBatteryStatus = {...froniusBatteryStatus, ...set};
+
+    await mqttClient.publish('Fronius/solar/tele/STATUS', JSON.stringify(froniusBatteryStatus),
+      {retain: true});
+
+    await fsPromises.copyFile('/var/fronius/fronius-battery.json',
+      '/var/fronius/fronius-battery.json.bak');
+    await fsExtra.writeJson('/var/fronius/fronius-battery.json', froniusBatteryStatus,
+      {spaces: 2});
+  });
+};
 
 // ###########################################################################
 // Process handling
@@ -228,13 +245,15 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     rate = 1;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 4, 11) &&
-    chargeState > config.springChargeGoal
+    chargeState > config.springChargeGoal &&
+    !froniusBatteryStatus.chargeException
   ) {
     note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 5, 9) &&
-    chargeState > config.summerChargeGoal
+    chargeState > config.summerChargeGoal &&
+    !froniusBatteryStatus.chargeException
   ) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
@@ -453,9 +472,11 @@ const handleRate = async function({capacity, log = false}) {
   logger.info(`Startup --------------------------------------------------`);
 
   // #########################################################################
-  // Read static data
+  // Init MQTT
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
 
-  let froniusBatteryStatus;
+  // #########################################################################
+  // Read static data
 
   try {
     config = await fsExtra.readJson('/var/fronius/config.json');
@@ -472,14 +493,16 @@ const handleRate = async function({capacity, log = false}) {
   }
 
   try {
-    froniusBatteryStatus = await fsExtra.readJson('/var/fronius/fronius-battery.json');
+    const savedFroniusBatteryStatus = await fsExtra.readJson('/var/fronius/fronius-battery.json');
+
+    check.assert.nonEmptyObject(savedFroniusBatteryStatus);
+
+    await updateFroniusBatteryStatus(savedFroniusBatteryStatus);
   } catch(err) {
     logger.error('Failed to read JSON in /var/fronius/fronius-battery.json', err.message);
 
     process.exit(1);
   }
-
-  let {solarWh, storageChargeWh, storageDisChargeWh} = froniusBatteryStatus;
 
   // #########################################################################
   // Init Modbus
@@ -507,10 +530,6 @@ const handleRate = async function({capacity, log = false}) {
   }
 
   // #########################################################################
-  // Init MQTT
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
-
-  // #########################################################################
   // Register MQTT events
 
   mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
@@ -530,6 +549,20 @@ const handleRate = async function({capacity, log = false}) {
       const message = JSON.parse(messageRaw);
 
       switch(topic) {
+        case 'Fronius/solar/cmnd':
+          if(Object.hasOwn(message, 'chargeException')) {
+            if(message.chargeException) {
+              logger.info(`Charge exception. Charge 100% today.`);
+
+              await updateFroniusBatteryStatus({chargeException: true});
+            } else {
+              logger.info(`Charge exception. Reset to normal charge today.`);
+
+              await updateFroniusBatteryStatus({chargeException: false});
+            }
+          }
+          break;
+
         case 'maxSun/INFO':
           maxSun = message;
           break;
@@ -557,6 +590,7 @@ const handleRate = async function({capacity, log = false}) {
     }
   });
 
+  await mqttClient.subscribe('Fronius/solar/cmnd');
   await mqttClient.subscribe('maxSun/INFO');
   await mqttClient.subscribe('strom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
@@ -583,35 +617,27 @@ const handleRate = async function({capacity, log = false}) {
       });
 
       const {resultsSmartMeter, resultsMppt, resultsInverter} = results;
+      const newFroniusBatteryStatus = {};
 
       if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
-        solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
+        newFroniusBatteryStatus.solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
       }
       if(resultsMppt['3_DCWH']) {
-        storageChargeWh = resultsMppt['3_DCWH'];
+        newFroniusBatteryStatus.storageChargeWh = resultsMppt['3_DCWH'];
       }
       if(resultsMppt['4_DCWH']) {
-        storageDisChargeWh = resultsMppt['4_DCWH'];
+        newFroniusBatteryStatus.storageDisChargeWh = resultsMppt['4_DCWH'];
       }
 
-      await fsPromises.copyFile('/var/fronius/fronius-battery.json',
-        '/var/fronius/fronius-battery.json.bak');
-      await fsExtra.writeJson('/var/fronius/fronius-battery.json', {
-        ...froniusBatteryStatus,
-        solarWh,
-        storageChargeWh,
-        storageDisChargeWh,
-      }, {spaces: 2});
+      await updateFroniusBatteryStatus(newFroniusBatteryStatus);
 
       await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify({
         time: Date.now(),
         battery: {
-          powerIncoming:      resultsMppt['3_DCW'],
-          powerOutgoing:      resultsMppt['4_DCW'],
-          solarWh,
-          stateOfCharge:      resultsMppt.ChaState / 100,
-          storageChargeWh,
-          storageDisChargeWh,
+          powerIncoming: resultsMppt['3_DCW'],
+          powerOutgoing: resultsMppt['4_DCW'],
+          stateOfCharge: resultsMppt.ChaState / 100,
+          ...newFroniusBatteryStatus,
         },
         meter: {
           powerIncoming: resultsSmartMeter.W > 0 ?  resultsSmartMeter.W : 0,
@@ -792,6 +818,21 @@ const handleRate = async function({capacity, log = false}) {
         }
       } catch(err) {
         logger.error(`Failed to read software version: ${err.message}`);
+      }
+    });
+  }
+
+  // #########################################################################
+  // Reset charge exception
+  {
+    //                s min h  d m wd
+    const schedule = '0 0   0  * * *'; // Midnight
+
+    cron.schedule(schedule, async() => {
+      if(froniusBatteryStatus.chargeException) {
+        logger.info(`Reset charge exception. Normal charge today.`);
+
+        await updateFroniusBatteryStatus({chargeException: false});
       }
     });
   }
