@@ -5,7 +5,6 @@
 
 import fsPromises from 'fs/promises';
 
-import _          from 'lodash';
 import graphviz   from 'graphviz';
 import mqtt       from 'async-mqtt';
 
@@ -106,10 +105,15 @@ process.on('SIGTERM', () => stopProcess());
           const updates = {};
 
           if(battery) {
-            updates.solarWh            = battery.solarWh;
-            updates.storageChargeWh    = battery.storageChargeWh;
-            updates.storageDisChargeWh = battery.storageDisChargeWh;
-
+            if(battery.solarWh) {
+              updates.solarWh = battery.solarWh;
+            }
+            if(battery.storageChargeWh) {
+              updates.storageChargeWh = battery.storageChargeWh;
+            }
+            if(battery.storageDisChargeWh) {
+              updates.storageDisChargeWh = battery.storageDisChargeWh;
+            }
             if(battery.powerIncoming && battery.powerOutgoing) {
               logger.warn('battery.powerIncoming && powerOutgoing', battery);
             } else {
@@ -162,7 +166,7 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'Jalousie/tele/SENSOR': {
+        case 'JalousieBackend/tele/SENSOR': {
           // logger.info(topic, message);
           const file = '/var/jalousie/jalousie.rrd';
 
@@ -430,7 +434,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('FritzBox/tele/SENSOR');
   await mqttClient.subscribe('FritzBox/speedtest/result');
   await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
-  await mqttClient.subscribe('Jalousie/tele/SENSOR');
+  await mqttClient.subscribe('JalousieBackend/tele/SENSOR');
   await mqttClient.subscribe('Regen/tele/SENSOR');
   await mqttClient.subscribe('Sonne/tele/SENSOR');
   await mqttClient.subscribe('strom/tele/SENSOR');
