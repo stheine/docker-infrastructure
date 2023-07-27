@@ -122,6 +122,13 @@ volumes:
       device: /share/Fotos
       o: bind
 
+  media_fotos_Sony:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/Fotos/Sony
+      o: bind
+
   media_kinder-cds:
     driver: local
     driver_opts:
@@ -677,6 +684,14 @@ services:
     restart: always
     image: thetorproject/snowflake-proxy:latest
     network_mode: host
+
+  sony-pm-alternative:
+    restart: always
+    build: sony-pm-alternative
+    hostname: qnap-sony-pm
+    network_mode: host
+    volumes:
+      - media_fotos_Sony:/var/lib/Sony
 
   unison:
     restart: always
