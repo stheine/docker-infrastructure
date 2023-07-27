@@ -136,7 +136,7 @@ const getSolcastForecasts = async function() {
     // logger.info('Refresh solcast cache');
 
     const response = await axios.get(
-      `https://api.solcast.com.au/rooftop_sites/${config.RESOURCE_ID}/forecasts?hours=24`,
+      `https://api.solcast.com.au/rooftop_sites/${config.RESOURCE_ID}/forecasts?hours=36`,
       {
         headers: {Authorization: `Bearer ${config.API_KEY}`},
         json:    true,
@@ -182,7 +182,8 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   const maxDcPower      = _.max(dcPowers.dump());
   const maxEinspeisung  = _.max(einspeisungen.dump());
   const toCharge        = _.round(capacity * (100 - chargeState) / 100);
-  let   totalPv         = 0;
+  let   tomorrowPvWh    = 0;
+  let   totalPvWh       = 0;
   let   totalPvHours    = 0;
   let   highPv          = 0;
   let   highPvHours     = 0;
@@ -197,60 +198,72 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     .minute(new Date(maxSun).getUTCMinutes())
     .second(0);
   const midnightTime = now.clone().hour(24).minute(0).second(0);
+  const tomorrowMidnightTime = now.clone().hour(48).minute(0).second(0);
 
   // Note, the pv_estimate is given in kw. Multiply 1000 to get watt.
   for(const forecast of solcastForecasts) {
     const {period_end} = forecast;
     const period_end_date = Date.parse(period_end);
 
-    if(period_end_date < Date.now()) {
-      // Already passed
-      continue;
-    }
-    if(period_end_date > midnightTime) {
-      // Tomorrow
-      continue;
-    }
-
     let {pv_estimate90: estimate} = forecast;
 
     estimate *= 1000; // kW to watt
 
-    // console.log({estimate});
+    switch(true) {
+      case period_end_date < Date.now():
+        // Already passed
+        break;
 
-    if(estimate > 500) {
-      // Estimate is for 30 minute period
-      totalPv      += estimate / 2;
-      totalPvHours += 1 / 2;
-    }
-    if(estimate > 3000) {
-      // Estimate is for 30 minute period
-      highPv      += estimate / 2;
-      highPvHours += 1 / 2;
-      highPvEstimates.push(_.round(estimate));
-    }
-    if(estimate > config.dcLimit) {
-      // Estimate is for 30 minute period
-      limitPv      += estimate / 2;
-      limitPvHours += 1 / 2;
+      case period_end_date < midnightTime:
+        // Today
+        totalPvWh += estimate / 2;
+
+        // console.log({estimate});
+
+        if(estimate > 500) {
+          // Estimate is for 30 minute period
+          totalPvHours += 1 / 2;
+        }
+        if(estimate > 3000) {
+          // Estimate is for 30 minute period
+          highPv      += estimate / 2;
+          highPvHours += 1 / 2;
+          highPvEstimates.push(_.round(estimate));
+        }
+        if(estimate > config.dcLimit) {
+          // Estimate is for 30 minute period
+          limitPv      += estimate / 2;
+          limitPvHours += 1 / 2;
+        }
+        break;
+
+      case period_end_date < tomorrowMidnightTime:
+        // Tomorrow
+        tomorrowPvWh += estimate / 2;
+
+        break;
+
+      default:
+        // After tomorrow
+        break;
     }
   }
 
-  // Charge to at least 15%
+  // Charge to at least 20%
   // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
   // In April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
-  if(chargeState < 15) {
-    note = `Charge to min of 15% (is ${chargeState}%).`;
+  if(chargeState < 20) {
+    note = `Charge to min of 20% (is ${chargeState}%).`;
     rate = 1;
-  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
+  } else if(!['Sat', 'Sun'].includes(now.format('ddd') && tomorrowPvWh > 3 * capacity) &&
     _.inRange(now.format('M'), 4, 11) &&
     chargeState > config.springChargeGoal &&
     !froniusBatteryStatus.chargeException
   ) {
     note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
-  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
+  } else if(!['Sat', 'Sun'].includes(now.format('ddd') && tomorrowPvWh > 3 * capacity) &&
     _.inRange(now.format('M'), 5, 9) &&
     chargeState > config.summerChargeGoal &&
     !froniusBatteryStatus.chargeException
@@ -285,7 +298,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
           toCharge / (limitPvHours || 1),                                    // Remaining by limitPvHours
         ]),
       });
-    } else if(totalPv > 3 * toCharge) {
+    } else if(totalPvWh > 3 * toCharge) {
       if(now < maxSunTime) {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
         rate = wattToRate({capacity, watt: _.max([500, toCharge / highPvHours])});
@@ -300,7 +313,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   } else if(maxEinspeisung > 5700) {
     note = `PV Einspeisung (${maxEinspeisung}W) close to the limit. Charge 500W.`;
     rate = wattToRate({capacity, watt: 500});
-  } else if(limitPv && totalPv - limitPv > 2 * toCharge) {
+  } else if(limitPv && totalPvWh - limitPv > 2 * toCharge) {
     note = `Limit expected for later and enough PV after the limit. Wait to reach limit.`;
     rate = 0;
   } else if(limitPv && limitPvHours > 2) {
@@ -317,7 +330,7 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
       note = `High PV for enough hours to charge. After max sun.`;
       rate = wattToRate({capacity, watt: _.max([1000, toCharge / highPvHours * 2])});
     }
-  } else if(totalPv > 3 * toCharge) {
+  } else if(totalPvWh > 3 * toCharge) {
     note = `Sufficient for today, but won't reach the limit level.`;
     rate = 0.4; // Charge-rate 40%;
   } else {
@@ -336,13 +349,14 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
       maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
       momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
       maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
-      totalPv:          `${_.round(totalPv) / 1000}kWh`,
+      totalPv:          `${_.round(totalPvWh) / 1000}kWh`,
       totalPvHours,
       highPv:           `${_.round(highPv) / 1000}kWh`,
       highPvHours,
       highPvEstimates:  highPvEstimates.join(','),
       limitPv:          `${_.round(limitPv) / 1000}kWh`,
       limitPvHours,
+      tomorrowPv:       `${_.round(tomorrowPvWh) / 1000}kWh`,
       maxSun,
       note,
       rate:             `${_.round(rate * 100, 1)}% (${_.round(capacity * rate)}W)`,
