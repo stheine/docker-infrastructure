@@ -38,6 +38,13 @@ volumes:
       device: /share/linux/data/fronius
       o: bind
 
+  ftpd:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/ftpd
+      o: bind
+
   gerbera-filme:
     driver: local
     driver_opts:
@@ -362,6 +369,18 @@ services:
     volumes:
       - letsencrypt:/usr/local/etc/letsencrypt:nocopy
       - vmail:/home/vmail:nocopy
+
+  ftpd:
+    restart: always
+    build: ftpd
+    hostname: qnap-ftpd
+    ports:
+      - "3873:21"
+      - "3874-3883:3874-3883"
+    volumes:
+      - ./ftpd/vsftpd.conf:/etc/vsftpd/vsftpd.conf:ro
+      - ftpd:/etc/ftpd:ro
+      - media_fotos_Sony:/ftp
 
   fritz:
     restart: always
