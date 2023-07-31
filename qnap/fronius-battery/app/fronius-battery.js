@@ -256,16 +256,18 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
   if(chargeState < 20) {
     note = `Charge to min of 20% (is ${chargeState}%).`;
     rate = 1;
-  } else if(!['Sat', 'Sun'].includes(now.format('ddd') && tomorrowPvWh > 3 * capacity) &&
+  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 4, 11) &&
     chargeState > config.springChargeGoal &&
+    tomorrowPvWh > 3 * capacity &&
     !froniusBatteryStatus.chargeException
   ) {
     note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
-  } else if(!['Sat', 'Sun'].includes(now.format('ddd') && tomorrowPvWh > 3 * capacity) &&
+  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 5, 9) &&
     chargeState > config.summerChargeGoal &&
+    tomorrowPvWh > 3 * capacity &&
     !froniusBatteryStatus.chargeException
   ) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
