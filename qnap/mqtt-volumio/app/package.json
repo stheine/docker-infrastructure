@@ -10,9 +10,9 @@
   "author": "stheine@arcor.de",
   "license": "ISC",
   "dependencies": {
-    "async-mqtt": "2.6.1",
-    "dayjs": "1.10.7",
-    "socket.io-client": "2.4.0"
+    "async-mqtt": "2.6.3",
+    "dayjs": "1.11.9",
+    "socket.io-client": "2.5.0"
   },
   "devDependencies": {
     "eslint": "8.2.0",

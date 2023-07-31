@@ -36,6 +36,14 @@ const stopProcess = async function() {
 
 process.on('SIGTERM', () => stopProcess());
 
+const getQueue = async function() {
+  return new Promise(resolve => {
+    volumio.once('pushQueue', queue => resolve(queue));
+
+    volumio.emit('getQueue');
+  });
+};
+
 (async() => {
   // #########################################################################
   // Startup
@@ -45,7 +53,7 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // Init connections
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.7:1883');
-  volumio    = io('http://192.168.6.12:3000', {transports: ['websocket']});
+  volumio    = io('http://192.168.6.12:80', {transports: ['websocket']});
 
   // #########################################################################
   // Register MQTT events
@@ -95,71 +103,70 @@ process.on('SIGTERM', () => stopProcess());
       // logger.debug('handle', {topic, cmnd, message});
 
       switch(cmnd) {
-        case 'playPause': {
-          volumio.once('pushState', async data => {
-            // logger.info('playPause:pushState', data);
-            const {status, trackType} = data;
-            let   newStatus;
-
-            switch(trackType) {
-              case 'webradio':
-                switch(status) {
-                  case 'pause':
-                    volumio.emit('stop');
-
-                    await delay(100);
-
-                    newStatus = 'play';
-                    break;
-
-                  case 'play':
-                    newStatus = 'stop';
-                    break;
-
-                  case 'stop':
-                    newStatus = 'play';
-                    break;
-
-                  default:
-                    logger.error(`Unhandled ${trackType} status='${status}'`);
-                    break;
-                }
-                break;
-
-              case 'mp3':
-              case 'Podcast':
-                switch(status) {
-                  case 'play':
-                    newStatus = 'pause';
-                    break;
-
-                  case 'pause':
-                  case 'stop':
-                    newStatus = 'play';
-                    break;
-
-                  default:
-                    logger.error(`Unhandled ${trackType} status='${status}'`);
-                    break;
-                }
-                break;
-
-              default:
-                logger.error(`Unhandled trackType='${trackType}'`);
-                break;
-            }
-
-            if(newStatus) {
-              logger.info('playPause:toggle', {status, newStatus});
-
-              volumio.emit(newStatus);
-            }
-
-          });
-
-          volumio.emit('getState');
-          break;
-        }
+//        case 'playPause': {
+//          volumio.once('pushState', async data => {
+//            // logger.info('playPause:pushState', data);
+//            const {status, trackType} = data;
+//            let   newStatus;
+//
+//            switch(trackType) {
+//              case 'webradio':
+//                switch(status) {
+//                  case 'pause':
+//                    volumio.emit('stop');
+//
+//                    await delay(100);
+//
+//                    newStatus = 'play';
+//                    break;
+//
+//                  case 'play':
+//                    newStatus = 'stop';
+//                    break;
+//
+//                  case 'stop':
+//                    newStatus = 'play';
+//                    break;
+//
+//                  default:
+//                    logger.error(`Unhandled ${trackType} status='${status}'`);
+//                    break;
+//                }
+//                break;
+//
+//              case 'mp3':
+//              case 'Podcast':
+//                switch(status) {
+//                  case 'play':
+//                    newStatus = 'pause';
+//                    break;
+//
+//                  case 'pause':
+//                  case 'stop':
+//                    newStatus = 'play';
+//                    break;
+//
+//                  default:
+//                    logger.error(`Unhandled ${trackType} status='${status}'`);
+//                    break;
+//                }
+//                break;
+//
+//              default:
+//                logger.error(`Unhandled trackType='${trackType}'`);
+//                break;
+//            }
+//
+//            if(newStatus) {
+//              logger.info('playPause:toggle', {status, newStatus});
+//
+//              volumio.emit(newStatus);
+//            }
+//          });
+//
+//          volumio.emit('getState');
+//          break;
+//        }
 
         case 'getBrowseSources': // ?
         case 'getQueue':
@@ -168,6 +175,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'play':
         case 'prev':
         case 'stop':
+        case 'toggle':
           volumio.emit(cmnd);
           break;
 
@@ -200,23 +208,25 @@ process.on('SIGTERM', () => stopProcess());
           });
           break;
 
-        case 'DLF':
-          volumio.once('pushQueue', async queue => {
-            const dlfKey = _.findKey(queue, {service: 'webradio', name: 'DLF'});
+        case 'DLF': {
+          let queue = await getQueue();
+          let dlfKey = _.findKey(queue, {service: 'webradio', name: 'DLF'});
 
-            if(dlfKey === undefined) {
-              volumio.emit('addToQueue', {
-                name: 'DLF',
-                service: 'webradio',
-                uri: 'https://st01.sslstream.dlf.de/dlf/01/high/aac/stream.aac',
-              });
-            } else {
-              volumio.emit('play', {value: dlfKey});
-            }
-          });
+          if(dlfKey === undefined) {
+            volumio.emit('addToQueue', {
+              name: 'DLF',
+              service: 'webradio',
+              uri: 'https://st01.sslstream.dlf.de/dlf/01/high/aac/stream.aac',
+            });
 
-          volumio.emit('getQueue');
+            queue = await getQueue();
+
+            dlfKey = _.findKey(queue, {service: 'webradio', name: 'DLF'});
+          }
+
+          volumio.emit('play', {value: dlfKey});
           break;
+        }
 
         default:
           logger.error(`Unhandled cmnd '${cmnd}'`, message);
@@ -246,7 +256,7 @@ process.on('SIGTERM', () => stopProcess());
   volumio.on('pushState', data => {
     mqttClient.publish('volumio/stat/pushState', JSON.stringify(data), {retain: true});
 
-    logger.info('pushState', data);
+    // logger.info('pushState', data);
   });
 
   volumio.on('browseLibrary', data => {
