@@ -346,11 +346,6 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
     rate !== lastRate
   ) {
     logger.debug('getBatteryRate', {
-      toCharge:         `${_.round(toCharge / 1000, 1)}kWh`,
-      chargeState:      `${chargeState}%`,
-      maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
-      momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
-      maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
       totalPv:          `${_.round(totalPvWh) / 1000}kWh`,
       totalPvHours,
       highPv:           `${_.round(highPv) / 1000}kWh`,
@@ -360,8 +355,13 @@ const getBatteryRate = function({capacity, chargeState, log, solcastForecasts}) 
       limitPvHours,
       tomorrowPv:       `${_.round(tomorrowPvWh) / 1000}kWh`,
       maxSun,
+      maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
+      maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
+      momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
+      chargeState:      `${chargeState}%`,
+      toCharge:         `${_.round(toCharge / 1000, 1)}kWh`,
+      rate:             `${_.round(capacity * rate)}W (${_.round(rate * 100, 1)}%)`,
       note,
-      rate:             `${_.round(rate * 100, 1)}% (${_.round(capacity * rate)}W)`,
     });
 
     lastLog  = now;
