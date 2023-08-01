@@ -6,6 +6,7 @@ version: "3.7"
 #  1499 unison                 unison/ rsync                 Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
 #  2342 photoprism             http://192.168.6.7:2342/
+#  3873-3883 ftpd              ftp -P 3873 heine7.de
 #  8008 portainer              http://192.168.6.7:8008/
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
 #  9001 mosquitto-websockets   websockets
