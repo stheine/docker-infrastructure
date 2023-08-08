@@ -25,6 +25,13 @@ version: "3.7"
 # 59159 gerbera-video          http://192.168.6.7:59159/
 
 volumes:
+  comics:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/comics
+      o: bind
+
   fritz:
     driver: local
     driver_opts:
@@ -342,6 +349,14 @@ services:
       - ./certbot/renew.sh:/renew.sh:ro
       - letsencrypt:/etc/letsencrypt:nocopy
       - letsencrypt_www:/var/letsencrypt
+
+  comics:
+    restart: always
+    build: comics
+    hostname: qnap-comics
+    volumes:
+      - ./comics/app:/app
+      - comics:/var/comics
 
   control-ui:
     restart: always
