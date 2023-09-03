@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM debian:bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -27,19 +27,24 @@ ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
 # ##############################################################################
-# Install certbot-auto from https://certbot.eff.org/ Nginx / Ubuntu 20.04
+# https://certbot.eff.org/instructions?ws=nginx&os=pip
+# https://cryptography.io/en/latest/installation/
 
 RUN \
   apt-get install -y \
     build-essential \
+    cargo \
     libaugeas0 \
     libffi-dev \
     libssl-dev \
+    pkg-config \
     python3 \
     python3-dev \
     python3-venv \
-    rustc && \
-  /usr/bin/python3 -m venv /opt/certbot/ && \
+    rustc
+
+RUN \
+  python3 -m venv /opt/certbot/ && \
   /opt/certbot/bin/pip install --upgrade pip && \
   /opt/certbot/bin/pip install certbot certbot-nginx && \
   ln -s /opt/certbot/bin/certbot /usr/bin/certbot

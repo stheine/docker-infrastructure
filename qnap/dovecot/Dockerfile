@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM debian:bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -71,4 +71,3 @@ COPY docker_container_profile /root/.profile
 CMD ["/usr/local/sbin/dovecot", "-F"]
 
 EXPOSE 993
-VOLUME /usr/local/etc/dovecot/certs /home/vmail

@@ -7,7 +7,7 @@ echo "$(date +"%Y-%m-%d %H:%M:%S") renew.sh started"
 until $(${SUCCESS}); do
   echo "$(date +"%Y-%m-%d %H:%M:%S") Calling certbot renew"
 
-  RESULT=`/bin/certbot renew --webroot --webroot-path=/var/letsencrypt 2>/tmp/certbot.error`
+  RESULT=`/usr/bin/certbot renew --webroot --webroot-path=/var/letsencrypt 2>/tmp/certbot.error`
   RESULT_CODE=${?}
 
   echo "$(date +"%Y-%m-%d %H:%M:%S") certbot renew returned ${RESULT_CODE} ${RESULT}"
@@ -34,7 +34,7 @@ until $(${SUCCESS}); do
 
     echo "$(date +"%Y-%m-%d %H:%M:%S") certbot renew failed: ${RESULT_CODE} ${RESULT} ${ERROR}" >&2
 
-    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate update check failed\n\n/bin/certbot result=${RESULT_CODE} ${RESULT}\n${ERROR}\n$(ls -l /bin)\n\n$(ls -l /opt/certbot/bin)\n\n$(ls -l /var)" | /usr/sbin/sendmail -t
+    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate update check failed\n\n/usr/bin/certbot result=${RESULT_CODE} ${RESULT}\n${ERROR}\n$(ls -l /bin)\n\n$(ls -l /usr/bin/certbot)\n\n$(ls -l /var)" | /usr/sbin/sendmail -t
 
     sleep 10
   fi

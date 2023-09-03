@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM debian:bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -10,7 +10,8 @@ RUN \
   apt-get update && \
   apt-get install -y \
     apt-utils && \
-  apt-get upgrade -y && \
+  apt-get upgrade -y
+RUN \
   apt-get install -y \
     dnsutils \
     locales \
@@ -19,7 +20,8 @@ RUN \
     unzip \
     vim \
     wget \
-    xz-utils && \
+    xz-utils
+RUN \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
   sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && \

@@ -1,4 +1,4 @@
-FROM httpd:2.4-bullseye
+FROM httpd:2.4-bookworm
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
