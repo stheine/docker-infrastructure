@@ -28,7 +28,10 @@ const deleteVideo = async function() {
     const stat = await fsPromises.stat(path.join(baseDir, file));
 
     if(now - stat.mtimeMs > ms('2days')) {
-      logger.info('delete', {file, mtime: stat.mtime});
+      // logger.info('delete', {file, mtime: stat.mtime});
+      if(file.endsWith('.ts')) {
+        logger.info(`delete '${file}'`);
+      }
       await fsPromises.unlink(path.join(baseDir, file));
     } else {
       // logger.info('keep', {file, mtime: stat.mtime});

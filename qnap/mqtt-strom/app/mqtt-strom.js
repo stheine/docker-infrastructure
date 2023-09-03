@@ -297,7 +297,7 @@ process.on('SIGTERM', () => stopProcess());
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(batteryLeistung > 800 || batteryLevel > 70) {
-                    logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Spülmaschine.`);
+                    logger.info(`Battery (${_.round(batteryLeistung)}W/${batteryLevel}%). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxPvTimeUtc) {
                     logger.info(`Max sun. Trigger Spülmaschine.`);
@@ -354,7 +354,7 @@ process.on('SIGTERM', () => stopProcess());
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(batteryLeistung > 800 || batteryLevel > 70) {
-                    logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Waschmaschine.`);
+                    logger.info(`Battery (${_.round(batteryLeistung)}W/${batteryLevel}%). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxPvTimeUtc) {
                     logger.info(`Max sun. Trigger Waschmaschine.`);

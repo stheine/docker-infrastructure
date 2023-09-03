@@ -73,7 +73,7 @@ process.on('SIGTERM', () => stopProcess());
         const {callee, caller, connectionId, extension} = data;
         const calleeName = resolve({logger, phonebook, number: callee});
 
-        logger.info(`call ${calleeName} (${callee})`);
+        logger.info(`call${calleeName ? ` '${calleeName}'` : ''} (${callee})`);
 
         topic = 'FritzBox/callMonitor/call';
         payload = {
@@ -110,10 +110,10 @@ process.on('SIGTERM', () => stopProcess());
       }
 
       case EventKind.PickUp: { // 2
-        const {phoneNumber: callee, caller, connectionId, extension} = data;
+        const {phoneNumber: callee, connectionId, extension} = data;
         const calleeName = resolve({logger, phonebook, number: callee});
 
-        logger.info(`pickUp ${calleeName} (callee=${callee} caller=${caller})`);
+        logger.info(`pickUp${calleeName ? ` '${calleeName}'` : ''} (${callee})`);
 
         topic = 'FritzBox/callMonitor/pickUp';
         payload = {
