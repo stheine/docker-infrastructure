@@ -3,10 +3,8 @@ version: "3.7"
 # Ports
 #    25 postfix                smtp
 #   993 dovecot                imap                          Freigabe in FritzBox
-#  1499 unison                 unison/ rsync                 Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
 #  2342 photoprism             http://192.168.6.7:2342/
-#  3873-3883 ftpd              ftp -P 3873 heine7.de
 #  8008 portainer              http://192.168.6.7:8008/
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
 #  9001 mosquitto-websockets   websockets
@@ -23,6 +21,10 @@ version: "3.7"
 # 59157 gerbera-fotos          http://192.168.6.7:59157/
 # 59158 gerbera-filme          http://192.168.6.7:59158/
 # 59159 gerbera-video          http://192.168.6.7:59159/
+
+#  1499 unison                 unison/ rsync                 Freigabe in FritzBox
+#  3873-3883 ftpd              ftp -P 3873 heine7.de
+
 
 volumes:
   comics:
@@ -46,12 +48,12 @@ volumes:
       device: /share/linux/data/fronius
       o: bind
 
-  ftpd:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/ftpd
-      o: bind
+#  ftpd:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /share/linux/data/ftpd
+#      o: bind
 
   gerbera-filme:
     driver: local
@@ -137,12 +139,12 @@ volumes:
       device: /share/Fotos
       o: bind
 
-  media_fotos_Sony:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/Fotos/Sony
-      o: bind
+#  media_fotos_Sony:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /share/Fotos/Sony
+#      o: bind
 
   media_kinder-cds:
     driver: local
@@ -256,12 +258,12 @@ volumes:
       device: /share/linux/data/strom
       o: bind
 
-  unison:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/unison
-      o: bind
+#  unison:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /share/linux/data/unison
+#      o: bind
 
   uptime-kuma:
     driver: local
@@ -386,17 +388,17 @@ services:
       - letsencrypt:/usr/local/etc/letsencrypt:nocopy
       - vmail:/home/vmail:nocopy
 
-  ftpd:
-    restart: always
-    build: ftpd
-    hostname: qnap-ftpd
-    ports:
-      - "3873:21"
-      - "3874-3883:3874-3883"
-    volumes:
-      - ./ftpd/vsftpd.conf:/etc/vsftpd/vsftpd.conf:ro
-      - ftpd:/etc/ftpd:ro
-      - media_fotos_Sony:/ftp
+#  ftpd:
+#    restart: always
+#    build: ftpd
+#    hostname: qnap-ftpd
+#    ports:
+#      - "3873:21"
+#      - "3874-3883:3874-3883"
+#    volumes:
+#      - ./ftpd/vsftpd.conf:/etc/vsftpd/vsftpd.conf:ro
+#      - ftpd:/etc/ftpd:ro
+#      - media_fotos_Sony:/ftp
 
   fritz:
     restart: always
@@ -720,24 +722,24 @@ services:
     image: thetorproject/snowflake-proxy:latest
     network_mode: host
 
-  sony-pm-alternative:
-    restart: always
-    build: sony-pm-alternative
-    hostname: qnap-sony-pm
-    network_mode: host
-    volumes:
-      - media_fotos_Sony:/var/lib/Sony
+#  sony-pm-alternative:
+#    restart: always
+#    build: sony-pm-alternative
+#    hostname: qnap-sony-pm
+#    network_mode: host
+#    volumes:
+#      - media_fotos_Sony:/var/lib/Sony
 
-  unison:
-    restart: always
-    build: unison
-    hostname: qnap-unison
-    ports:
-      - 1499:1499
-    volumes:
-      - media_musik:/var/musik:nocopy
-      - sshd_certs:/var/sshd_certs:nocopy
-      - unison:/root/.unison:nocopy
+#  unison:
+#    restart: always
+#    build: unison
+#    hostname: qnap-unison
+#    ports:
+#      - 1499:1499
+#    volumes:
+#      - media_musik:/var/musik:nocopy
+#      - sshd_certs:/var/sshd_certs:nocopy
+#      - unison:/root/.unison:nocopy
 
   uptime-kuma:
     restart: always
@@ -752,7 +754,7 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.29.1-alpine
+    image: vaultwarden/server:1.29.2-alpine
     hostname: vaultwarden
     volumes:
       - vaultwarden:/data
