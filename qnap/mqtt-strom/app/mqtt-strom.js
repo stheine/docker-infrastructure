@@ -42,6 +42,7 @@ process.on('SIGTERM', () => stopProcess());
 (async() => {
   // Globals
   let now                           = dayjs();
+  let maxSun                        = 0;
   let lastTimestamp                 = null;
   let wallboxLaedt                  = false;
   let wallboxStrom                  = null;
@@ -67,6 +68,8 @@ process.on('SIGTERM', () => stopProcess());
       batteryLevel,
       zaehlerLeistung,
       momentanLeistung,
+      solcastLimitPvHours,
+      maxSun:              maxSun.format('YYYY-MM-DD HH:mm:ss UTC'),
     });
   });
 
@@ -123,6 +126,10 @@ process.on('SIGTERM', () => stopProcess());
       }
 
       switch(topic) {
+        case 'maxSun/INFO':
+          maxSun = dayjs.utc(message);
+          break;
+
         case 'tasmota/espstrom/tele/SENSOR': {
           if(batteryLeistung === null ||
             batteryLevel === null ||
@@ -241,13 +248,13 @@ process.on('SIGTERM', () => stopProcess());
         case 'solcast/forecasts': {
           const solcastForecasts = message;
 
-          const nowUtc          = dayjs.utc();
+          const nowUtc       = dayjs.utc();
           const midnightTime = nowUtc.clone().hour(24).minute(0).second(0);
-          let   limitPvHours;
+          let   limitPvHours = 0;
 
           for(const forecast of solcastForecasts) {
             const {period_end} = forecast;
-            const period_end_date = Date.parse(period_end);
+            const period_end_date = dayjs(period_end);
 
             if(period_end_date < nowUtc) {
               // Already passed
@@ -287,11 +294,8 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('spuelmaschineInterval');
 
-                  // 11:25 UTC is the expected max sun
-                  const nowUtc       = dayjs.utc();
-                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0);
-
-                  let   triggerOn    = false;
+                  const nowUtc    = dayjs.utc();
+                  let   triggerOn = false;
 
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
@@ -299,7 +303,7 @@ process.on('SIGTERM', () => stopProcess());
                   } else if(batteryLeistung > 800 || batteryLevel > 70) {
                     logger.info(`Battery (${_.round(batteryLeistung)}W/${batteryLevel}%). Trigger Spülmaschine.`);
                     triggerOn = true;
-                  } else if(nowUtc > maxPvTimeUtc) {
+                  } else if(nowUtc > maxSun) {
                     logger.info(`Max sun. Trigger Spülmaschine.`);
                     triggerOn = true;
                   }
@@ -344,10 +348,7 @@ process.on('SIGTERM', () => stopProcess());
 
                   // logger.info('waschmaschineInterval');
 
-                  // 11:25 UTC is the expected max sun
-                  const nowUtc       = dayjs.utc();
-                  const maxPvTimeUtc = nowUtc.clone().hour(11).minute(25).second(0);
-
+                  const nowUtc    = dayjs.utc();
                   let   triggerOn = false;
 
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
@@ -356,7 +357,7 @@ process.on('SIGTERM', () => stopProcess());
                   } else if(batteryLeistung > 800 || batteryLevel > 70) {
                     logger.info(`Battery (${_.round(batteryLeistung)}W/${batteryLevel}%). Trigger Waschmaschine.`);
                     triggerOn = true;
-                  } else if(nowUtc > maxPvTimeUtc) {
+                  } else if(nowUtc > maxSun) {
                     logger.info(`Max sun. Trigger Waschmaschine.`);
                     triggerOn = true;
                   }
@@ -478,6 +479,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.publish('tasmota/waschmaschine/cmnd/SetOption31', '1');
   await mqttClient.publish('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
+  await mqttClient.subscribe('maxSun/INFO');
   await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
   await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
