@@ -394,6 +394,8 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
   return rate;
 };
 
+let handleRateErrorCount = 0;
+
 const handleRate = async function({capacityWh, log = false}) {
   try {
     // try {
@@ -487,10 +489,14 @@ const handleRate = async function({capacityWh, log = false}) {
     // logger.info('Battery Charge Rate (InWRte)', results.InWRte);
 
     Reflect.deleteProperty(notified, 'handleRate');
+
+    handleRateErrorCount = 0;
   } catch(err) {
     logger.error(`Failed to handle battery rate: ${err.message}`);
 
-    if(!notified.handleRate) {
+    handleRateErrorCount++;
+
+    if(handleRateErrorCount > 3 && !notified.handleRate) {
       await sendMail({
         to:      'technik@heine7.de',
         subject: 'Fronius Solar Fehler, handleRate()',
@@ -504,6 +510,7 @@ const handleRate = async function({capacityWh, log = false}) {
 
 (async() => {
   // Globals
+  let froniusIntervalErrorCount = 0;
 
   // #########################################################################
   // Startup
@@ -638,11 +645,12 @@ const handleRate = async function({capacityWh, log = false}) {
   // Handle Fronius data
   froniusInterval = setInterval(async() => {
     if(!inverter) {
-      logger.info('Reconnector Modbus inverter');
+      logger.info('Reconnecting Modbus Inverter');
       inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
       await inverter.open();
     }
     if(!smartMeter) {
+      logger.info('Reconnecting Modbus SmartMeter');
       smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
       await smartMeter.open();
     }
@@ -693,10 +701,14 @@ const handleRate = async function({capacityWh, log = false}) {
       }), {retain: true});
 
       Reflect.deleteProperty(notified, 'froniusInterval');
+
+      froniusIntervalErrorCount = 0;
     } catch(err) {
       logger.error(`froniusInterval(), failed to read data: ${err.message}`);
 
-      if(!notified.froniusInterval) {
+      froniusIntervalErrorCount++;
+
+      if(froniusIntervalErrorCount > 3 && !notified.froniusInterval) {
         await sendMail({
           to:      'technik@heine7.de',
           subject: 'Fronius Solar Fehler, froniusInterval()',
@@ -709,9 +721,11 @@ const handleRate = async function({capacityWh, log = false}) {
       if(err.message === 'Port Not Open') {
         await inverter.close();
         inverter = undefined;
+
         await smartMeter.close();
         smartMeter = undefined;
-        logger.info('inverter and smartMeter closed');
+
+        logger.info('Inverter and SmartMeter closed');
       }
     }
   }, ms('5 seconds'));
