@@ -61,6 +61,8 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // Signal handling for debug
   process.on('SIGHUP', () => {
+    const nowUtc = dayjs.utc();
+
     logger.debug('Dump', {
       solarDachLeistung,
       inverterLeistung,
@@ -70,6 +72,8 @@ process.on('SIGTERM', () => stopProcess());
       momentanLeistung,
       solcastLimitPvHours,
       maxSun:              maxSun.format('YYYY-MM-DD HH:mm:ss UTC'),
+      nowUtc,
+      afterMaxSun:         nowUtc > maxSun,
     });
   });
 

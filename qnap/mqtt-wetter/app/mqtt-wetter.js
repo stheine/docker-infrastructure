@@ -374,11 +374,15 @@ const handleSunTimes = async function() {
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
-  setInterval(handleWeather, ms('1 hour'));
-  setInterval(handleMaxSun, ms('8 hours'));
+  setInterval(handleMaxSun, ms('4 hours'));
+  await handleMaxSun(); // on startup
+
   setInterval(handleSunTimes, ms('4 hours'));
-  handleWeather(); // on startup
+  await handleSunTimes(); // on startup
+
+  setInterval(handleWeather, ms('1 hour'));
+  await handleWeather(); // on startup
 
   setInterval(handleWeatherDWD, ms('1 hour'));
-  handleWeatherDWD(); // on startup
+  await handleWeatherDWD(); // on startup
 })();
