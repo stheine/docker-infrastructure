@@ -623,6 +623,11 @@ services:
     volumes:
       - node-red:/data
 
+  noop:
+    restart: always
+    build: noop
+    hostname: qnap-noop
+
   photoprism:
     image: photoprism/photoprism:armv7
     restart: always
