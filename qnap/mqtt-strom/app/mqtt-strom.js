@@ -55,7 +55,9 @@ process.on('SIGTERM', () => stopProcess());
   let solarDachLeistung             = null;
   let zaehlerLeistung               = null;
   let spuelmaschineInterval;
+  let heizstabInterval;
   let waschmaschineInterval;
+  let solcastHighPvHours            = 0;
   let solcastLimitPvHours           = 0;
 
   // #########################################################################
@@ -64,15 +66,16 @@ process.on('SIGTERM', () => stopProcess());
     const nowUtc = dayjs.utc();
 
     logger.debug('Dump', {
-      solarDachLeistung,
-      inverterLeistung,
-      batteryLeistung,
+      solarDachLeistung:   _.round(solarDachLeistung),
+      inverterLeistung:    _.round(inverterLeistung),
+      batteryLeistung:     _.round(batteryLeistung),
       batteryLevel,
-      zaehlerLeistung,
-      momentanLeistung,
+      zaehlerLeistung:     _.round(zaehlerLeistung),
+      momentanLeistung:    _.round(momentanLeistung),
+      solcastHighPvHours,
       solcastLimitPvHours,
       maxSun:              maxSun.format('YYYY-MM-DD HH:mm:ss UTC'),
-      nowUtc,
+      nowUtc:              nowUtc.format('YYYY-MM-DD HH:mm:ss UTC'),
       afterMaxSun:         nowUtc > maxSun,
     });
   });
@@ -254,6 +257,7 @@ process.on('SIGTERM', () => stopProcess());
 
           const nowUtc       = dayjs.utc();
           const midnightTime = nowUtc.clone().hour(24).minute(0).second(0);
+          let   highPvHours  = 0;
           let   limitPvHours = 0;
 
           for(const forecast of solcastForecasts) {
@@ -273,12 +277,17 @@ process.on('SIGTERM', () => stopProcess());
 
             estimate *= 1000; // kW to watt
 
+            if(estimate > 3000) {
+              // Estimate is for 30 minute period
+              highPvHours += 1 / 2;
+            }
             if(estimate > dcLimit) {
               // Estimate is for 30 minute period
               limitPvHours += 1 / 2;
             }
           }
 
+          solcastHighPvHours  = highPvHours;
           solcastLimitPvHours = limitPvHours;
           break;
         }
@@ -329,6 +338,70 @@ process.on('SIGTERM', () => stopProcess());
 
                 spuelmaschineInterval = null;
               }
+              break;
+
+            default:
+              logger.error(`Unhandled message '${topic}'`, messageRaw);
+              break;
+          }
+          break;
+
+        case 'tasmota/heizstab/stat/POWER':
+          switch(messageRaw) {
+            case 'OFF':
+              logger.info('Heizstab OFF. Warte auf Einspeisung.',
+                {zaehlerLeistung, batteryLeistung, batteryLevel});
+
+              if(heizstabInterval) {
+                clearInterval(heizstabInterval);
+              }
+
+              heizstabInterval = setInterval(async() => {
+                if(zaehlerLeistung === null) {
+                  return;
+                }
+
+                const aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
+
+                if(aktuellerUeberschuss > 3000 ||
+                  (aktuellerUeberschuss > 2000 &&
+                    (batteryLevel > 30 && solcastHighPvHours > 4) ||
+                    (batteryLevel > 60 && solcastHighPvHours > 3)
+                  )
+                ) {
+                  logger.info('Ausreichend Einspeisung. Erlaube Speicherheizung.',
+                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
+
+                  await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'ON');
+                }
+              }, ms('1 minutes'));
+              break;
+
+            case 'ON':
+              logger.info('Heizstab ON. Warte auf Ende der Einspeisung.',
+                {zaehlerLeistung, batteryLeistung, batteryLevel});
+
+              if(heizstabInterval) {
+                clearInterval(heizstabInterval);
+              }
+
+              heizstabInterval = setInterval(async() => {
+                if(zaehlerLeistung === null) {
+                  return;
+                }
+
+                const aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
+
+                if(aktuellerUeberschuss < 200 ||
+                  (batteryLevel < 50 && solcastHighPvHours < 2) ||
+                  (batteryLevel < 70 && solcastHighPvHours < 1)
+                ) {
+                  logger.info('Geringe Einspeisung. Beende Speicherheizung.',
+                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
+
+                  await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'OFF');
+                }
+              }, ms('15 seconds'));
               break;
 
             default:
@@ -488,6 +561,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
+  await mqttClient.subscribe('tasmota/heizstab/stat/POWER');
   await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');
   await mqttClient.subscribe('Wallbox/evse/state');
 })();
