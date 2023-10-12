@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import https      from 'https';
+
 import axios      from 'axios';
 import cron       from 'croner';
 
@@ -40,7 +42,11 @@ const renderComics = function(metas) {
 };
 
 const readComic = async function(comic) {
-  const pageResponse = await axios.get(`${baseUrl}/${comic}/`);
+  const httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+  });
+
+  const pageResponse = await axios.get(`${baseUrl}/${comic}/`, {httpsAgent});
 
   const page = pageResponse.data;
 
@@ -61,7 +67,7 @@ const readComic = async function(comic) {
     .replace(/^[\S\s]*<meta property="og:title" content="/, '')
     .replace(/"\/>[\S\s]*$/, '');
 
-  const imageResponse = await axios.get(src, {responseType: 'arraybuffer'});
+  const imageResponse = await axios.get(src, {httpsAgent, responseType: 'arraybuffer'});
   const imageBuffer = Buffer.from(imageResponse.data, 'binary');
   const imageBase64 = imageBuffer.toString('base64');
 
