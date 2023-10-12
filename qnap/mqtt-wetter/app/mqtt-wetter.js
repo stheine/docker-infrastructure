@@ -55,9 +55,6 @@ const handleWeatherDWD = async function() {
 
   const morningEndsUTCHour = date.getUTCHours();
 
-
-
-
   const nextEvening = new Date();
   const nextMorning = new Date();
 
@@ -121,7 +118,9 @@ const handleWeatherDWD = async function() {
       })(),
     ]);
   } catch(err) {
-    logger.error(`Weather: Failed to get '${err.message}'`);
+    logger.error(`Weather: Failed to get weather data, '${err.message}'`);
+
+    return;
   }
 
   const current  = results[0];
