@@ -273,7 +273,10 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
   // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
   // In April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
-  if(chargeState < 20) {
+  if(froniusBatteryStatus.chargeMax) {
+    note = `Charge maximum.`;
+    rate = 1;
+  } else if(chargeState < 20) {
     note = `Charge to min of 20% (is ${chargeState}%).`;
     rate = 1;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
@@ -281,7 +284,7 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
     chargeState > config.springChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
     demandOvernightWh < capacityWh * config.springChargeGoal / 100 &&
-    !froniusBatteryStatus.chargeException
+    !froniusBatteryStatus.chargeTo
   ) {
     note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
@@ -290,7 +293,7 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
     chargeState > config.summerChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
     demandOvernightWh < capacityWh * config.summerChargeGoal / 100 &&
-    !froniusBatteryStatus.chargeException
+    !froniusBatteryStatus.chargeTo
   ) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
@@ -596,15 +599,25 @@ const handleRate = async function({capacityWh, log = false}) {
 
       switch(topic) {
         case 'Fronius/solar/cmnd':
-          if(Object.hasOwn(message, 'chargeException')) {
-            if(message.chargeException) {
-              logger.info(`Charge exception. Charge 100% today.`);
+          if(Object.hasOwn(message, 'chargeMax')) {
+            if(message.chargeMax) {
+              logger.info(`Charge maximum.`);
 
-              await updateFroniusBatteryStatus({chargeException: true});
+              await updateFroniusBatteryStatus({chargeMax: message.chargeMax});
+            } else {
+              logger.info(`Charge maximum. Reset.`);
+
+              await updateFroniusBatteryStatus({chargeMax: null});
+            }
+          } else if(Object.hasOwn(message, 'chargeTo')) {
+            if(message.chargeTo) {
+              logger.info(`Charge exception. Charge ${message.chargeTo}% today.`);
+
+              await updateFroniusBatteryStatus({chargeTo: message.chargeTo});
             } else {
               logger.info(`Charge exception. Reset to normal charge today.`);
 
-              await updateFroniusBatteryStatus({chargeException: false});
+              await updateFroniusBatteryStatus({chargeTo: null});
             }
           }
           break;
@@ -882,10 +895,15 @@ const handleRate = async function({capacityWh, log = false}) {
     const schedule = '0 0   0  * * *'; // Midnight
 
     cron.schedule(schedule, async() => {
-      if(froniusBatteryStatus.chargeException) {
+      if(froniusBatteryStatus.chargeMax) {
+        logger.info(`Reset charge maximum.`);
+
+        await updateFroniusBatteryStatus({chargeMax: null});
+      }
+      if(froniusBatteryStatus.chargeTo) {
         logger.info(`Reset charge exception. Normal charge today.`);
 
-        await updateFroniusBatteryStatus({chargeException: false});
+        await updateFroniusBatteryStatus({chargeTo: null});
       }
     });
   }
