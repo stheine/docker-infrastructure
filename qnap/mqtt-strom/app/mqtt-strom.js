@@ -66,12 +66,12 @@ process.on('SIGTERM', () => stopProcess());
     const nowUtc = dayjs.utc();
 
     logger.debug('Dump', {
-      solarDachLeistung:   _.round(solarDachLeistung),
-      inverterLeistung:    _.round(inverterLeistung),
-      batteryLeistung:     _.round(batteryLeistung),
+      solarDachLeistung:   solarDachLeistung,
+      inverterLeistung:    inverterLeistung,
+      batteryLeistung:     batteryLeistung,
       batteryLevel,
-      zaehlerLeistung:     _.round(zaehlerLeistung),
-      momentanLeistung:    _.round(momentanLeistung),
+      zaehlerLeistung:     zaehlerLeistung,
+      momentanLeistung:    momentanLeistung,
       solcastHighPvHours,
       solcastLimitPvHours,
       maxSun:              maxSun.format('YYYY-MM-DD HH:mm:ss UTC'),
@@ -177,7 +177,7 @@ process.on('SIGTERM', () => stopProcess());
           }, ms('0.1 seconds'));
 
           // {SML: {Einspeisung, Verbrauch, Leistung}}
-          zaehlerLeistung = message.SML.Leistung;
+          zaehlerLeistung = _.round(message.SML.Leistung);
 
           momentanLeistung = zaehlerLeistung + inverterLeistung;
           const payload = {
@@ -228,7 +228,7 @@ process.on('SIGTERM', () => stopProcess());
               logger.warn('battery.powerIncoming && powerOutgoing', battery);
               batteryLeistung = null;
             } else {
-              batteryLeistung = battery.powerIncoming;
+              batteryLeistung = _.round(battery.powerIncoming);
             }
             batteryLevel = _.round(battery.stateOfCharge * 100, 1);
           }
@@ -238,7 +238,7 @@ process.on('SIGTERM', () => stopProcess());
               logger.warn(`Ungültige Inverterleistung ${inverter.powerOutgoing}`, message);
               inverterLeistung = null;
             } else {
-              inverterLeistung = inverter.powerOutgoing || -inverter.powerIncoming;
+              inverterLeistung = _.round(inverter.powerOutgoing || -inverter.powerIncoming);
             }
           }
           if(solar) {
@@ -246,7 +246,7 @@ process.on('SIGTERM', () => stopProcess());
               logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
               solarDachLeistung = null;
             } else {
-              solarDachLeistung = solar.powerOutgoing;
+              solarDachLeistung = _.round(solar.powerOutgoing);
             }
           }
           break;
@@ -313,8 +313,8 @@ process.on('SIGTERM', () => stopProcess());
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Spülmaschine.`);
                     triggerOn = true;
-                  } else if(batteryLeistung > 800 || batteryLevel > 70) {
-                    logger.info(`Battery (${_.round(batteryLeistung)}W/${batteryLevel}%). Trigger Spülmaschine.`);
+                  } else if((batteryLeistung > 800 && batteryLevel > 40) || batteryLevel > 70) {
+                    logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Spülmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxSun) {
                     logger.info(`Max sun. Trigger Spülmaschine.`);
@@ -350,7 +350,7 @@ process.on('SIGTERM', () => stopProcess());
           switch(messageRaw) {
             case 'OFF':
               logger.info('Heizstab OFF. Warte auf Einspeisung.',
-                {zaehlerLeistung, batteryLeistung, batteryLevel});
+                {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
 
               if(heizstabInterval) {
                 clearInterval(heizstabInterval);
@@ -379,7 +379,7 @@ process.on('SIGTERM', () => stopProcess());
 
             case 'ON':
               logger.info('Heizstab ON. Warte auf Ende der Einspeisung.',
-                {zaehlerLeistung, batteryLeistung, batteryLevel});
+                {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
 
               if(heizstabInterval) {
                 clearInterval(heizstabInterval);
@@ -431,8 +431,8 @@ process.on('SIGTERM', () => stopProcess());
                   if(solcastLimitPvHours <= 3 && zaehlerLeistung < -1000) {
                     logger.info(`Einspeisung (${-zaehlerLeistung}W). Trigger Waschmaschine.`);
                     triggerOn = true;
-                  } else if(batteryLeistung > 800 || batteryLevel > 70) {
-                    logger.info(`Battery (${_.round(batteryLeistung)}W/${batteryLevel}%). Trigger Waschmaschine.`);
+                  } else if((batteryLeistung > 800 && batteryLevel > 40) || batteryLevel > 70) {
+                    logger.info(`Battery (${batteryLeistung}W/${batteryLevel}%). Trigger Waschmaschine.`);
                     triggerOn = true;
                   } else if(nowUtc > maxSun) {
                     logger.info(`Max sun. Trigger Waschmaschine.`);
