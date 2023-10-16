@@ -54,6 +54,7 @@ process.on('SIGTERM', () => stopProcess());
   let momentanLeistung              = null;
   let solarDachLeistung             = null;
   let zaehlerLeistung               = null;
+  let vitoBetriebsart               = null;
   let spuelmaschineInterval;
   let heizstabInterval;
   let waschmaschineInterval;
@@ -349,8 +350,10 @@ process.on('SIGTERM', () => stopProcess());
         case 'tasmota/heizstab/stat/POWER':
           switch(messageRaw) {
             case 'OFF':
-              logger.info('Heizstab OFF. Warte auf Einspeisung.',
-                {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
+              if(vitoBetriebsart !== 3) {
+                logger.info('Heizstab OFF. Warte auf Einspeisung.',
+                  {zaehlerLeistung, batteryLeistung, batteryLevel, solcastHighPvHours});
+              }
 
               if(heizstabInterval) {
                 clearInterval(heizstabInterval);
@@ -363,14 +366,17 @@ process.on('SIGTERM', () => stopProcess());
 
                 const aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
 
-                if(aktuellerUeberschuss > 3000 ||
-                  (aktuellerUeberschuss > 2000 &&
-                    (batteryLevel > 30 && solcastHighPvHours > 4) ||
-                    (batteryLevel > 60 && solcastHighPvHours > 3)
-                  )
+                if((vitoBetriebsart === 3 && aktuellerUeberschuss > 5500) ||
+                  (vitoBetriebsart !== 3 && (
+                    aktuellerUeberschuss > 3000 ||
+                    (aktuellerUeberschuss > 2000 &&
+                      (batteryLevel > 30 && solcastHighPvHours > 4) ||
+                      (batteryLevel > 60 && solcastHighPvHours > 3)
+                    )
+                  ))
                 ) {
                   logger.info('Ausreichend Einspeisung. Erlaube Speicherheizung.',
-                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
+                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours, vitoBetriebsart});
 
                   await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'ON');
                 }
@@ -379,7 +385,7 @@ process.on('SIGTERM', () => stopProcess());
 
             case 'ON':
               logger.info('Heizstab ON. Warte auf Ende der Einspeisung.',
-                {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
+                {zaehlerLeistung, batteryLeistung, batteryLevel, solcastHighPvHours});
 
               if(heizstabInterval) {
                 clearInterval(heizstabInterval);
@@ -462,6 +468,10 @@ process.on('SIGTERM', () => stopProcess());
               logger.error(`Unhandled message '${topic}'`, messageRaw);
               break;
           }
+          break;
+
+        case 'vito/tele/SENSOR':
+          vitoBetriebsart = Number(message.hk1Betriebsart);
           break;
 
         case 'Wallbox/evse/state': {
@@ -561,7 +571,13 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
-  await mqttClient.subscribe('tasmota/heizstab/stat/POWER');
   await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');
+  await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wallbox/evse/state');
+
+  while(_.isNull(vitoBetriebsart)) {
+    await delay(ms('100ms'));
+  }
+
+  await mqttClient.subscribe('tasmota/heizstab/stat/POWER');
 })();
