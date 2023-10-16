@@ -26,6 +26,7 @@ dayjs.tz.setDefault(dayjs.tz.guess());
 // Globals
 
 let mqttClient;
+let vitoBetriebsart;
 
 // ###########################################################################
 // Process handling
@@ -166,32 +167,34 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
-          if(sunnyHours >= 4 ||
-            tempAussen >= 5  && sunnyHours >= 3 ||
-            tempAussen >= 10 && sunnyHours >= 2
-          ) {
-            if(sunnyHoursStartIn < 1) {
-              await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
+          if(vitoBetriebsart === 3) {
+            if(sunnyHours >= 4 ||
+              tempAussen >= 5  && sunnyHours >= 3 ||
+              tempAussen >= 10 && sunnyHours >= 2
+            ) {
+              if(sunnyHoursStartIn < 1) {
+                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
 
-              logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
-                `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')} beginnend in ` +
-                `${sunnyHoursStartIn} Stunden`);
+                logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
+                  `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')} beginnend in ` +
+                  `${sunnyHoursStartIn} Stunden`);
 
-//            await sendMail({
-//              to:      'stefan@heine7.de',
-//              subject: `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne`,
-//              html:    `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne<p>${sunnyEstimates.join(',')}`,
-//            });
+  //            await sendMail({
+  //              to:      'stefan@heine7.de',
+  //              subject: `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne`,
+  //              html:    `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne<p>${sunnyEstimates.join(',')}`,
+  //            });
+              } else {
+                logger.info(`Heizung wartet auf Sparmodus wegen Sonne beginnend in ` +
+                  `${sunnyHoursStartIn} Stunden`);
+              }
+            } else if(sunnyHours > 0) {
+              logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
+                `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
             } else {
-              logger.info(`Heizung wartet auf Sparmodus wegen Sonne beginnend in ` +
-                `${sunnyHoursStartIn} Stunden`);
+              logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
+                `keine Sonne: ${estimates.join(',')}`);
             }
-          } else if(sunnyHours > 0) {
-            logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
-              `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
-          } else {
-            logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
-              `keine Sonne: ${estimates.join(',')}`);
           }
           break;
         }
@@ -200,6 +203,7 @@ process.on('SIGTERM', () => stopProcess());
           const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01 /* ,lambdaO2: lambdaO2String */} = message;
 
           ({tempAussen} = message);
+          vitoBetriebsart = Number(message.hk1Betriebsart);
 
           const {tempKessel} = message;
           const now = dayjs();
