@@ -852,8 +852,14 @@ const handleRate = async function({capacityWh, log = false}) {
         // Alternative URL: https://www.fronius.com/en/solar-energy/installers-partners/
         //   service-support/tech-support/software-and-updates/symo-gen24plus-update
         const response = await axios.get(url);
+
+        check.assert.contains(response.data, 'Firmware Changelog Fronius Gen24 Tauro',
+          'Unexpected result in Product page');
+
         const latestVersion = response.data.replace(/^[\S\s]*Firmware Changelog Fronius Gen24 Tauro /, '')
           .replace(/<\/span>[\S\s]*$/, '');
+
+        check.assert.less(latestVersion.length, 15, 'Unexpected result in Product version');
 
         logger.info('Software version check', {runningVersion, latestVersion});
 
