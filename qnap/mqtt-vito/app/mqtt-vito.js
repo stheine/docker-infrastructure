@@ -227,7 +227,7 @@ process.on('SIGTERM', () => stopProcess());
 
           // #######################################################################################
           // Check Kessel Temperatur - Überhitzung?
-          if(tempKessel > 80 &&
+          if(tempKessel > 87 && // Codieradresse 06 erlaubt 85 Grad
             (!reportedTempKessel || dayjs(reportedTempKessel).isBefore(twoDaysAgo))
           ) {
             try {
