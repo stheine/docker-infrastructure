@@ -759,12 +759,12 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.29.2-alpine
+    image: vaultwarden/server:1.30.0-alpine
     hostname: vaultwarden
     volumes:
       - vaultwarden:/data
     environment:
-      - WEBSOCKET_ENABLED=true
+      DOMAIN: "https://bitwarden.heine7.de"
 
   watchdog:
     restart: always
