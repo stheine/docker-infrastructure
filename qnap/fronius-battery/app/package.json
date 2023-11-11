@@ -13,7 +13,7 @@
     "@stheine/ringbufferjs": "0.1.1",
     "async-lock": "1.4.0",
     "async-mqtt": "2.6.2",
-    "axios": "0.26.1",
+    "axios": "1.6.0",
     "check-types-2": "11.4.0",
     "dayjs": "1.11.0",
     "fronius": "0.2.4",
