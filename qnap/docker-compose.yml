@@ -104,6 +104,13 @@ volumes:
       device: /share/linux/data/homer
       o: bind
 
+  imapfilter:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/imapfilter
+      o: bind
+
   jalousie:
     driver: local
     driver_opts:
@@ -506,6 +513,26 @@ services:
     hostname: qnap-homer
     volumes:
       - homer:/www/assets
+
+  imapfilter-fachwart:
+    restart: always
+    build: imapfilter
+    hostname: qnap-imapfilter-fachwart
+    environment:
+      - MAILBOX=fachwart
+    volumes:
+      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
+      - imapfilter:/config
+
+  imapfilter-stefan:
+    restart: always
+    build: imapfilter
+    hostname: qnap-imapfilter-stefan
+    environment:
+      - MAILBOX=stefan
+    volumes:
+      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
+      - imapfilter:/config
 
   mediawiki:
     restart: always
