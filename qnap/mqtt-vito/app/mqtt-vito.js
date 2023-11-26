@@ -46,6 +46,7 @@ process.on('SIGTERM', () => stopProcess());
 
 (async() => {
   // Globals
+  let betriebsartSpar         = false;
   let letzterBrennerVerbrauch = 0;
   let tempAussen              = null;
   let tempInnen               = null;
@@ -54,6 +55,18 @@ process.on('SIGTERM', () => stopProcess());
   // Startup
 
   logger.info(`Startup --------------------------------------------------`);
+
+  // #########################################################################
+  // Signal handler (SIGHUP) to dump current state
+  process.on('SIGHUP', async() => {
+    logger.debug({
+      betriebsartSpar,
+      letzterBrennerVerbrauch,
+      tempAussen,
+      tempInnen,
+      vitoBetriebsart,
+    });
+  });
 
   // #########################################################################
   // Read static data
@@ -170,10 +183,11 @@ process.on('SIGTERM', () => stopProcess());
           if(vitoBetriebsart === 3) {
             if(sunnyHours >= 4 ||
               tempAussen >= 5  && sunnyHours >= 3 ||
-              tempAussen >= 10 && sunnyHours >= 2
+              tempAussen >= 10 && sunnyHours >= 2 ||
+              betriebsartSpar && sunnyHours
             ) {
               if(sunnyHoursStartIn < 1) {
-                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1');
+                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1', {retain: true});
 
                 logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
                   `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')} beginnend in ` +
@@ -191,17 +205,26 @@ process.on('SIGTERM', () => stopProcess());
             } else if(sunnyHours > 0) {
               logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
                 `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
+
+              if(betriebsartSpar) {
+                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
+              }
             } else {
               logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
                 `keine Sonne: ${estimates.join(',')}`);
+
+              if(betriebsartSpar) {
+                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
+              }
             }
           }
           break;
         }
 
         case 'vito/tele/SENSOR': {
-          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01 /* ,lambdaO2: lambdaO2String */} = message;
+          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01, hk1BetriebsartSpar /* ,lambdaO2: lambdaO2String */} = message;
 
+          betriebsartSpar = Boolean(Number(hk1BetriebsartSpar));
           ({tempAussen} = message);
           vitoBetriebsart = Number(message.hk1Betriebsart);
 
