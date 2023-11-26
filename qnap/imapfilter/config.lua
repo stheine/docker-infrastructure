@@ -1,4 +1,9 @@
+----------------
+--  Timezone  --
+----------------
+
 local tz=require"luatz"
+
 
 -------------------
 --  Environment  --
@@ -29,6 +34,8 @@ dofile('/config/account.' .. MAILBOX)
 --------------
 -- Logging --
 --------------
+
+io.stdout:setvbuf 'no' -- switch off buffering for stdout
 
 function log(msg)
     time = tz.time_in('Europe/Berlin')
