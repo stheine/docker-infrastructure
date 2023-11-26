@@ -41,7 +41,11 @@ RUN \
 
 ENV TZ Europe/Berlin
 
-RUN apk add bash
+RUN \
+  apk add \
+    bash \
+    mandoc \
+    man-pages
 COPY docker_container_profile /root/.profile
 
 CMD ["imapfilter"]
