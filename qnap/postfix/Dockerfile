@@ -36,6 +36,9 @@ ENV LC_ALL en_US.UTF-8
 # Configure and run postfix
 
 RUN \
+  sed -i 's/^root:x:0:0:root:/root:x:0:0::/' /etc/passwd
+
+RUN \
   apt-get install -y postfix mailutils rsyslog && \
   /usr/sbin/postconf -e 'compatibility_level = 2' && \
   /usr/sbin/postconf -e 'inet_interfaces = all' && \
