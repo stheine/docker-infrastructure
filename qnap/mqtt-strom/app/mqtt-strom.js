@@ -48,6 +48,7 @@ process.on('SIGTERM', () => stopProcess());
   let wallboxStrom                  = null;
   let lastWallboxErrorMailTimestamp = null;
   let lastWallboxStateMailTimestamp = null;
+  let aktuellerUeberschuss          = null;
   let batteryLeistung               = null;
   let batteryLevel                  = null;
   let inverterLeistung              = null;
@@ -180,6 +181,7 @@ process.on('SIGTERM', () => stopProcess());
           // {SML: {Einspeisung, Verbrauch, Leistung}}
           zaehlerLeistung = _.round(message.SML.Leistung);
 
+          aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
           momentanLeistung = zaehlerLeistung + inverterLeistung;
           const payload = {
             momentanLeistung,
@@ -230,6 +232,7 @@ process.on('SIGTERM', () => stopProcess());
               batteryLeistung = null;
             } else {
               batteryLeistung = _.round(battery.powerIncoming);
+              aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
             }
             batteryLevel = _.round(battery.stateOfCharge * 100, 1);
           }
@@ -364,9 +367,10 @@ process.on('SIGTERM', () => stopProcess());
                   return;
                 }
 
-                const aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
-
-                if((vitoBetriebsart === 3 && aktuellerUeberschuss > 5500) ||
+                if((vitoBetriebsart === 3 && aktuellerUeberschuss > 5500 &&
+                  (batteryLevel > 50 || solcastHighPvHours >= 2) &&
+                  (batteryLevel > 70 || solcastHighPvHours >= 1)
+                ) ||
                   (vitoBetriebsart !== 3 && (
                     aktuellerUeberschuss > 3000 ||
                     (aktuellerUeberschuss > 2000 &&
@@ -375,7 +379,7 @@ process.on('SIGTERM', () => stopProcess());
                     )
                   ))
                 ) {
-                  logger.info('Ausreichend Einspeisung. Erlaube Speicherheizung.',
+                  logger.debug('Ausreichend Einspeisung. Erlaube Speicherheizung.',
                     {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours, vitoBetriebsart});
 
                   await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'ON');
@@ -385,7 +389,7 @@ process.on('SIGTERM', () => stopProcess());
 
             case 'ON':
               logger.info('Heizstab ON. Warte auf Ende der Einspeisung.',
-                {zaehlerLeistung, batteryLeistung, batteryLevel, solcastHighPvHours});
+                {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss,solcastHighPvHours, vitoBetriebsart});
 
               if(heizstabInterval) {
                 clearInterval(heizstabInterval);
@@ -395,8 +399,6 @@ process.on('SIGTERM', () => stopProcess());
                 if(zaehlerLeistung === null) {
                   return;
                 }
-
-                const aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung;
 
                 if(aktuellerUeberschuss < 200 ||
                   (batteryLevel < 50 && solcastHighPvHours < 2) ||
