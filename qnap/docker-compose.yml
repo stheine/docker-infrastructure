@@ -286,6 +286,13 @@ volumes:
       device: /share/linux/data/vaultwarden-data
       o: bind
 
+  vaultwarden-backup:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/stratoHiDrive/backup/vaultwarden-backup
+      o: bind
+
   vito:
     driver: local
     driver_opts:
@@ -794,6 +801,16 @@ services:
       - vaultwarden:/data
     environment:
       DOMAIN: "https://bitwarden.heine7.de"
+
+  vaultwarden-backup:
+    restart: always
+    build: vaultwarden-backup
+    hostname: vaultwarden-backup
+    volumes:
+      - vaultwarden:/data
+      - vaultwarden-backup:/backup
+      - ./vaultwarden-backup/backup.sh:/backup.sh
+      - ./vaultwarden-backup/startup.sh:/startup.sh
 
   watchdog:
     restart: always
