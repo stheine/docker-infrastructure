@@ -192,7 +192,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /share/linux/data/mediawiki-database-backup
+      device: /mnt/stratoHiDrive/backup/mediawiki-database-backup
       o: bind
 
   mediawiki-images:
@@ -555,7 +555,7 @@ services:
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
       - mediawiki-database:/var/lib/mysql
-      - mediawiki-database-backup:/database-restore
+      # - mediawiki-database-backup:/database-restore
 
   mediawiki-database-backup:
     restart: always
@@ -564,6 +564,8 @@ services:
       - mediawiki-database-backup:/backup
       - mediawiki-images:/mediawiki-images
       - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup:ro
+      - ./mediawiki-database-backup/prebackup.sh:/prebackup.sh:ro
+      - ./mediawiki-database-backup/postbackup.sh:/postbackup.sh:ro
     depends_on:
       - mediawiki-database
 

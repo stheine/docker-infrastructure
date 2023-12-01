@@ -15,6 +15,7 @@ RUN \
   apt-get install -y \
     dnsutils \
     locales \
+    procps \
     sudo \
     tzdata \
     unzip \
@@ -55,8 +56,6 @@ COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 RUN \
   echo '0 0 * * * /usr/sbin/automysqlbackup' | /usr/bin/crontab -
-
-COPY postbackup.sh /
 
 COPY docker_container_profile /root/.profile
 # CMD ["/bin/bash", "-l"]
