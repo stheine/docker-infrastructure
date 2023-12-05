@@ -75,23 +75,37 @@ dofile('/config/prepare.' .. MAILBOX)
 
 
 ---------------
---  Process  --
+--  Process mailbox  --
 ---------------
 
+function process_mailbox()
+    -- Get the status of a mailbox
+    exist, unread, unseen, uidnext = account.INBOX:check_status()
+    log('status: ' .. exist .. ' total, ' .. unread .. ' unread, ' .. unseen .. ' unseen')
+
+    -- Get unseen messages with the specified "To" header and a specific "Subject" pattern
+    log('check match')
+
+    dofile('/config/filter.' .. MAILBOX)
+end
+
+
+--------------------
+--  Process IDLE  --
+--------------------
+
 log('start processing')
+
 while true do
+    -- Process the mailbox anytime we arrive here,
+    -- no matter if the enter_idle() call had triggered or failed.
+    process_mailbox()
+
     -- Wait for new message in mailbox
+    -- success, errormsg = recover(log_enter_idle, 10)
+    -- if success then
     if pcall(log_enter_idle) then
         log('log_enter_idle() returns')
-
-        -- Get the status of a mailbox
-        exist, unread, unseen, uidnext = account.INBOX:check_status()
-        log('status: ' .. exist .. ' total, ' .. unread .. ' unread, ' .. unseen .. ' unseen')
-
-        -- Get unseen messages with the specified "To" header and a specific "Subject" pattern
-        log('check match')
-
-        dofile('/config/filter.' .. MAILBOX)
     else
         log('log_enter_idle() failed')
 
