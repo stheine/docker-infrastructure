@@ -39,7 +39,7 @@ RUN \
   apt-get install -y \
     openssh-server \
     rsyslog && \
-  mkdir mkdir /var/run/sshd && \
+  mkdir /var/run/sshd && \
   mkdir /root/.ssh && \
   chmod 700 /root/.ssh
 
