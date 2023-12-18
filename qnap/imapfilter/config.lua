@@ -16,6 +16,7 @@ MAILBOX = os.getenv('MAILBOX')
 --  Options  --
 ---------------
 
+options.keepalive = 5
 options.timeout   = 120
 options.subscribe = true
 options.persist   = true
@@ -39,7 +40,7 @@ io.stdout:setvbuf 'no' -- switch off buffering for stdout
 
 function log(msg)
     time = tz.time_in('Europe/Berlin')
-    print(os.date("%H:%M:%S ") .. msg)
+    print(os.date("%Y-%m-%d %H:%M:%S ") .. msg)
 end
 
 
