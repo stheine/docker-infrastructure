@@ -51,11 +51,18 @@ RUN \
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 # ##############################################################################
-# Configure cron
+# Configure cron & sshfs
 # http://manpages.ubuntu.com/manpages/trusty/man8/cron.8.html
 
 RUN \
-  echo '0 0 * * * /usr/sbin/automysqlbackup' | /usr/bin/crontab -
+  apt-get install -y \
+    sshfs
+RUN \
+  mkdir /root/.ssh && \
+  chmod 700 /root/.ssh && \
+  mkdir /backup
+RUN \
+  echo '@reboot /startup.sh >/proc/1/fd/1\n0 0 * * * /usr/sbin/automysqlbackup' | /usr/bin/crontab -
 
 COPY docker_container_profile /root/.profile
 # CMD ["/bin/bash", "-l"]

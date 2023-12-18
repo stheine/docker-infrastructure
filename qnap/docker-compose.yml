@@ -188,13 +188,6 @@ volumes:
       device: /share/linux/data/mediawiki-database
       o: bind
 
-  mediawiki-database-backup:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/stratoHiDrive/backup/mediawiki-database-backup
-      o: bind
-
   mediawiki-images:
     driver: local
     driver_opts:
@@ -284,13 +277,6 @@ volumes:
     driver_opts:
       type: none
       device: /share/linux/data/vaultwarden-data
-      o: bind
-
-  vaultwarden-backup:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/stratoHiDrive/backup/vaultwarden-backup
       o: bind
 
   vito:
@@ -567,12 +553,17 @@ services:
   mediawiki-database-backup:
     restart: always
     build: mediawiki-database-backup
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
     volumes:
-      - mediawiki-database-backup:/backup
+      - sshd_certs:/var/sshd_certs:nocopy
       - mediawiki-images:/mediawiki-images
       - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup:ro
       - ./mediawiki-database-backup/prebackup.sh:/prebackup.sh:ro
       - ./mediawiki-database-backup/postbackup.sh:/postbackup.sh:ro
+      - ./mediawiki-database-backup/startup.sh:/startup.sh:ro
     depends_on:
       - mediawiki-database
 
@@ -806,9 +797,13 @@ services:
     restart: always
     build: vaultwarden-backup
     hostname: vaultwarden-backup
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
     volumes:
+      - sshd_certs:/var/sshd_certs:nocopy
       - vaultwarden:/data
-      - vaultwarden-backup:/backup
       - ./vaultwarden-backup/backup.sh:/backup.sh
       - ./vaultwarden-backup/startup.sh:/startup.sh
 

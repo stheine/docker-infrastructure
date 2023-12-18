@@ -1,11 +1,21 @@
 #!/bin/bash
 
 if [ ! -f /backup/stratoHiDrive.flag ]; then
-  echo "$(date +"%Y-%m-%d %H:%M:%S") /backup directory not mounted from Strato HiDrive" | tee -a /backup/backup.out
+  sshfs \
+    -o StrictHostKeyChecking=no \
+    -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,dev,suid \
+    stheine@sftp.hidrive.strato.com:/users/stheine/backup/vaultwarden-backup \
+    /backup
 
-  echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: vaultwarden-backup Strato HiDrive mount missing\n\nStrato HiDrive mount missing\n" | /usr/sbin/sendmail -t
+  if [ -f /backup/stratoHiDrive.flag ]; then
+    echo "$(date +"%Y-%m-%d %H:%M:%S") mounted Strato HiDrive" | tee -a /backup/backup.out
+  else
+    echo "$(date +"%Y-%m-%d %H:%M:%S") Failed to mounted Strato HiDrive" | tee -a /backup/backup.out
 
-  exit 1
+    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: vaultwarden-backup Strato HiDrive mount missing\n\nStrato HiDrive mount missing\n" | /usr/sbin/sendmail -t
+
+    exit 1
+  fi
 fi
 
 # Create the Backup directory

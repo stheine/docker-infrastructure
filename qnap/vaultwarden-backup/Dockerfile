@@ -28,11 +28,16 @@ RUN \
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 # ########################################################################################
-# Install cron
+# Install cron & sshfs
 RUN \
   apk add \
     cronie \
+    sshfs \
     sqlite
+RUN \
+  mkdir /root/.ssh && \
+  chmod 700 /root/.ssh && \
+  mkdir /backup
 RUN \
   echo -e '@reboot /startup.sh >/proc/1/fd/1\n@reboot sleep 1 && /backup.sh >/proc/1/fd/1\n0 5 * * * /backup.sh >/proc/1/fd/1 2>/proc/1/fd/2' | /usr/bin/crontab -
 
