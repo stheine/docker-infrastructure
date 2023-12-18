@@ -6,6 +6,7 @@ import {setTimeout as delay} from 'timers/promises';
 import fsPromises            from 'fs/promises';
 
 import _                     from 'lodash';
+import babar                 from 'babar';
 import dayjs                 from 'dayjs';
 import fsExtra               from 'fs-extra';
 import isBetween             from 'dayjs/plugin/isBetween.js';
@@ -21,6 +22,11 @@ dayjs.extend(isBetween);
 dayjs.extend(timezone);
 dayjs.extend(utc);
 dayjs.tz.setDefault(dayjs.tz.guess());
+
+// ###########################################################################
+// Constants
+
+const graphDisplayLimit = 100;
 
 // ###########################################################################
 // Globals
@@ -48,6 +54,7 @@ process.on('SIGTERM', () => stopProcess());
   // Globals
   let betriebsartSpar         = false;
   let letzterBrennerVerbrauch = 0;
+  let sunnyHours              = 0;
   let tempAussen              = null;
   let tempInnen               = null;
 
@@ -57,24 +64,26 @@ process.on('SIGTERM', () => stopProcess());
   logger.info(`Startup --------------------------------------------------`);
 
   // #########################################################################
+  // Read static data
+
+  const status = await fsExtra.readJson('/var/vito/vito.json');
+
+  let {lastDrehzahl, reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedTempKessel,
+    reportedZeit} = status;
+
+  // #########################################################################
   // Signal handler (SIGHUP) to dump current state
   process.on('SIGHUP', async() => {
     logger.debug({
       betriebsartSpar,
+      lastDrehzahl,
       letzterBrennerVerbrauch,
+      sunnyHours,
       tempAussen,
       tempInnen,
       vitoBetriebsart,
     });
   });
-
-  // #########################################################################
-  // Read static data
-
-  const status = await fsExtra.readJson('/var/vito/vito.json');
-
-  let {/* lastLambdaO2, */ reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedTempKessel,
-    reportedZeit} = status;
 
   // #########################################################################
   // Init MQTT
@@ -106,16 +115,18 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'solcast/forecasts': {
-          const solcastForecasts  = message;
-          const now               = dayjs();
-          const nowUtc            = dayjs.utc();
-          const midnightTime      = nowUtc.clone().hour(24).minute(0).second(0);
-          const todaySeven        = now.clone().hour(7).minute(0).second(0);
-          const todayTwelve       = now.clone().hour(12).minute(0).second(0);
-          const estimates         = [];
-          const sunnyEstimates    = [];
-          let   sunnyHours        = 0;
-          let   sunnyHoursStartIn = null;
+          const solcastForecasts    = message;
+          const now                 = dayjs();
+          const nowUtc              = dayjs.utc();
+          const midnightTime        = nowUtc.clone().hour(24).minute(0).second(0);
+          const todaySeven          = now.clone().hour(7).minute(0).second(0);
+          const todayTwelve         = now.clone().hour(12).minute(0).second(0);
+          let   estimates           = [];
+          let   sunnyEstimates      = [];
+          let   newSunnyHours       = 0;
+          let   sunnyHoursStartIn   = null;
+          let   graphEstimates      = [];
+          let   graphSunnyEstimates = [];
 
           if(tempAussen === null || tempInnen === null) {
             let retries = 60;
@@ -146,10 +157,6 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
-          if(!now.isBetween(todaySeven, todayTwelve, 'minute')) {
-            return;
-          }
-
           for(const forecast of solcastForecasts) {
             const {period_end} = forecast;
             const period_end_date = Date.parse(period_end);
@@ -169,9 +176,12 @@ process.on('SIGTERM', () => stopProcess());
 
             estimates.push(estimate);
 
+            graphEstimates.push([(new Date(period_end_date)).getHours() +
+              (new Date(period_end_date)).getMinutes() / 100, estimate]);
+
             if(estimate > 3500) {
               // Estimate is for 30 minute period
-              sunnyHours += 1 / 2;
+              newSunnyHours += 1 / 2;
               sunnyEstimates.push(estimate);
 
               if(sunnyHoursStartIn === null) {
@@ -180,40 +190,90 @@ process.on('SIGTERM', () => stopProcess());
             }
           }
 
+          estimates = _.reduceRight(estimates, (result, estimate) => {
+            if(estimate || result.length) {
+              result.unshift(estimate);
+            }
+
+            return result;
+          }, []);
+
+          graphEstimates = _.reduceRight(graphEstimates, (result, estimate) => {
+            if(estimate[1] > graphDisplayLimit || result.length) {
+              result.unshift(estimate);
+            }
+
+            return result;
+          }, []);
+          graphEstimates = _.reduce(graphEstimates, (result, estimate) => {
+            if(estimate[1] > graphDisplayLimit || result.length) {
+              result.push(estimate);
+            }
+
+            return result;
+          }, []);
+
+          sunnyEstimates = _.reduceRight(sunnyEstimates, (result, estimate) => {
+            if(estimate || result.length) {
+              result.unshift(estimate);
+            }
+
+            return result;
+          }, []);
+
+          sunnyHours = newSunnyHours;
+
+          if(graphEstimates.length > 3) {
+            if(graphEstimates.length % 2 === 0) {
+              // The estimates graph x-labels look better with an odd number of entries
+              graphEstimates.push([_.last(graphEstimates)[0] + 0.3, 0]);
+            }
+
+//            logger.debug(babar(graphEstimates, {
+//              caption:    'Estimates',
+//              color:      'ascii',
+//              minX:       graphEstimates[0][0],
+//              maxY:       5000,
+//              width:      5 + graphEstimates.length * 3,
+//              xFractions: 2,
+//            }));
+          }
+
           if(vitoBetriebsart === 3) {
             if(sunnyHours >= 4 ||
               tempAussen >= 5  && sunnyHours >= 3 ||
               tempAussen >= 10 && sunnyHours >= 2 ||
               betriebsartSpar && sunnyHours
             ) {
-              if(sunnyHoursStartIn < 1) {
-                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1', {retain: true});
+              if(now.isBetween(todaySeven, todayTwelve, 'minute')) {
+                if(sunnyHoursStartIn < 1) {
+                  logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
+                    `Sparmodus wegen ${sunnyHours} Stunden Sonne`);
 
-                logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Sparmodus wegen ` +
-                  `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')} beginnend in ` +
-                  `${sunnyHoursStartIn} Stunden`);
-
-  //            await sendMail({
-  //              to:      'stefan@heine7.de',
-  //              subject: `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne`,
-  //              html:    `Heizung Sparmodus wegen ${sunnyHours} Stunden Sonne<p>${sunnyEstimates.join(',')}`,
-  //            });
-              } else {
-                logger.info(`Heizung wartet auf Sparmodus wegen Sonne beginnend in ` +
-                  `${sunnyHoursStartIn} Stunden`);
+                  await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1', {retain: true});
+                } else {
+                  logger.info(`Heizung wartet auf Sparmodus wegen Sonne beginnend in ` +
+                    `${sunnyHoursStartIn} Stunden`);
+                }
               }
             } else if(sunnyHours > 0) {
-              logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
-                `${sunnyHours} Stunden Sonne: ${sunnyEstimates.join(',')}`);
+              // logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
+              //   `Normalmodus wegen ${sunnyHours} Stunden Sonne`);
 
               if(betriebsartSpar) {
+                logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
+                  `zurück zum Normalmodus wegen ${sunnyHours} Stunden Sonne`);
+
                 await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
               }
             } else {
-              logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) Normalmodus wegen ` +
-                `keine Sonne: ${estimates.join(',')}`);
+              // logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
+              //   `Normalmodus wegen wenig Sonne`);
 
               if(betriebsartSpar) {
+                logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
+                  `zurück zum Normalmodus wegen ${sunnyHours} Stunden Sonne`);
+
                 await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
               }
             }
@@ -222,31 +282,39 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'vito/tele/SENSOR': {
-          const {brennerVerbrauch: brennerVerbrauchString, dateTime, error01, hk1BetriebsartSpar /* ,lambdaO2: lambdaO2String */} = message;
+          const {dateTime, error01,
+            brennerVerbrauch:   brennerVerbrauchString,
+            hk1BetriebsartSpar: betriebsartSparString,
+            drehzahlIst:        drehzahlString,
+            tempAussen:         tempAussenString,
+          } = message;
 
-          betriebsartSpar = Boolean(Number(hk1BetriebsartSpar));
-          ({tempAussen} = message);
+          betriebsartSpar = Boolean(Number(betriebsartSparString));
+          tempAussen      = Number(tempAussenString);
           vitoBetriebsart = Number(message.hk1Betriebsart);
 
-          const {tempKessel} = message;
-          const now = dayjs();
+          const {tempKessel}     = message;
           const brennerVerbrauch = Number(brennerVerbrauchString);
-//          const lambdaO2         = Number(lambdaO2String);
+          const drehzahl         = Number(drehzahlString);
+
+          const now        = dayjs();
           const twoDaysAgo = dayjs().subtract(2, 'days');
-          const stats = {};
+          const stats      = {};
 
           // logger.info({brennerVerbrauch, dateTime, error01});
 
           // #######################################################################################
-//          // Check lambda - to detect the Brenner Beginn
-//          if(lambdaO2 && !lastLambdaO2) {
-//            await sendMail({
-//              to:      'stefan@heine7.de',
-//              subject: `Heizung Brenner Beginn`,
-//              html:    `Heizung Brenner Beginn`,
-//            });
-//          }
-//          lastLambdaO2 = lambdaO2;
+          // Check lambda - to detect the Brenner Beginn
+          if(drehzahl && !lastDrehzahl) {
+            logger.debug('Brenner Beginn');
+            await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster zu (falls es schon auf war)
+            await delay(ms('30s'));
+            await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power1', '1'); // Fenster auf
+          } else if(!drehzahl && lastDrehzahl) {
+            logger.debug('Brenner Ende');
+            await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster auf
+          }
+          lastDrehzahl = drehzahl;
 
           // #######################################################################################
           // Check Kessel Temperatur - Überhitzung?
@@ -340,7 +408,7 @@ process.on('SIGTERM', () => stopProcess());
             }, 0);
             const vorrat = gesamt - brennerVerbrauch;
 
-            logger.info('status', {verbrauchSeitLetzterLeerung, gesamt, brennerVerbrauch, vorrat});
+            // logger.info('status', {verbrauchSeitLetzterLeerung, gesamt, brennerVerbrauch, vorrat});
 
             stats.gesamt = gesamt;
             stats.vorrat = vorrat;
@@ -413,7 +481,7 @@ process.on('SIGTERM', () => stopProcess());
 
           // #######################################################################################
           await fsExtra.writeJson('/var/vito/vito.json', {
-//            lastLambdaO2,
+            lastDrehzahl,
             reportedFehlerDateTime,
             reportedLeerung,
             reportedSpeicher,
