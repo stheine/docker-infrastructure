@@ -308,7 +308,7 @@ process.on('SIGTERM', () => stopProcess());
           if(drehzahl && !lastDrehzahl) {
             logger.debug('Brenner Beginn');
             await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster zu (falls es schon auf war)
-            await delay(ms('30s'));
+            await delay(ms('20s'));
             await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power1', '1'); // Fenster auf
           } else if(!drehzahl && lastDrehzahl) {
             logger.debug('Brenner Ende');
