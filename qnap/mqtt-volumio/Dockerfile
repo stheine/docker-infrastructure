@@ -14,6 +14,7 @@ RUN \
   apt-get install -y \
     dnsutils \
     locales \
+    procps \
     sudo \
     tzdata \
     unzip \
@@ -47,7 +48,7 @@ RUN \
 COPY npmrc .npmrc
 COPY vimrc .vimrc
 RUN \
-  npm install --global eslint-cli eslint_d && \
+  npm install --global eslint-cli eslint_d nodemon && \
   mkdir -p .vim/autoload .vim/bundle && \
   curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
   cd .vim/bundle && \
@@ -64,4 +65,5 @@ WORKDIR /app
 #   npm install
 
 CMD ["/usr/local/bin/node", "/app/mqtt-volumio.js"]
+# CMD ["/usr/local/bin/nodemon"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]

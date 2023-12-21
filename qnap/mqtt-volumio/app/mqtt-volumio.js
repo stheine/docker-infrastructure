@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import {setTimeout as delay} from 'timers/promises';
+import {setTimeout as delay} from 'node:timers/promises';
 
                                        // DEBUG=* ./mqtt-volumio.js
                                        // https://socket.io/docs/v2/
