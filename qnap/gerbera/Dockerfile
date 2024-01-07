@@ -6,8 +6,7 @@ RUN apk add --no-cache  \
     cmake zlib-dev \
     curl-dev \
     duktape-dev \
-    ffmpeg-dev \
-    ffmpegthumbnailer-dev \
+    ffmpeg4-dev \
     file-dev \
     fmt-dev \
     g++ \
@@ -16,6 +15,7 @@ RUN apk add --no-cache  \
     libebml-dev \
     libexif-dev \
     libmatroska-dev \
+    wavpack wavpack-dev \
     make \
     mariadb-connector-c-dev \
     pkgconf \
@@ -35,13 +35,18 @@ RUN apk add --no-cache  \
 # ##############################################################################
 # Install and run from https://github.com/gerbera/gerbera
 
-ARG GERBERA_VERSION=1.12.1
+ARG GERBERA_VERSION=2.0.0
 WORKDIR /source
 
 RUN \
   wget https://github.com/gerbera/gerbera/archive/v${GERBERA_VERSION}.zip && \
   unzip v${GERBERA_VERSION}.zip && \
   mv gerbera-${GERBERA_VERSION} /gerbera_build
+
+# Build ffmpegthumbnailer
+WORKDIR /ffmpegthumbnailer_build
+RUN cp /gerbera_build/scripts/install-ffmpegthumbnailer.sh /gerbera_build/scripts/versions.sh ./
+RUN ./install-ffmpegthumbnailer.sh
 
 # Build libupnp
 WORKDIR /libupnp_build
@@ -60,6 +65,7 @@ RUN cmake -S . -B build \
         -DWITH_TAGLIB=YES \
         -DWITH_AVCODEC=YES \
         -DWITH_FFMPEGTHUMBNAILER=YES \
+        -DWITH_WAVPACK=YES \
         -DWITH_EXIF=YES \
         -DWITH_LASTFM=NO \
         -DWITH_SYSTEMD=NO \
@@ -70,13 +76,14 @@ FROM ${BASE_IMAGE} AS gerbera
 RUN apk add --no-cache \
     curl \
     duktape \
-    ffmpeg-libs \
-    ffmpegthumbnailer \
+    ffmpeg4-libs \
+    libjpeg \
     file \
     fmt \
     libebml \
     libexif \
     libmatroska \
+    wavpack \
     mariadb-connector-c \
     pugixml \
     spdlog \
@@ -92,6 +99,9 @@ RUN apk add --no-cache \
 # Copy libupnp
 COPY --from=builder /usr/local/lib/libixml.so.* /usr/local/lib/libupnp.so.* /usr/lib/
 
+# Copy ffmpegthumbnailer
+COPY --from=builder /usr/local/lib/libffmpegthumbnailer.so* /usr/lib/
+
 # Gerbera itself
 COPY --from=builder /gerbera_build/build/gerbera /bin/gerbera
 COPY --from=builder /gerbera_build/scripts/js /usr/local/share/gerbera/js
@@ -101,6 +111,7 @@ COPY --from=builder /gerbera_build/scripts/docker/docker-entrypoint.sh /usr/loca
 
 RUN addgroup -S gerbera 2>/dev/null && \
     adduser -S -D -H -h /var/run/gerbera -s /sbin/nologin -G gerbera -g gerbera gerbera 2>/dev/null && \
+    addgroup gerbera video && \
     mkdir /var/run/gerbera/ && chmod 2775 /var/run/gerbera/
 
 COPY gerbera.sh /
@@ -110,6 +121,7 @@ CMD /gerbera.sh
 
 FROM gerbera AS with_transcoding
 RUN apk add --no-cache \
+    ffmpeg4-libs \
     ffmpeg \
     libheif-tools \
     vlc
