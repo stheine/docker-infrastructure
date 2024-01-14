@@ -97,16 +97,15 @@ end
 
 log('start processing')
 
-while true do
-    -- Process the mailbox anytime we arrive here,
-    -- no matter if the enter_idle() call had triggered or failed.
-    process_mailbox()
+-- Process the mailbox once on startup
+process_mailbox()
 
+while true do
     -- Wait for new message in mailbox
-    -- success, errormsg = recover(log_enter_idle, 10)
-    -- if success then
-    if pcall(log_enter_idle) then
+    success, errormsg = recover(log_enter_idle, 10)
+    if success then
         log('log_enter_idle() returns')
+        process_mailbox()
     else
         log('log_enter_idle() failed')
 

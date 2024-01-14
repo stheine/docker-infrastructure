@@ -15,11 +15,13 @@ RUN \
 
 WORKDIR /source
 
-RUN \
-  wget https://github.com/lefcha/imapfilter/archive/master.zip && \
-  unzip master.zip
+ARG IMAPFILTER_VERSION=2.8.2
 
-WORKDIR /source/imapfilter-master
+RUN \
+  wget https://github.com/lefcha/imapfilter/archive/refs/tags/v${IMAPFILTER_VERSION}.zip && \
+  unzip v${IMAPFILTER_VERSION}.zip
+
+WORKDIR /source/imapfilter-${IMAPFILTER_VERSION}
 
 RUN \
   make all && \
@@ -28,8 +30,8 @@ RUN \
 RUN \
   apk del alpine-sdk && \
   cd .. && \
-  rm -r imapfilter-master && \
-  rm master.zip
+  rm -r imapfilter-${IMAPFILTER_VERSION} && \
+  rm v${IMAPFILTER_VERSION}.zip
 
 WORKDIR /
 
