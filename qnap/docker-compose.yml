@@ -209,6 +209,13 @@ volumes:
       device: /share/linux/data/mosquitto/log
       o: bind
 
+  muell:
+    driver: local
+    driver_opts:
+      type: none
+      device: /share/linux/data/muell
+      o: bind
+
   node-red:
     driver: local
     driver_opts:
@@ -623,6 +630,14 @@ services:
     volumes:
       - ./mqtt-wetter/app:/app
       - wetter:/var/wetter
+
+  muell:
+    restart: always
+    build: muell
+    hostname: qnap-muell
+    volumes:
+      - muell:/data
+      - ./muell/app:/app
 
   nginx:
     restart: always

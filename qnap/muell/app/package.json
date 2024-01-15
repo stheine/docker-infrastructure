@@ -1,0 +1,23 @@
+{
+  "name": "muell",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "muell.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "stheine@arcor.de",
+  "license": "ISC",
+  "dependencies": {
+    "async-mqtt": "2.6.3",
+    "croner": "6.0.2",
+    "dayjs": "1.11.7",
+    "ics-to-json-extended": "1.1.4",
+    "lodash": "4.17.21"
+  },
+  "devDependencies": {
+    "eslint": "8.11.0",
+    "eslint-config-es": "4.1.0"
+  }
+}
