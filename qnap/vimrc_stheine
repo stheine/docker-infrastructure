@@ -4,6 +4,7 @@
 set background=light
 set backupcopy=yes
 set ic
+set mouse=
 set tabstop=80
 set sw=2
 
