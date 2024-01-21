@@ -16,6 +16,7 @@ const icsToJson = icsToJsonDefault.default;
 // ###########################################################################
 // Reference
 // https://github.com/MHohenberg/NextTrash
+//
 // https://www.awb-bb.de/start.html
 // - Abfuhrtermine
 // - Stadt/Gemeinde: Nufringen
@@ -27,10 +28,14 @@ const icsToJson = icsToJsonDefault.default;
 // - Datei speichern unter /mnt/qnap_linux/data/muell/allestrassennufringen.ics
 
 // TODO mehrere files von verschiedenen Jahren lesen und zusammenfuegen
-// TODO mqtt auswerten in control
+// TODO Warnung (per email), wenn nur noch wenige zukuenftige leerungen im kalender sind - man soll das neue ics file laden
 
-const icsFile = '/data/allestrassennufringen.ics';
-const topic   = 'muell/leerung/morgen';
+const icsFile       = '/data/allestrassennufringen.ics';
+const reportHour    = 17;
+const cleanHour     = 8;
+const topicMorgen   = 'muell/leerung/morgen';
+const topicNaechste = 'muell/leerung/naechste';
+const topicKalender = 'muell/leerung/kalender';
 
 // ###########################################################################
 // Globals
@@ -50,19 +55,31 @@ const stopProcess = async function() {
 };
 
 const checkMuell = async function() {
-  const icsData         = await fsPromises.readFile(icsFile, 'utf8');
-  const leerungen       = icsToJson(icsData);
-  const now             = dayjs();
-  const tomorrow        = now.clone().hour(24).minute(0).second(0).millisecond(0);
-  const tomorrowISO     = tomorrow.toISOString();
-  const leerungenMorgen = _.filter(leerungen, leerung => dayjs(leerung.startDate).toISOString() === tomorrowISO);
+  const icsData          = await fsPromises.readFile(icsFile, 'utf8');
+  const leerungen        = icsToJson(icsData);
+  const now              = dayjs();
+  const nowISO           = now.toISOString();
+  const tomorrow         = now.clone().hour(24).minute(0).second(0).millisecond(0);
+  const tomorrowISO      = tomorrow.toISOString();
+  const leerungenMorgen  = _.filter(leerungen, leerung => dayjs(leerung.startDate).toISOString() === tomorrowISO);
+  const leerungenZukunft = _.filter(leerungen, leerung => dayjs(leerung.startDate).toISOString() > nowISO);
 
   logger.info(leerungenMorgen);
 
-  if(leerungenMorgen.length) {
-    await mqttClient.publish(topic, JSON.stringify(leerungenMorgen), {retain: true});
+  if(leerungenMorgen.length && now.hour() >= reportHour) {
+    await mqttClient.publish(topicMorgen, JSON.stringify(leerungenMorgen), {retain: true});
   } else {
-    await mqttClient.publish(topic, null, {retain: true});
+    await mqttClient.publish(topicMorgen, null, {retain: true});
+  }
+
+  const leerungenZukunftProSorte = _.uniqBy(leerungenZukunft, 'summary');
+
+  logger.info(leerungenZukunftProSorte);
+
+  await mqttClient.publish(topicNaechste, JSON.stringify(leerungenZukunftProSorte), {retain: true});
+
+  if(leerungenZukunft.length < 10) {
+    await mqttClient.publish(topicKalender, JSON.stringify({TODO: 'Bitte Kalender aktualisieren!'}));
   }
 };
 
@@ -84,17 +101,17 @@ process.on('SIGTERM', () => stopProcess());
 
   // #########################################################################
   // Schedule
-  //    ┌─────────────── second (optional)
-  //    │ ┌───────────── minute
-  //    │ │  ┌────────── hour
-  //    │ │  │ ┌──────── day of month
-  //    │ │  │ │ ┌────── month
-  //    │ │  │ │ │ ┌──── day of week (0 is Sunday)
-  //    S M  H D M W
-  cron('0 0 17 * * *', {timezone: 'Europe/Berlin'}, checkMuell);
+  //    ┌────────────────────────── second (optional)
+  //    │ ┌──────────────────────── minute
+  //    │ │             ┌────────── hour
+  //    │ │             │ ┌──────── day of month
+  //    │ │             │ │ ┌────── month
+  //    │ │             │ │ │ ┌──── day of week (0 is Sunday)
+  //    S M             H D M W
+  cron(`0 0 ${reportHour} * * *`, {timezone: 'Europe/Berlin'}, checkMuell);
 
   // Clean
-  cron('0 0  8 * * *', {timezone: 'Europe/Berlin'}, async() => {
-    await mqttClient.publish(topic, null, {retain: true});
+  cron(`0 0  ${cleanHour} * * *`, {timezone: 'Europe/Berlin'}, async() => {
+    await mqttClient.publish(topicMorgen, null, {retain: true});
   });
 })();
