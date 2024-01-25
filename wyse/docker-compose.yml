@@ -1,29 +1,29 @@
 version: "3.8"
 
 # Ports
-#    25 postfix                smtp
-#   993 dovecot                imap                          Freigabe in FritzBox
-#  1883 mosquitto-websockets   mqtt
-#  2342 photoprism             http://192.168.6.7:2342/
-#  8008 portainer              http://192.168.6.7:8008/
-#  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
-#  9001 mosquitto-websockets   websockets
-# 16095 uptime-kuma            http://192.168.6.7:16095/
-# 26687 control-ui             http://192.168.6.7:26687/
-# 31038 watchdog               http://192.168.6.7:31038/
-# 45458 node-red               http://192.168.6.7:45458/
-# 57699 proxy                  http://192.168.6.7:57699/
-# 59080 nginx (http)           http://192.168.6.7:59080/     Freigabe in FritzBox
-# 59443 nginx (https)          https://192.168.6.7:59443/    Freigabe in FritzBox
-# 59154 gerbera-musik          http://192.168.6.7:59154/
-# 59155 gerbera-kinder-filme   http://192.168.6.7:59155/
-# 59156 gerbera-kinder-cds     http://192.168.6.7:59156/
-# 59157 gerbera-fotos          http://192.168.6.7:59157/
-# 59158 gerbera-filme          http://192.168.6.7:59158/
-# 59159 gerbera-video          http://192.168.6.7:59159/
+###    25 postfix                smtp
+###   993 dovecot                imap                          Freigabe in FritzBox
+###  1883 mosquitto-websockets   mqtt
+###  2342 photoprism             http://192.168.6.90:2342/
+#  8008 portainer              http://192.168.6.90:8008/
+###  8925 hivemq-mqtt-web-client http://192.168.6.90:8925/
+###  9001 mosquitto-websockets   websockets
+### 16095 uptime-kuma            http://192.168.6.90:16095/
+### 26687 control-ui             http://192.168.6.90:26687/
+### 31038 watchdog               http://192.168.6.90:31038/
+### 45458 node-red               http://192.168.6.90:45458/
+### 57699 proxy                  http://192.168.6.90:57699/
+# 59080 nginx (http)           http://192.168.6.90:59080/     Freigabe in FritzBox
+# 59443 nginx (https)          https://192.168.6.90:59443/    Freigabe in FritzBox
+### 59154 gerbera-musik          http://192.168.6.90:59154/
+### 59155 gerbera-kinder-filme   http://192.168.6.90:59155/
+### 59156 gerbera-kinder-cds     http://192.168.6.90:59156/
+### 59157 gerbera-fotos          http://192.168.6.90:59157/
+### 59158 gerbera-filme          http://192.168.6.90:59158/
+### 59159 gerbera-video          http://192.168.6.90:59159/
 
-#  1499 unison                 unison/ rsync                 Freigabe in FritzBox
-#  3873-3883 ftpd              ftp -P 3873 heine7.de
+###  1499 unison                 unison/ rsync                 Freigabe in FritzBox
+###  3873-3883 ftpd              ftp -P 3873 heine7.de
 
 
 volumes:
@@ -31,91 +31,91 @@ volumes:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/comics
+##      device: /home/stheine/docker-data/comics
 ##      o: bind
 ##
 ##  fritz:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/fritz
+##      device: /home/stheine/docker-data/fritz
 ##      o: bind
 ##
 ##  fronius:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/fronius
+##      device: /home/stheine/docker-data/fronius
 ##      o: bind
 ##
 ###  ftpd:
 ###    driver: local
 ###    driver_opts:
 ###      type: none
-###      device: /share/linux/data/ftpd
+###      device: /home/stheine/docker-data/ftpd
 ###      o: bind
 ##
 ##  gerbera-filme:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/gerberaFilme
+##      device: /home/stheine/docker-data/gerberaFilme
 ##      o: bind
 ##
 ##  gerbera-fotos:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/gerberaFotos
+##      device: /home/stheine/docker-data/gerberaFotos
 ##      o: bind
 ##
 ##  gerbera-kinder-cds:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/gerberaKinderCDs
+##      device: /home/stheine/docker-data/gerberaKinderCDs
 ##      o: bind
 ##
 ##  gerbera-kinder-filme:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/gerberaKinderFilme
+##      device: /home/stheine/docker-data/gerberaKinderFilme
 ##      o: bind
 ##
 ##  gerbera-musik:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/gerberaMusik
+##      device: /home/stheine/docker-data/gerberaMusik
 ##      o: bind
 ##
 ##  gerbera-video:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/gerberaVideo
+##      device: /home/stheine/docker-data/gerberaVideo
 ##      o: bind
 ##
 ##  homer:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/homer
+##      device: /home/stheine/docker-data/homer
 ##      o: bind
 ##
 ##  imapfilter:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/imapfilter
+##      device: /home/stheine/docker-data/imapfilter
 ##      o: bind
 ##
 ##  jalousie:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/jalousie
+##      device: /home/stheine/docker-data/jalousie
 ##      o: bind
 
   letsencrypt:
@@ -185,147 +185,147 @@ volumes:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/mediawiki-database
+##      device: /home/stheine/docker-data/mediawiki-database
 ##      o: bind
 ##
 ##  mediawiki-images:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/mediawiki-images
+##      device: /home/stheine/docker-data/mediawiki-images
 ##      o: bind
 ##
 ##  mosquitto-data:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/mosquitto/data
+##      device: /home/stheine/docker-data/mosquitto/data
 ##      o: bind
 ##
 ##  mosquitto-log:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/mosquitto/log
+##      device: /home/stheine/docker-data/mosquitto/log
 ##      o: bind
 ##
 ##  muell:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/muell
+##      device: /home/stheine/docker-data/muell
 ##      o: bind
 ##
 ##  node-red:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/node-red
+##      device: /home/stheine/docker-data/node-red
 ##      o: bind
 ##
 ##  photoprism:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/photoprism
+##      device: /home/stheine/docker-data/photoprism
 ##      o: bind
 ##
 ##  photoprism-database:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/photoprism-database
+##      device: /home/stheine/docker-data/photoprism-database
 ##      o: bind
-##
-##  portainer:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /share/linux/data/portainer
-##      o: bind
-##
+
+  portainer:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/portainer
+      o: bind
+
 ##  postfix_creds:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/postfix_creds
+##      device: /home/stheine/docker-data/postfix_creds
 ##      o: bind
 ##
 ##  sshd_certs:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/sshd_certs
+##      device: /home/stheine/docker-data/sshd_certs
 ##      o: bind
 ##
 ##  strom:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/strom
+##      device: /home/stheine/docker-data/strom
 ##      o: bind
 ##
 ###  unison:
 ###    driver: local
 ###    driver_opts:
 ###      type: none
-###      device: /share/linux/data/unison
+###      device: /home/stheine/docker-data/unison
 ###      o: bind
 ##
 ##  uptime-kuma:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/uptime-kuma
+##      device: /home/stheine/docker-data/uptime-kuma
 ##      o: bind
 ##
 ##  vaultwarden:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/vaultwarden-data
+##      device: /home/stheine/docker-data/vaultwarden-data
 ##      o: bind
 ##
 ##  vito:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/vito
+##      device: /home/stheine/docker-data/vito
 ##      o: bind
 ##
 ##  vmail:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/vmail
+##      device: /home/stheine/docker-data/vmail
 ##      o: bind
 ##
 ##  wasser:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/wasser
+##      device: /home/stheine/docker-data/wasser
 ##      o: bind
 ##
 ##  wetter:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/wetter
+##      device: /home/stheine/docker-data/wetter
 ##      o: bind
 ##
 ##  www:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/www
+##      device: /home/stheine/docker-data/www
 ##      o: bind
 ##
 ##  www_auth:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/linux/data/www_auth
+##      device: /home/stheine/docker-data/www_auth
 ##      o: bind
 ##
 ### networks:
@@ -733,17 +733,17 @@ services:
 ##      MYSQL_DATABASE: photoprism
 ##      MYSQL_USER: photoprism
 ##      MYSQL_PASSWORD: insecure
-##
-##  portainer:
-##    restart: always
-##    image: portainer/portainer-ce
-##    hostname: wyse-portainer
-##    ports:
-##      - 8008:9000
-##    volumes:
-##      - /var/run/docker.sock:/var/run/docker.sock
-##      - portainer:/data
-##
+
+  portainer:
+    restart: always
+    image: portainer/portainer-ce
+    hostname: wyse-portainer
+    ports:
+      - 8008:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer:/data
+
 ##  postfix:
 ##    restart: always
 ##    build: postfix
