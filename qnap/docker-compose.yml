@@ -336,6 +336,8 @@ services:
   apache2:
     restart: always
     build: apache2
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-apache2
     volumes:
       - fritz:/var/fritz
@@ -353,6 +355,8 @@ services:
   certbot:
     restart: always
     build: certbot
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-certbot
     volumes:
       - ./certbot/renew.sh:/renew.sh:ro
@@ -362,6 +366,8 @@ services:
   comics:
     restart: always
     build: comics
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-comics
     volumes:
       - ./comics/app:/app
@@ -370,6 +376,8 @@ services:
   control-ui:
     restart: always
     build: control-ui
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-control-ui
     ports:
       - 26687:26687
@@ -380,6 +388,8 @@ services:
   delete-video:
     restart: always
     build: delete-video
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-delete-video
     volumes:
       - /share/CACHEDEV1_DATA/Sat-Rekorder:/video
@@ -388,6 +398,8 @@ services:
   dovecot:
     restart: always
     build: dovecot
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-dovecot
     ports:
       - 993:993
@@ -398,6 +410,8 @@ services:
 #  ftpd:
 #    restart: always
 #    build: ftpd
+#    labels:
+#      - "com.centurylinklabs.watchtower.enable=false"
 #    hostname: qnap-ftpd
 #    ports:
 #      - "3873:21"
@@ -410,6 +424,8 @@ services:
   fritz:
     restart: always
     build: fritz
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-fritz
     volumes:
       - ./fritz/app:/app
@@ -418,6 +434,8 @@ services:
   fronius-battery:
     restart: always
     build: fronius-battery
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-fronius-battery
     volumes:
       - ./fronius-battery/app:/app
@@ -428,6 +446,8 @@ services:
   gerbera-filme:
     restart: always
     build: gerbera
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-filme
     network_mode: host
     environment:
@@ -440,6 +460,8 @@ services:
   gerbera-fotos:
     restart: always
     build: gerbera
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-fotos
     network_mode: host
     environment:
@@ -452,6 +474,8 @@ services:
   gerbera-kinder-filme:
     restart: always
     build: gerbera
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-kinder-filme
     network_mode: host
     environment:
@@ -464,6 +488,8 @@ services:
   gerbera-kinder-cds:
     restart: always
     build: gerbera
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-kinder-cds
     network_mode: host
     environment:
@@ -476,6 +502,8 @@ services:
   gerbera-musik:
     restart: always
     build: gerbera
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-gerbera-musik
     network_mode: host
     environment:
@@ -489,6 +517,8 @@ services:
   gerbera-video:
     restart: always
     build: gerbera
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-gerbera-video
     network_mode: host
     environment:
@@ -501,6 +531,8 @@ services:
   hivemq-mqtt-web-client:
     restart: always
     build: hivemq-mqtt-web-client
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-hivemq-mqtt-web-client
     ports:
       - 8925:80
@@ -517,6 +549,8 @@ services:
   imapfilter-fachwart:
     restart: always
     build: imapfilter
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-imapfilter-fachwart
     environment:
       - MAILBOX=fachwart
@@ -527,6 +561,8 @@ services:
   imapfilter-stefan:
     restart: always
     build: imapfilter
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-imapfilter-stefan
     environment:
       - MAILBOX=stefan
@@ -537,6 +573,8 @@ services:
   mediawiki:
     restart: always
     build: mediawiki
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     depends_on:
       - mediawiki-database
     volumes:
@@ -560,6 +598,8 @@ services:
   mediawiki-database-backup:
     restart: always
     build: mediawiki-database-backup
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     cap_add:
       - SYS_ADMIN
     devices:
@@ -589,6 +629,8 @@ services:
   mqtt2rrd:
     restart: always
     build: mqtt2rrd
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-mqtt2rrd
     volumes:
       - ./mqtt2rrd/app:/app
@@ -603,6 +645,8 @@ services:
   mqtt-strom:
     restart: always
     build: mqtt-strom
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-mqtt-strom
     volumes:
       - ./mqtt-strom/app:/app
@@ -611,6 +655,8 @@ services:
   mqtt-vito:
     restart: always
     build: mqtt-vito
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-mqtt-vito
     volumes:
       - ./mqtt-vito/app:/app
@@ -619,6 +665,8 @@ services:
   mqtt-volumio:
     restart: always
     build: mqtt-volumio
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-mqtt-volumio
     volumes:
       - ./mqtt-volumio/app:/app
@@ -626,6 +674,8 @@ services:
   mqtt-wetter:
     restart: always
     build: mqtt-wetter
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-mqtt-wetter
     volumes:
       - ./mqtt-wetter/app:/app
@@ -634,6 +684,8 @@ services:
   muell:
     restart: always
     build: muell
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-muell
     volumes:
       - muell:/data
@@ -642,6 +694,8 @@ services:
   nginx:
     restart: always
     build: nginx
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-nginx
     ports:
       - 59080:80
@@ -668,6 +722,8 @@ services:
   noop:
     restart: always
     build: noop
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-noop
 
   photoprism:
@@ -747,6 +803,8 @@ services:
   postfix:
     restart: always
     build: postfix
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-postfix
     ports:
       - "25:25"
@@ -756,6 +814,8 @@ services:
   proxy:
     restart: always
     build: proxy
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-proxy
     ports:
       - "57699:3128"
@@ -772,6 +832,8 @@ services:
 #  sony-pm-alternative:
 #    restart: always
 #    build: sony-pm-alternative
+#    labels:
+#      - "com.centurylinklabs.watchtower.enable=false"
 #    hostname: qnap-sony-pm
 #    network_mode: host
 #    volumes:
@@ -780,6 +842,8 @@ services:
 #  unison:
 #    restart: always
 #    build: unison
+#    labels:
+#      - "com.centurylinklabs.watchtower.enable=false"
 #    hostname: qnap-unison
 #    ports:
 #      - 1499:1499
@@ -790,7 +854,6 @@ services:
 
   uptime-kuma:
     restart: always
-    # build: uptime-kuma
     image: louislam/uptime-kuma
     hostname: qnap-uptime-kuma
     ports:
@@ -811,6 +874,8 @@ services:
   vaultwarden-backup:
     restart: always
     build: vaultwarden-backup
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: vaultwarden-backup
     cap_add:
       - SYS_ADMIN
@@ -825,8 +890,23 @@ services:
   watchdog:
     restart: always
     build: watchdog
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-watchdog
     volumes:
       - ./watchdog/app:/app
     ports:
       - 31038:31038
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      DOMAIN: "https://bitwarden.heine7.de"
+      WATCHTOWER_NOTIFICATIONS: "email"
+      WATCHTOWER_NOTIFICATION_EMAIL_FROM: "technik@heine7.de"
+      WATCHTOWER_NOTIFICATION_EMAIL_TO: "technik@heine7.de"
+      WATCHTOWER_NOTIFICATION_EMAIL_SERVER: "postfix"
+      WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT: "25"
+      WATCHTOWER_NOTIFICATION_EMAIL_SERVER_TLS_SKIP_VERIFY: "true"
