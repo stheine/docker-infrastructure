@@ -180,21 +180,21 @@ volumes:
 ##      type: none
 ##      device: /share/Sat-Rekorder
 ##      o: bind
-##
-##  mediawiki-database:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/mediawiki-database
-##      o: bind
-##
-##  mediawiki-images:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/mediawiki-images
-##      o: bind
-##
+
+  mediawiki-database:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/mediawiki-database
+      o: bind
+
+  mediawiki-images:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/mediawiki-images
+      o: bind
+
 ##  mosquitto-data:
 ##    driver: local
 ##    driver_opts:
@@ -251,13 +251,13 @@ volumes:
       device: /home/stheine/docker-data/postfix_creds
       o: bind
 
-##  sshd_certs:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/sshd_certs
-##      o: bind
-##
+  sshd_certs:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/sshd_certs
+      o: bind
+
 ##  strom:
 ##    driver: local
 ##    driver_opts:
@@ -535,49 +535,52 @@ services:
 ##    volumes:
 ##      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
 ##      - imapfilter:/config
-##
-##  mediawiki:
-##    restart: always
-##    build: mediawiki
-##    depends_on:
-##      - mediawiki-database
-##    volumes:
-##      - mediawiki-images:/var/www/html/images
-##      - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php:ro
-##      - ./mediawiki/php.ini:/usr/local/etc/php/php.ini:ro
-##
-##  mediawiki-database:
-##    restart: always
-##    image: yobasystems/alpine-mariadb:armhf
-##    labels:
-##      - "com.centurylinklabs.watchtower.enable=true"
-##    environment:
-##      # @see https://phabricator.wikimedia.org/source/mediawiki/browse/master/includes/DefaultSettings.php
-##      MYSQL_DATABASE: my_wiki
-##      MYSQL_USER: wikiuser
-##      MYSQL_PASSWORD: example
-##      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-##    volumes:
-##      - mediawiki-database:/var/lib/mysql
-##      # - mediawiki-database-backup:/database-restore
-##
-##  mediawiki-database-backup:
-##    restart: always
-##    build: mediawiki-database-backup
-##    cap_add:
-##      - SYS_ADMIN
-##    devices:
-##      - /dev/fuse:/dev/fuse
-##    volumes:
-##      - sshd_certs:/var/sshd_certs:nocopy
-##      - mediawiki-images:/mediawiki-images
-##      - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup:ro
-##      - ./mediawiki-database-backup/prebackup.sh:/prebackup.sh:ro
-##      - ./mediawiki-database-backup/postbackup.sh:/postbackup.sh:ro
-##      - ./mediawiki-database-backup/startup.sh:/startup.sh:ro
-##    depends_on:
-##      - mediawiki-database
-##
+
+  mediawiki:
+    restart: always
+    build: mediawiki
+    ports:
+      - 63342:80
+    depends_on:
+      - mediawiki-database
+    volumes:
+      - mediawiki-images:/var/www/html/images
+      - ./mediawiki/LocalSettings.php:/var/www/html/LocalSettings.php:ro
+      - ./mediawiki/php.ini:/usr/local/etc/php/php.ini:ro
+
+  mediawiki-database:
+    restart: always
+    image: yobasystems/alpine-mariadb
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    environment:
+      # @see https://phabricator.wikimedia.org/source/mediawiki/browse/master/includes/DefaultSettings.php
+      MYSQL_DATABASE: my_wiki
+      MYSQL_USER: wikiuser
+      MYSQL_PASSWORD: example
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mediawiki-database:/var/lib/mysql
+      # - mediawiki-database-backup:/database-restore
+
+  mediawiki-database-backup:
+    restart: always
+    build: mediawiki-database-backup
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    volumes:
+      - sshd_certs:/var/sshd_certs:nocopy
+      - mediawiki-images:/mediawiki-images
+      - ./mediawiki-database-backup/automysqlbackup.conf:/etc/default/automysqlbackup:ro
+      - ./mediawiki-database-backup/prebackup.sh:/prebackup.sh:ro
+      - ./mediawiki-database-backup/postbackup.sh:/postbackup.sh:ro
+      - ./mediawiki-database-backup/startup.sh:/startup.sh:ro
+    depends_on:
+      - mediawiki-database
+
 ##  mosquitto:
 ##    restart: always
 ##    image: eclipse-mosquitto:latest
