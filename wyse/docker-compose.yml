@@ -105,13 +105,13 @@ volumes:
       device: /home/stheine/docker-data/homer
       o: bind
 
-##  imapfilter:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/imapfilter
-##      o: bind
-##
+  imapfilter:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/imapfilter
+      o: bind
+
 ##  jalousie:
 ##    driver: local
 ##    driver_opts:
@@ -519,25 +519,25 @@ services:
     volumes:
       - homer:/www/assets
 
-##  imapfilter-fachwart:
-##    restart: always
-##    build: imapfilter
-##    hostname: wyse-imapfilter-fachwart
-##    environment:
-##      - MAILBOX=fachwart
-##    volumes:
-##      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
-##      - imapfilter:/config
-##
-##  imapfilter-stefan:
-##    restart: always
-##    build: imapfilter
-##    hostname: wyse-imapfilter-stefan
-##    environment:
-##      - MAILBOX=stefan
-##    volumes:
-##      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
-##      - imapfilter:/config
+  imapfilter-fachwart:
+    restart: always
+    build: imapfilter
+    hostname: wyse-imapfilter-fachwart
+    environment:
+      - MAILBOX=fachwart
+    volumes:
+      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
+      - imapfilter:/config
+
+  imapfilter-stefan:
+    restart: always
+    build: imapfilter
+    hostname: wyse-imapfilter-stefan
+    environment:
+      - MAILBOX=stefan
+    volumes:
+      - ./imapfilter/config.lua:/root/.imapfilter/config.lua
+      - imapfilter:/config
 
   mediawiki:
     restart: always
