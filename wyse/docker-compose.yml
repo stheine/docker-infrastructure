@@ -15,11 +15,11 @@ version: "3.8"
 ### 57699 proxy                  http://192.168.6.90:57699/
 # 59080 nginx (http)           http://192.168.6.90:59080/     Freigabe in FritzBox
 # 59443 nginx (https)          https://192.168.6.90:59443/    Freigabe in FritzBox
-### 59154 gerbera-musik          http://192.168.6.90:59154/
-### 59155 gerbera-kinder-filme   http://192.168.6.90:59155/
+# 59154 gerbera-musik          http://192.168.6.90:59154/
+# 59155 gerbera-kinder-filme   http://192.168.6.90:59155/
 ### 59156 gerbera-kinder-cds     http://192.168.6.90:59156/
 ### 59157 gerbera-fotos          http://192.168.6.90:59157/
-### 59158 gerbera-filme          http://192.168.6.90:59158/
+# 59158 gerbera-filme          http://192.168.6.90:59158/
 ### 59159 gerbera-video          http://192.168.6.90:59159/
 
 ###  1499 unison                 unison/ rsync                 Freigabe in FritzBox
@@ -54,14 +54,14 @@ volumes:
 ###      type: none
 ###      device: /home/stheine/docker-data/ftpd
 ###      o: bind
-##
-##  gerbera-filme:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/gerberaFilme
-##      o: bind
-##
+
+  gerbera-filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/gerberaFilme
+      o: bind
+
 ##  gerbera-fotos:
 ##    driver: local
 ##    driver_opts:
@@ -75,21 +75,21 @@ volumes:
 ##      type: none
 ##      device: /home/stheine/docker-data/gerberaKinderCDs
 ##      o: bind
-##
-##  gerbera-kinder-filme:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/gerberaKinderFilme
-##      o: bind
-##
-##  gerbera-musik:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/gerberaMusik
-##      o: bind
-##
+
+  gerbera-kinder-filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/gerberaKinderFilme
+      o: bind
+
+  gerbera-musik:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/gerberaMusik
+      o: bind
+
 ##  gerbera-video:
 ##    driver: local
 ##    driver_opts:
@@ -132,53 +132,53 @@ volumes:
       device: /home/stheine/docker-data/letsencrypt_www
       o: bind
 
-##  media_filme:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /share/Filme
-##      o: bind
-##
+  media_filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/Filme
+      o: bind
+
 ##  media_fotos:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/Fotos
+##      device: /mnt/qnap/Fotos
 ##      o: bind
 ##
 ###  media_fotos_Sony:
 ###    driver: local
 ###    driver_opts:
 ###      type: none
-###      device: /share/Fotos/Sony
+###      device: /mnt/qnap/Fotos/Sony
 ###      o: bind
 ##
 ##  media_kinder-cds:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/KinderCDs
+##      device: /mnt/qnap/KinderCDs
 ##      o: bind
-##
-##  media_kinder-filme:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /share/KinderFilme
-##      o: bind
-##
-##  media_musik:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /share/Musik
-##      o: bind
-##
+
+  media_kinder-filme:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/KinderFilme
+      o: bind
+
+  media_musik:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/Musik
+      o: bind
+
 ##  media_video:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /share/Sat-Rekorder
+##      device: /mnt/qnap/Sat-Rekorder
 ##      o: bind
 
   mediawiki-database:
@@ -382,7 +382,7 @@ services:
 ##    build: delete-video
 ##    hostname: wyse-delete-video
 ##    volumes:
-##      - /share/CACHEDEV1_DATA/Sat-Rekorder:/video
+##      - /mnt/qnap/Sat-Rekorder:/video
 ##      - ./delete-video/app:/app
 ##
 ##  dovecot:
@@ -422,21 +422,21 @@ services:
 ##    volumes:
 ##      - ./fronius-battery/app:/app
 ##      - fronius:/var/fronius
-##
-### Note: 'network_mode: host' is required for the upnp server for multicast traffic
-###       to detect the upnp server.
-##  gerbera-filme:
-##    restart: always
-##    build: gerbera
-##    hostname: wyse-filme
-##    network_mode: host
-##    environment:
-##      - CONFIG=59158-filme
-##    volumes:
-##      - ./gerbera/config:/etc/gerbera/config
-##      - media_filme:/media:ro
-##      - gerbera-filme:/gerbera_home
-##
+
+# Note: 'network_mode: host' is required for the upnp server for multicast traffic
+#       to detect the upnp server.
+  gerbera-filme:
+    restart: always
+    build: gerbera
+    hostname: wyse-filme
+    network_mode: host
+    environment:
+      - CONFIG=59158-filme
+    volumes:
+      - ./gerbera/config:/etc/gerbera/config
+      - media_filme:/media:ro
+      - gerbera-filme:/gerbera_home
+
 ##  gerbera-fotos:
 ##    restart: always
 ##    build: gerbera
@@ -448,19 +448,19 @@ services:
 ##      - ./gerbera/config:/etc/gerbera/config
 ##      - media_fotos:/media:ro
 ##      - gerbera-fotos:/gerbera_home
-##
-##  gerbera-kinder-filme:
-##    restart: always
-##    build: gerbera
-##    hostname: wyse-kinder-filme
-##    network_mode: host
-##    environment:
-##      - CONFIG=59155-kinder-filme
-##    volumes:
-##      - ./gerbera/config:/etc/gerbera/config
-##      - media_kinder-filme:/media:ro
-##      - gerbera-kinder-filme:/gerbera_home
-##
+
+  gerbera-kinder-filme:
+    restart: always
+    build: gerbera
+    hostname: wyse-kinder-filme
+    network_mode: host
+    environment:
+      - CONFIG=59155-kinder-filme
+    volumes:
+      - ./gerbera/config:/etc/gerbera/config
+      - media_kinder-filme:/media:ro
+      - gerbera-kinder-filme:/gerbera_home
+
 ##  gerbera-kinder-cds:
 ##    restart: always
 ##    build: gerbera
@@ -472,20 +472,20 @@ services:
 ##      - ./gerbera/config:/etc/gerbera/config
 ##      - media_kinder-cds:/media:ro
 ##      - gerbera-kinder-cds:/gerbera_home
-##
-##  gerbera-musik:
-##    restart: always
-##    build: gerbera
-##    hostname: wyse-gerbera-musik
-##    network_mode: host
-##    environment:
-##      - CONFIG=59154-musik
-###      - EXTRA_PARAMETERS=--debug
-##    volumes:
-##      - ./gerbera/config:/etc/gerbera/config
-##      - media_musik:/media:ro
-##      - gerbera-musik:/gerbera_home
-##
+
+  gerbera-musik:
+    restart: always
+    build: gerbera
+    hostname: wyse-gerbera-musik
+    network_mode: host
+    environment:
+      - CONFIG=59154-musik
+#      - EXTRA_PARAMETERS=--debug
+    volumes:
+      - ./gerbera/config:/etc/gerbera/config
+      - media_musik:/media:ro
+      - gerbera-musik:/gerbera_home
+
 ##  gerbera-video:
 ##    restart: always
 ##    build: gerbera
