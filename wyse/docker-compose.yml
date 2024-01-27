@@ -678,12 +678,12 @@ services:
 ##      - 45458:1880
 ##    volumes:
 ##      - node-red:/data
-##
-##  noop:
-##    restart: always
-##    build: noop
-##    hostname: wyse-noop
-##
+
+  noop:
+    restart: always
+    build: noop
+    hostname: wyse-noop
+
 ##  photoprism:
 ##    image: photoprism/photoprism:armv7
 ##    labels:
