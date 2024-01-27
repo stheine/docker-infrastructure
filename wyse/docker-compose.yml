@@ -9,7 +9,7 @@ version: "3.8"
 #  8080 homer                  http://192.168.6.90:8080/
 #  8925 hivemq-mqtt-web-client http://192.168.6.90:8925/
 ###  9001 mosquitto-websockets   websockets
-### 16095 uptime-kuma            http://192.168.6.90:16095/
+# 16095 uptime-kuma            http://192.168.6.90:16095/
 ### 26687 control-ui             http://192.168.6.90:26687/
 ### 31038 watchdog               http://192.168.6.90:31038/
 ### 45458 node-red               http://192.168.6.90:45458/
@@ -272,14 +272,14 @@ volumes:
 ###      type: none
 ###      device: /home/stheine/docker-data/unison
 ###      o: bind
-##
-##  uptime-kuma:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/uptime-kuma
-##      o: bind
-##
+
+  uptime-kuma:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/uptime-kuma
+      o: bind
+
 ##  vaultwarden:
 ##    driver: local
 ##    driver_opts:
@@ -809,19 +809,19 @@ services:
 ###      - media_musik:/var/musik:nocopy
 ###      - sshd_certs:/var/sshd_certs:nocopy
 ###      - unison:/root/.unison:nocopy
-##
-##  uptime-kuma:
-##    restart: always
-##    # build: uptime-kuma
-##    image: louislam/uptime-kuma
-##    labels:
-##      - "com.centurylinklabs.watchtower.enable=true"
-##    hostname: wyse-uptime-kuma
-##    ports:
-##      - 16095:3001
-##    volumes:
-##      - uptime-kuma:/app/data:nocopy
-##
+
+  uptime-kuma:
+    restart: always
+    # build: uptime-kuma
+    image: louislam/uptime-kuma
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    hostname: wyse-uptime-kuma
+    ports:
+      - 16095:3001
+    volumes:
+      - uptime-kuma:/app/data:nocopy
+
 ##  vaultwarden:
 ##    # https://github.com/dani-garcia/vaultwarden/wiki
 ##    restart: always
