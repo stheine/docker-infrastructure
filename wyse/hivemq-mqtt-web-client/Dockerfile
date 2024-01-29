@@ -30,7 +30,7 @@ RUN \
 RUN \
   sed -i \
     -e 's%<input id="subscribeTopic" type="text" value="testtopic/#">%<input id="subscribeTopic" type="text" value="Zigbee/#">%' \
-    -e 's%<input id="urlInput" type="text" value="broker.mqttdashboard.com">%<input id="urlInput" type="text" value="192.168.6.7">%' \
+    -e 's%<input id="urlInput" type="text" value="broker.mqttdashboard.com">%<input id="urlInput" type="text" value="192.168.6.5">%' \
     -e 's%<input id="portInput" type="text" value="8000"/>%<input id="portInput" type="text" value="9001"/>%' \
     hivemq-mqtt-web-client/index.html
 
