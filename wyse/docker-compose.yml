@@ -3,13 +3,13 @@ version: "3.8"
 # Ports
 #    25 postfix                smtp
 ###   993 dovecot                imap                          Freigabe in FritzBox
-###  1883 mosquitto-websockets   mqtt
+#  1883 mosquitto-websockets   mqtt
 ###  2342 photoprism             http://192.168.6.90:2342/
 #  8008 portainer              http://192.168.6.90:8008/
 #  8080 homer                  http://192.168.6.90:8080/
 #  8285 vaultwarden            http://192.168.6.90:8285/
 #  8925 hivemq-mqtt-web-client http://192.168.6.90:8925/
-###  9001 mosquitto-websockets   websockets
+#  9001 mosquitto-websockets   websockets
 # 16095 uptime-kuma            http://192.168.6.90:16095/
 ### 26687 control-ui             http://192.168.6.90:26687/
 ### 31038 watchdog               http://192.168.6.90:31038/
@@ -197,20 +197,20 @@ volumes:
       device: /home/stheine/docker-data/mediawiki-images
       o: bind
 
-##  mosquitto-data:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/mosquitto/data
-##      o: bind
-##
-##  mosquitto-log:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/mosquitto/log
-##      o: bind
-##
+  mosquitto-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/mosquitto/data
+      o: bind
+
+  mosquitto-log:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/mosquitto/log
+      o: bind
+
 ##  muell:
 ##    driver: local
 ##    driver_opts:
@@ -585,20 +585,20 @@ services:
     depends_on:
       - mediawiki-database
 
-##  mosquitto:
-##    restart: always
-##    image: eclipse-mosquitto:latest
-##    labels:
-##      - "com.centurylinklabs.watchtower.enable=true"
-##    hostname: wyse-mosquitto
-##    ports:
-##      - 1883:1883
-##      - 9001:9001
-##    volumes:
-##      - mosquitto-data:/mosquitto/data
-##      - mosquitto-log:/mosquitto/log
-##      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-##
+  mosquitto:
+    restart: always
+    image: eclipse-mosquitto:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    hostname: wyse-mosquitto
+    ports:
+      - 1883:1883
+      - 9001:9001
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
 ##  mqtt2rrd:
 ##    restart: always
 ##    build: mqtt2rrd
