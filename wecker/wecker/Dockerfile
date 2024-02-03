@@ -1,4 +1,4 @@
-FROM arm32v6/node:16.13-alpine3.12
+FROM arm32v6/node:20-alpine
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
