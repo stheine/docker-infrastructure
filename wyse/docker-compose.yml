@@ -2,60 +2,60 @@ version: "3.8"
 
 # Ports
 #    25 postfix                smtp
-###   993 dovecot                imap                          Freigabe in FritzBox
+#   993 dovecot                imap                          Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
-###  2342 photoprism             http://192.168.6.90:2342/
-#  8008 portainer              http://192.168.6.90:8008/
-#  8080 homer                  http://192.168.6.90:8080/
-#  8285 vaultwarden            http://192.168.6.90:8285/
-#  8925 hivemq-mqtt-web-client http://192.168.6.90:8925/
+###  2342 photoprism             http://192.168.6.5:2342/
+#  8008 portainer              http://192.168.6.5:8008/
+#  8080 homer                  http://192.168.6.5:8080/
+#  8285 vaultwarden            http://192.168.6.5:8285/
+#  8925 hivemq-mqtt-web-client http://192.168.6.5:8925/
 #  9001 mosquitto-websockets   websockets
-# 16095 uptime-kuma            http://192.168.6.90:16095/
-### 26687 control-ui             http://192.168.6.90:26687/
-### 31038 watchdog               http://192.168.6.90:31038/
-### 45458 node-red               http://192.168.6.90:45458/
-### 57699 proxy                  http://192.168.6.90:57699/
-# 59080 nginx (http)           http://192.168.6.90:59080/     Freigabe in FritzBox
-# 59443 nginx (https)          https://192.168.6.90:59443/    Freigabe in FritzBox
-# 59154 gerbera-musik          http://192.168.6.90:59154/
-# 59155 gerbera-kinder-filme   http://192.168.6.90:59155/
-### 59156 gerbera-kinder-cds     http://192.168.6.90:59156/
-### 59157 gerbera-fotos          http://192.168.6.90:59157/
-# 59158 gerbera-filme          http://192.168.6.90:59158/
-### 59159 gerbera-video          http://192.168.6.90:59159/
+# 16095 uptime-kuma            http://192.168.6.5:16095/
+# 26687 control-ui             http://192.168.6.5:26687/
+# 31038 watchdog               http://192.168.6.5:31038/
+# 45458 node-red               http://192.168.6.5:45458/
+# 57699 proxy                  http://192.168.6.5:57699/
+# 59080 nginx (http)           http://192.168.6.5:59080/     Freigabe in FritzBox
+# 59443 nginx (https)          https://192.168.6.5:59443/    Freigabe in FritzBox
+# 59154 gerbera-musik          http://192.168.6.5:59154/
+# 59155 gerbera-kinder-filme   http://192.168.6.5:59155/
+### 59156 gerbera-kinder-cds     http://192.168.6.5:59156/
+### 59157 gerbera-fotos          http://192.168.6.5:59157/
+# 59158 gerbera-filme          http://192.168.6.5:59158/
+### 59159 gerbera-video          http://192.168.6.5:59159/
 
-###  1499 unison                 unison/ rsync                 Freigabe in FritzBox
-###  3873-3883 ftpd              ftp -P 3873 heine7.de
+#  1499 unison                 unison/ rsync                 Freigabe in FritzBox
+#  3873-3883 ftpd              ftp -P 3873 heine7.de
 
 
 volumes:
-##  comics:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/comics
-##      o: bind
-##
-##  fritz:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/fritz
-##      o: bind
-##
-##  fronius:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/fronius
-##      o: bind
-##
-###  ftpd:
-###    driver: local
-###    driver_opts:
-###      type: none
-###      device: /home/stheine/docker-data/ftpd
-###      o: bind
+  comics:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/comics
+      o: bind
+
+  fritz:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/fritz
+      o: bind
+
+  fronius:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/fronius
+      o: bind
+
+#  ftpd:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /home/stheine/docker-data/ftpd
+#      o: bind
 
   gerbera-filme:
     driver: local
@@ -70,7 +70,7 @@ volumes:
 ##      type: none
 ##      device: /home/stheine/docker-data/gerberaFotos
 ##      o: bind
-##
+
 ##  gerbera-kinder-cds:
 ##    driver: local
 ##    driver_opts:
@@ -113,12 +113,12 @@ volumes:
       device: /home/stheine/docker-data/imapfilter
       o: bind
 
-##  jalousie:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/jalousie
-##      o: bind
+  jalousie:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/jalousie
+      o: bind
 
   letsencrypt:
     driver: local
@@ -147,14 +147,14 @@ volumes:
 ##      type: none
 ##      device: /mnt/qnap/Fotos
 ##      o: bind
-##
-###  media_fotos_Sony:
-###    driver: local
-###    driver_opts:
-###      type: none
-###      device: /mnt/qnap/Fotos/Sony
-###      o: bind
-##
+
+#  media_fotos_Sony:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /mnt/qnap/Fotos/Sony
+#      o: bind
+
 ##  media_kinder-cds:
 ##    driver: local
 ##    driver_opts:
@@ -211,20 +211,20 @@ volumes:
       device: /home/stheine/docker-data/mosquitto/log
       o: bind
 
-##  muell:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/muell
-##      o: bind
-##
-##  node-red:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/node-red
-##      o: bind
-##
+  muell:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/muell
+      o: bind
+
+  node-red:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/node-red
+      o: bind
+
 ##  photoprism:
 ##    driver: local
 ##    driver_opts:
@@ -260,19 +260,19 @@ volumes:
       device: /home/stheine/docker-data/sshd_certs
       o: bind
 
-##  strom:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/strom
-##      o: bind
-##
-###  unison:
-###    driver: local
-###    driver_opts:
-###      type: none
-###      device: /home/stheine/docker-data/unison
-###      o: bind
+  strom:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/strom
+      o: bind
+
+#  unison:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /home/stheine/docker-data/unison
+#      o: bind
 
   uptime-kuma:
     driver: local
@@ -288,142 +288,142 @@ volumes:
       device: /home/stheine/docker-data/vaultwarden-data
       o: bind
 
-##  vito:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/vito
-##      o: bind
-##
-##  vmail:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/vmail
-##      o: bind
-##
-##  wasser:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/wasser
-##      o: bind
-##
-##  wetter:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/wetter
-##      o: bind
-##
-##  www:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /home/stheine/docker-data/www
-##      o: bind
-##
+  vito:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/vito
+      o: bind
+
+  vmail:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/vmail
+      o: bind
+
+  wasser:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/wasser
+      o: bind
+
+  wetter:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/wetter
+      o: bind
+
+  www:
+    driver: local
+    driver_opts:
+      type: none
+      device: /home/stheine/docker-data/www
+      o: bind
+
 ##  www_auth:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
 ##      device: /home/stheine/docker-data/www_auth
 ##      o: bind
-##
-### networks:
-###   bridge:
-###     driver: bridge
+
+# networks:
+#   bridge:
+#     driver: bridge
 
 services:
-##  apache2:
-##    restart: always
-##    build: apache2
-##    hostname: wyse-apache2
-##    volumes:
-##      - fritz:/var/fritz
-##      - fronius:/var/fronius
-##      - jalousie:/var/jalousie
-##      - strom:/var/strom
-##      - vito:/var/vito
-##      - wasser:/var/wasser
-##      - www:/var/www
+  apache2:
+    restart: always
+    build: apache2
+    hostname: wyse-apache2
+    volumes:
+      - fritz:/var/fritz
+      - fronius:/var/fronius
+      - jalousie:/var/jalousie
+      - strom:/var/strom
+      - vito:/var/vito
+      - wasser:/var/wasser
+      - www:/var/www
 ##      - www_auth:/var/www_auth
-##      - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
-##    # healthcheck:
-##    #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
-##
-##  certbot:
-##    restart: always
-##    build: certbot
-##    hostname: wyse-certbot
-##    volumes:
-##      - ./certbot/renew.sh:/renew.sh:ro
-##      - letsencrypt:/etc/letsencrypt:nocopy
-##      - letsencrypt_www:/var/letsencrypt
-##
-##  comics:
-##    restart: always
-##    build: comics
-##    hostname: wyse-comics
-##    volumes:
-##      - ./comics/app:/app
-##      - comics:/var/comics
-##
-##  control-ui:
-##    restart: always
-##    build: control-ui
-##    hostname: wyse-control-ui
-##    ports:
-##      - 26687:26687
-##    volumes:
-##      - ./control-ui/app:/app
-##      # - wetter:/var/wetter
-##
-##  delete-video:
-##    restart: always
-##    build: delete-video
-##    hostname: wyse-delete-video
-##    volumes:
-##      - /mnt/qnap/Sat-Rekorder:/video
-##      - ./delete-video/app:/app
-##
-##  dovecot:
-##    restart: always
-##    build: dovecot
-##    hostname: wyse-dovecot
-##    ports:
-##      - 993:993
-##    volumes:
-##      - letsencrypt:/usr/local/etc/letsencrypt:nocopy
-##      - vmail:/home/vmail:nocopy
-##
-###  ftpd:
-###    restart: always
-###    build: ftpd
-###    hostname: wyse-ftpd
-###    ports:
-###      - "3873:21"
-###      - "3874-3883:3874-3883"
-###    volumes:
-###      - ./ftpd/vsftpd.conf:/etc/vsftpd/vsftpd.conf:ro
-###      - ftpd:/etc/ftpd:ro
-###      - media_fotos_Sony:/ftp
-##
-##  fritz:
-##    restart: always
-##    build: fritz
-##    hostname: wyse-fritz
-##    volumes:
-##      - ./fritz/app:/app
-##      - fritz:/var/fritz
-##
-##  fronius-battery:
-##    restart: always
-##    build: fronius-battery
-##    hostname: wyse-fronius-battery
-##    volumes:
-##      - ./fronius-battery/app:/app
-##      - fronius:/var/fronius
+      - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+    # healthcheck:
+    #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
+
+  certbot:
+    restart: always
+    build: certbot
+    hostname: wyse-certbot
+    volumes:
+      - ./certbot/renew.sh:/renew.sh:ro
+      - letsencrypt:/etc/letsencrypt:nocopy
+      - letsencrypt_www:/var/letsencrypt
+
+  comics:
+    restart: always
+    build: comics
+    hostname: wyse-comics
+    volumes:
+      - ./comics/app:/app
+      - comics:/var/comics
+
+  control-ui:
+    restart: always
+    build: control-ui
+    hostname: wyse-control-ui
+    ports:
+      - 26687:26687
+    volumes:
+      - ./control-ui/app:/app
+      # - wetter:/var/wetter
+
+  delete-video:
+    restart: always
+    build: delete-video
+    hostname: wyse-delete-video
+    volumes:
+      - /mnt/qnap/Sat-Rekorder:/video
+      - ./delete-video/app:/app
+
+  dovecot:
+    restart: always
+    build: dovecot
+    hostname: wyse-dovecot
+    ports:
+      - 993:993
+    volumes:
+      - letsencrypt:/usr/local/etc/letsencrypt:nocopy
+      - vmail:/home/vmail:nocopy
+
+#  ftpd:
+#    restart: always
+#    build: ftpd
+#    hostname: wyse-ftpd
+#    ports:
+#      - "3873:21"
+#      - "3874-3883:3874-3883"
+#    volumes:
+#      - ./ftpd/vsftpd.conf:/etc/vsftpd/vsftpd.conf:ro
+#      - ftpd:/etc/ftpd:ro
+#      - media_fotos_Sony:/ftp
+
+  fritz:
+    restart: always
+    build: fritz
+    hostname: wyse-fritz
+    volumes:
+      - ./fritz/app:/app
+      - fritz:/var/fritz
+
+  fronius-battery:
+    restart: always
+    build: fronius-battery
+    hostname: wyse-fronius-battery
+    volumes:
+      - ./fronius-battery/app:/app
+      - fronius:/var/fronius
 
 # Note: 'network_mode: host' is required for the upnp server for multicast traffic
 #       to detect the upnp server.
@@ -599,58 +599,58 @@ services:
       - mosquitto-log:/mosquitto/log
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
-##  mqtt2rrd:
-##    restart: always
-##    build: mqtt2rrd
-##    hostname: wyse-mqtt2rrd
-##    volumes:
-##      - ./mqtt2rrd/app:/app
-##      - fritz:/var/fritz
-##      - fronius:/var/fronius
-##      - jalousie:/var/jalousie
-##      - strom:/var/strom
-##      - vito:/var/vito
-##      - wasser:/var/wasser
-##      - www:/var/www
-##
-##  mqtt-strom:
-##    restart: always
-##    build: mqtt-strom
-##    hostname: wyse-mqtt-strom
-##    volumes:
-##      - ./mqtt-strom/app:/app
-##      - strom:/var/strom
-##
-##  mqtt-vito:
-##    restart: always
-##    build: mqtt-vito
-##    hostname: wyse-mqtt-vito
-##    volumes:
-##      - ./mqtt-vito/app:/app
-##      - vito:/var/vito
-##
-##  mqtt-volumio:
-##    restart: always
-##    build: mqtt-volumio
-##    hostname: wyse-mqtt-volumio
-##    volumes:
-##      - ./mqtt-volumio/app:/app
-##
-##  mqtt-wetter:
-##    restart: always
-##    build: mqtt-wetter
-##    hostname: wyse-mqtt-wetter
-##    volumes:
-##      - ./mqtt-wetter/app:/app
-##      - wetter:/var/wetter
-##
-##  muell:
-##    restart: always
-##    build: muell
-##    hostname: wyse-muell
-##    volumes:
-##      - muell:/data
-##      - ./muell/app:/app
+  mqtt2rrd:
+    restart: always
+    build: mqtt2rrd
+    hostname: wyse-mqtt2rrd
+    volumes:
+      - ./mqtt2rrd/app:/app
+      - fritz:/var/fritz
+      - fronius:/var/fronius
+      - jalousie:/var/jalousie
+      - strom:/var/strom
+      - vito:/var/vito
+      - wasser:/var/wasser
+      - www:/var/www
+
+  mqtt-strom:
+    restart: always
+    build: mqtt-strom
+    hostname: wyse-mqtt-strom
+    volumes:
+      - ./mqtt-strom/app:/app
+      - strom:/var/strom
+
+  mqtt-vito:
+    restart: always
+    build: mqtt-vito
+    hostname: wyse-mqtt-vito
+    volumes:
+      - ./mqtt-vito/app:/app
+      - vito:/var/vito
+
+  mqtt-volumio:
+    restart: always
+    build: mqtt-volumio
+    hostname: wyse-mqtt-volumio
+    volumes:
+      - ./mqtt-volumio/app:/app
+
+  mqtt-wetter:
+    restart: always
+    build: mqtt-wetter
+    hostname: wyse-mqtt-wetter
+    volumes:
+      - ./mqtt-wetter/app:/app
+      - wetter:/var/wetter
+
+  muell:
+    restart: always
+    build: muell
+    hostname: wyse-muell
+    volumes:
+      - muell:/data
+      - ./muell/app:/app
 
   nginx:
     restart: always
@@ -663,22 +663,22 @@ services:
       - letsencrypt:/etc/letsencrypt
       - letsencrypt_www:/var/letsencrypt
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-##    depends_on:
-##      # - apache2
-##      - homer
-##      - mediawiki
-##      - vaultwarden
+    depends_on:
+      - apache2
+      - homer
+      - mediawiki
+      - vaultwarden
 
-##  node-red:
-##    restart: always
-##    image: nodered/node-red
-##    labels:
-##      - "com.centurylinklabs.watchtower.enable=true"
-##    hostname: wyse-node-red
-##    ports:
-##      - 45458:1880
-##    volumes:
-##      - node-red:/data
+  node-red:
+    restart: always
+    image: nodered/node-red
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    hostname: wyse-node-red
+    ports:
+      - 45458:1880
+    volumes:
+      - node-red:/data
 
   noop:
     restart: always
@@ -774,16 +774,16 @@ services:
     volumes:
       - postfix_creds:/postfix_creds
 
-##  proxy:
-##    restart: always
-##    build: proxy
-##    hostname: wyse-proxy
-##    ports:
-##      - "57699:3128"
-###    environment:
-###      SQUID_CONFIG_FILE: /etc/squid/my-squid.conf
-###    volumes:
-###      - ./proxy/my-squid.conf:/etc/squid/my-squid.conf:ro
+  proxy:
+    restart: always
+    build: proxy
+    hostname: wyse-proxy
+    ports:
+      - "57699:3128"
+#    environment:
+#      SQUID_CONFIG_FILE: /etc/squid/my-squid.conf
+#    volumes:
+#      - ./proxy/my-squid.conf:/etc/squid/my-squid.conf:ro
 
   snowflake-proxy:
     restart: always
@@ -792,24 +792,24 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     network_mode: host
 
-###  sony-pm-alternative:
-###    restart: always
-###    build: sony-pm-alternative
-###    hostname: wyse-sony-pm
-###    network_mode: host
-###    volumes:
-###      - media_fotos_Sony:/var/lib/Sony
-##
-###  unison:
-###    restart: always
-###    build: unison
-###    hostname: wyse-unison
-###    ports:
-###      - 1499:1499
-###    volumes:
-###      - media_musik:/var/musik:nocopy
-###      - sshd_certs:/var/sshd_certs:nocopy
-###      - unison:/root/.unison:nocopy
+#  sony-pm-alternative:
+#    restart: always
+#    build: sony-pm-alternative
+#    hostname: wyse-sony-pm
+#    network_mode: host
+#    volumes:
+#      - media_fotos_Sony:/var/lib/Sony
+
+#  unison:
+#    restart: always
+#    build: unison
+#    hostname: wyse-unison
+#    ports:
+#      - 1499:1499
+#    volumes:
+#      - media_musik:/var/musik:nocopy
+#      - sshd_certs:/var/sshd_certs:nocopy
+#      - unison:/root/.unison:nocopy
 
   uptime-kuma:
     restart: always
@@ -826,7 +826,7 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.30.1-alpine
+    image: vaultwarden/server:1.30.3-alpine
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: vaultwarden
@@ -852,14 +852,14 @@ services:
       - ./vaultwarden-backup/backup.sh:/backup.sh
       - ./vaultwarden-backup/startup.sh:/startup.sh
 
-##  watchdog:
-##    restart: always
-##    build: watchdog
-##    hostname: wyse-watchdog
-##    volumes:
-##      - ./watchdog/app:/app
-##    ports:
-##      - 31038:31038
+  watchdog:
+    restart: always
+    build: watchdog
+    hostname: wyse-watchdog
+    volumes:
+      - ./watchdog/app:/app
+    ports:
+      - 31038:31038
 
   watchtower:
     image: containrrr/watchtower
