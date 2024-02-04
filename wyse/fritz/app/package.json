@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "async-mqtt": "2.6.3",
-    "axios": "1.4.0",
+    "axios": "1.6.0",
     "dayjs": "1.11.8",
     "execa": "7.1.1",
     "fritz-callmonitor": "4.0.8",
