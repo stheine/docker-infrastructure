@@ -863,16 +863,12 @@ services:
 
   watchtower:
     image: containrrr/watchtower
+    hostname: wyse-watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      DOMAIN: "https://bitwarden.heine7.de"
       WATCHTOWER_LABEL_ENABLE: 1
-      WATCHTOWER_NOTIFICATIONS: "email"
-      WATCHTOWER_NOTIFICATION_EMAIL_FROM: "technik@heine7.de"
-      WATCHTOWER_NOTIFICATION_EMAIL_TO: "technik@heine7.de"
-      WATCHTOWER_NOTIFICATION_EMAIL_SERVER: "postfix"
-      WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT: "25"
-      WATCHTOWER_NOTIFICATION_EMAIL_SERVER_TLS_SKIP_VERIFY: "true"
+      WATCHTOWER_NOTIFICATIONS: shoutrrr
+      WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
