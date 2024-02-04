@@ -11,13 +11,6 @@ volumes:
       device: /mnt/qnap_linux/data/jalousie
       o: bind
 
-  portainer:
-    driver: local
-    driver_opts:
-      type: none
-      device: /docker-data/portainer
-      o: bind
-
   pihole_etc_dnsmasq_d:
     driver: local
     driver_opts:
@@ -39,13 +32,6 @@ volumes:
       device: /docker-data/pihole/etc_pihole
       o: bind
 
-  postfix_creds:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/postfix_creds
-      o: bind
-
   zigbee2mqtt:
     driver: local
     driver_opts:
@@ -58,15 +44,6 @@ networks:
     driver: bridge
 
 services:
-  portainer:
-    restart: always
-    image: portainer/portainer-ce
-    ports:
-      - 8008:9000
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer:/data:nocopy
-
   jalousie-backend:
     restart: always
     build: jalousie-backend
@@ -112,16 +89,15 @@ services:
       - pihole_etc_pihole:/etc/pihole
       - pihole_etc_lighttpd:/etc/lighttpd
 
-  postfix:
+  portainer_agent:
     restart: always
-    build: postfix
-    hostname: pi-postfix
+    image: portainer/agent
+    hostname: qnap-portainer-agent
     ports:
-      - "25:25"
-    networks:
-      - backend
+      - 8009:9001
     volumes:
-      - postfix_creds:/postfix_creds:nocopy
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
 
   watchdog:
     restart: always
@@ -133,8 +109,6 @@ services:
       - backend
     ports:
       - 31038:31038
-    links:
-      - postfix
 
   zigbee2mqtt:
     restart: always
