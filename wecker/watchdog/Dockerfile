@@ -1,4 +1,4 @@
-FROM arm32v6/node:14-alpine
+FROM arm32v6/node:20-alpine
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -21,23 +21,15 @@ ENV LC_ALL en_US.UTF-8
 ENV TZ Europe/Berlin
 
 # ##############################################################################
-# Install and run strom app
+# Install and run watchdog app
 
 WORKDIR /root
 
 COPY npmrc .npmrc
 COPY vimrc .vimrc
-RUN \
-  apk add \
-    curl \
-    git \
-    g++ \
-    linux-headers \
-    make \
-    python
 
 # ##############################################################################
-# Install and run strom app
+# Install and run watchdog app
 
 WORKDIR /app
 
