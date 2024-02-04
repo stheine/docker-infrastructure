@@ -2,5 +2,5 @@
 
 - [jalousie](jalousie/)
 - [qnap](qnap/)
-- [strom](strom/)
 - [wecker](wecker/)
+- [wyse](wyse/)

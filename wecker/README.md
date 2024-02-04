@@ -1,8 +1,8 @@
 # docker setup for the `wecker` raspi
 
-## Raspbian
+## Raspberry PI OS
 
-Note, Hypriot does not work for wecker, since it doesn't contain the necessary Hifiberry overlay.
+2024, Raspbian 11, bullseye
 
 Install, according to https://wiki.heine7.de/index.php/Raspbian
 
@@ -16,41 +16,20 @@ sudo hostnamectl set-hostname --static pi-wecker
 ```
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y nfs-common vim
+sudo apt install -y nfs-common vim git
 
-echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > .selected-editor
-
-echo "# Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
-# while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
-192.168.6.7:/linux /mnt/qnap_linux nfs nfsvers=3,soft 0 0" | sudo tee -a /etc/fstab >/dev/null
+echo "192.168.6.7:/linux /mnt/qnap_linux/ nfs defaults 0 0" | sudo tee -a /etc/fstab >/dev/null
 sudo mkdir /mnt/qnap_linux
 sudo mount -a
 
-echo "@reboot /bin/sleep 20 && /bin/mount -a" | sudo tee -a /var/spool/cron/crontabs/root >/dev/null
+echo "@reboot /bin/sleep 10 && /bin/mount -a" | sudo tee -a /var/spool/cron/crontabs/root >/dev/null
 ```
 
 ### Setup ssh access key
 
 ```
-mkdir .ssh
-sudo cp /mnt/qnap_linux/data/sshd_certs/strom .ssh/id_rsa
-sudo cp /mnt/qnap_linux/data/sshd_certs/strom.pub .ssh/id_rsa.pub
-sudo cat /mnt/qnap_linux/data/sshd_certs/bonsai.pub  >> .ssh/authorized_keys
-sudo chown -R pi:pi .ssh
-chmod 700 .ssh
-chmod 600 .ssh/id_rsa
-chmod 644 .ssh/id_rsa.pub
-chmod 644 .ssh/authorized_keys
-
-passwd
-# Set new password
-
-sudo raspi-config
-# - Localisation
-# - Timezone
-# - Europe
-# - Berlin
-# - Finish
+ssh-keygen
+# Add the key to github
 ```
 
 ### Special hardware support
@@ -80,8 +59,6 @@ dtoverlay=pi3-disable-bt
 [pi4]
 # Disable Bluetooth
 dtoverlay=pi3-disable-bt
-
-[all]
 ```
 
 ### Swap
@@ -122,29 +99,23 @@ pcm.!default {
 
 speaker-test --channels 2 --test pink --nperiods 2
 
+### Mail
+
+```
+sudo apt install nullmailer
+# wyse.fritz.box smtp --port=25
+```
+
 ### Install docker & docker-compose
+https://wiki.heine7.de/index.php/docker_%2B_docker-compose#Installation
+
 ```
-curl -fsSL get.docker.com -o get-docker.sh && sh get-docker.sh
 sudo usermod -aG docker pi
-```
-
-Logout / Login
-
-```
-sudo apt-get install -y libffi-dev libssl-dev python3 python3-dev python3-pip
-sudo apt-get remove -y python-configparser
-sudo pip3 install docker-compose
 ```
 
 ### Prepare for docker
 
 ```
-sudo mkdir /docker-data
-sudo mkdir /docker-data/portainer
-sudo mkdir /docker-data/wecker
-
-sudo apt-get install -y git
-
 git config --global core.editor "vim"
 git config --global user.email "stheine@arcor.de"
 git config --global user.name "Stefan Heine"
@@ -156,9 +127,6 @@ cp docker/docker_host_system__profile .profile
 cd docker/wecker
 git clone git@github.com:stheine/wecker.git app
 
-cd app
-git clone git@github.com:stheine/mpg123.git
-
 amixer set Master 60%
 
 cd ../../docker/watchdog
@@ -169,17 +137,12 @@ Logout & Login again
 
 ```
 cd docker
-docker-compose build wecker
-docker-compose run --rm wecker /bin/bash -l
 
-npm install
-exit
+docker-compose build wecker
+docker-compose run wecker npm install
 
 docker-compose build watchdog
-docker-compose run --rm watchdog /bin/bash -l
-
-npm install
-exit
+docker-compose run watchdog npm install
 
 docker-compose up -d
 ```
@@ -189,12 +152,3 @@ docker-compose up -d
 ```
 docker-compose logs --tail 10 --follow wecker
 ```
-
-### Configure portainer
-
-- http://192.168.6.15:8008/#/init/admin
-- admin
-- &lt;pw&gt;
-- Create user
-- Local
-- Connect

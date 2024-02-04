@@ -1,4 +1,4 @@
-FROM arm32v6/node:20-alpine
+FROM nginx:alpine
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -9,32 +9,28 @@ RUN \
   apk add \
     bash \
     ca-certificates \
-    tzdata \
-    vim \
-    wget && \
+    tzdata && \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
   apk del tzdata
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US.UTF-8
-ENV LC_ALL en_US.UTF-8
-ENV TZ Europe/Berlin
 
 # ##############################################################################
-# Install and run watchdog app
-
-WORKDIR /root
-
-COPY npmrc .npmrc
-COPY vimrc .vimrc
+# Set up some basic tooling
+RUN \
+  apk add \
+    busybox-extras \
+    vim \
+    wget
 
 # ##############################################################################
-# Install and run watchdog app
-
-WORKDIR /app
+# Run nginx.
+# Configuration by volume in /etc/nginx/nginx.conf
+# Re-read configuration:
+#   docker-compose kill -s HUP nginx
 
 COPY docker_container_profile /root/.profile
-
-# CMD ["/usr/bin/tail", "-f", "/dev/null"]
-CMD ["/usr/local/bin/node", "/app/watchdog.js"]
 # CMD ["/bin/bash", "-l"]
+# CMD ["/usr/bin/tail", "-f", "/dev/null"]
+
+# EXPOSE 80 443
+# VOLUME /etc/letsencrypt /var/letsencrypt

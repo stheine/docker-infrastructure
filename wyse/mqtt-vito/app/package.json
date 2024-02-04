@@ -1,0 +1,25 @@
+{
+  "name": "mqtt-vito",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "mqtt-vito.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "stheine@arcor.de",
+  "license": "ISC",
+  "dependencies": {
+    "async-mqtt": "2.6.3",
+    "babar": "0.2.3",
+    "dayjs": "1.11.5",
+    "fs-extra": "10.1.0",
+    "lodash": "4.17.21",
+    "ms": "2.1.3",
+    "nodemailer": "6.9.9"
+  },
+  "devDependencies": {
+    "eslint": "8.25.0",
+    "eslint-config-es": "4.1.0"
+  }
+}
