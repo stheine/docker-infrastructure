@@ -33,105 +33,105 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/comics
+      device: /mnt/qnap/linux/data/comics
       o: bind
 
   fritz:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/fritz
+      device: /mnt/qnap/linux/data/fritz
       o: bind
 
   fronius:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/fronius
+      device: /mnt/qnap/linux/data/fronius
       o: bind
 
 #  ftpd:
 #    driver: local
 #    driver_opts:
 #      type: none
-#      device: /home/stheine/docker-data/ftpd
+#      device: /mnt/qnap/linux/data/ftpd
 #      o: bind
 
   gerbera-filme:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/gerberaFilme
+      device: /mnt/qnap/linux/data/gerberaFilme
       o: bind
 
 ##  gerbera-fotos:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /home/stheine/docker-data/gerberaFotos
+##      device: /mnt/qnap/linux/data/gerberaFotos
 ##      o: bind
 
 ##  gerbera-kinder-cds:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /home/stheine/docker-data/gerberaKinderCDs
+##      device: /mnt/qnap/linux/data/gerberaKinderCDs
 ##      o: bind
 
   gerbera-kinder-filme:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/gerberaKinderFilme
+      device: /mnt/qnap/linux/data/gerberaKinderFilme
       o: bind
 
   gerbera-musik:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/gerberaMusik
+      device: /mnt/qnap/linux/data/gerberaMusik
       o: bind
 
 ##  gerbera-video:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /home/stheine/docker-data/gerberaVideo
+##      device: /mnt/qnap/linux/data/gerberaVideo
 ##      o: bind
 
   homer:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/homer
+      device: /mnt/qnap/linux/data/homer
       o: bind
 
   imapfilter:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/imapfilter
+      device: /mnt/qnap/linux/data/imapfilter
       o: bind
 
   jalousie:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/jalousie
+      device: /mnt/qnap/linux/data/jalousie
       o: bind
 
   letsencrypt:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/letsencrypt
+      device: /mnt/qnap/linux/data/letsencrypt
       o: bind
 
   letsencrypt_www:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/letsencrypt_www
+      device: /mnt/qnap/linux/data/letsencrypt_www
       o: bind
 
   media_filme:
@@ -187,147 +187,147 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/mediawiki-database
+      device: /mnt/qnap/linux/data/mediawiki-database
       o: bind
 
   mediawiki-images:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/mediawiki-images
+      device: /mnt/qnap/linux/data/mediawiki-images
       o: bind
 
   mosquitto-data:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/mosquitto/data
+      device: /mnt/qnap/linux/data/mosquitto/data
       o: bind
 
   mosquitto-log:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/mosquitto/log
+      device: /mnt/qnap/linux/data/mosquitto/log
       o: bind
 
   muell:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/muell
+      device: /mnt/qnap/linux/data/muell
       o: bind
 
   node-red:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/node-red
+      device: /mnt/qnap/linux/data/node-red
       o: bind
 
 ##  photoprism:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /home/stheine/docker-data/photoprism
+##      device: /mnt/qnap/linux/data/photoprism
 ##      o: bind
 ##
 ##  photoprism-database:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /home/stheine/docker-data/photoprism-database
+##      device: /mnt/qnap/linux/data/photoprism-database
 ##      o: bind
 
   portainer:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/portainer
+      device: /mnt/qnap/linux/data/portainer
       o: bind
 
   postfix_creds:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/postfix_creds
+      device: /mnt/qnap/linux/data/postfix_creds
       o: bind
 
   sshd_certs:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/sshd_certs
+      device: /mnt/qnap/linux/data/sshd_certs
       o: bind
 
   strom:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/strom
+      device: /mnt/qnap/linux/data/strom
       o: bind
 
 #  unison:
 #    driver: local
 #    driver_opts:
 #      type: none
-#      device: /home/stheine/docker-data/unison
+#      device: /mnt/qnap/linux/data/unison
 #      o: bind
 
   uptime-kuma:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/uptime-kuma
+      device: /mnt/qnap/linux/data/uptime-kuma
       o: bind
 
   vaultwarden:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/vaultwarden-data
+      device: /mnt/qnap/linux/data/vaultwarden-data
       o: bind
 
   vito:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/vito
+      device: /mnt/qnap/linux/data/vito
       o: bind
 
   vmail:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/vmail
+      device: /mnt/qnap/linux/data/vmail
       o: bind
 
   wasser:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/wasser
+      device: /mnt/qnap/linux/data/wasser
       o: bind
 
   wetter:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/wetter
+      device: /mnt/qnap/linux/data/wetter
       o: bind
 
   www:
     driver: local
     driver_opts:
       type: none
-      device: /home/stheine/docker-data/www
+      device: /mnt/qnap/linux/data/www
       o: bind
 
 ##  www_auth:
 ##    driver: local
 ##    driver_opts:
 ##      type: none
-##      device: /home/stheine/docker-data/www_auth
+##      device: /mnt/qnap/linux/data/www_auth
 ##      o: bind
 
 # networks:
