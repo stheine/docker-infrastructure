@@ -2,9 +2,9 @@
 
 /* eslint-disable camelcase */
 
-import fsPromises            from 'fs/promises';
-
-import {setTimeout as delay} from 'timers/promises';
+import fsPromises            from 'node:fs/promises';
+import os                    from 'node:os';
+import {setTimeout as delay} from 'node:timers/promises';
 
 import _                     from 'lodash';
 import AsyncLock             from 'async-lock';
@@ -36,6 +36,8 @@ const dcPowers = new Ringbuffer(10);
 const einspeisungen = new Ringbuffer(60);
 let   froniusBatteryStatus;
 let   froniusInterval;
+const hostname = os.hostname();
+
 let   inverter;
 let   lastLog;
 let   lastRate;
@@ -523,7 +525,7 @@ const handleRate = async function({capacityWh, log = false}) {
 
   // #########################################################################
   // Init MQTT
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   // #########################################################################
   // Read static data

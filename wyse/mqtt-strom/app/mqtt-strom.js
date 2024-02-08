@@ -2,7 +2,8 @@
 
 /* eslint-disable camelcase */
 
-import fsPromises  from 'fs/promises';
+import fsPromises  from 'node:fs/promises';
+import os          from 'node:os';
 
 import _           from 'lodash';
 import dayjs       from 'dayjs';
@@ -21,7 +22,8 @@ const dcLimit = 5750;
 // ###########################################################################
 // Globals
 
-let mqttClient;
+const hostname          = os.hostname();
+let   mqttClient;
 
 // ###########################################################################
 // Process handling
@@ -107,7 +109,7 @@ process.on('SIGTERM', () => stopProcess());
 
   // #########################################################################
   // Init MQTT
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   // #########################################################################
   // Register MQTT events

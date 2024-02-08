@@ -2,8 +2,9 @@
 
 /* eslint-disable camelcase */
 
-import {setTimeout as delay} from 'timers/promises';
-import fsPromises            from 'fs/promises';
+import fsPromises            from 'node:fs/promises';
+import os                    from 'node:os';
+import {setTimeout as delay} from 'node:timers/promises';
 
 import _                     from 'lodash';
 import babar                 from 'babar';
@@ -27,6 +28,7 @@ dayjs.tz.setDefault(dayjs.tz.guess());
 // Constants
 
 const graphDisplayLimit = 100;
+const hostname          = os.hostname();
 
 // ###########################################################################
 // Globals
@@ -87,7 +89,7 @@ process.on('SIGTERM', () => stopProcess());
 
   // #########################################################################
   // Init MQTT
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   // #########################################################################
   // Register MQTT events

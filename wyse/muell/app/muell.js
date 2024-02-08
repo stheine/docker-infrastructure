@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fsPromises       from 'node:fs/promises';
+import os               from 'node:os';
 import path             from 'node:path';
 
 import _                from 'lodash';
@@ -40,7 +41,8 @@ const topicKalender = 'muell/leerung/kalender';
 // ###########################################################################
 // Globals
 
-let mqttClient
+const hostname   = os.hostname();
+let   mqttClient;
 
 // ###########################################################################
 // Process handling
@@ -93,7 +95,7 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // MQTT
 
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   // #########################################################################
   // Run on startup

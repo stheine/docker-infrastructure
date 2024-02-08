@@ -3,7 +3,8 @@
 /* eslint-disable camelcase */
 /* eslint-disable unicorn/no-useless-spread */
 
-import fsPromises from 'fs/promises';
+import fsPromises from 'node:fs/promises';
+import os         from 'node:os';
 
 import graphviz   from 'graphviz';
 import mqtt       from 'async-mqtt';
@@ -14,7 +15,8 @@ import rrdUpdate  from './rrdtool.js';
 // ###########################################################################
 // Globals
 
-let mqttClient;
+const hostname   = os.hostname();
+let   mqttClient;
 
 // ###########################################################################
 // Process handling
@@ -45,7 +47,7 @@ process.on('SIGTERM', () => stopProcess());
 
   // #########################################################################
   // Init MQTT connection
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   const update = {};
 

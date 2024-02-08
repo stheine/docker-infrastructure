@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import os                    from 'node:os';
 import {setTimeout as delay} from 'node:timers/promises';
 
                                        // DEBUG=* ./mqtt-volumio.js
@@ -13,8 +14,9 @@ import logger from './logger.js';
 // ###########################################################################
 // Globals
 
-let mqttClient;
-let volumio;
+const hostname   = os.hostname();
+let   mqttClient;
+let   volumio;
 
 // ###########################################################################
 // Process handling
@@ -52,7 +54,7 @@ const getQueue = async function() {
 
   // #########################################################################
   // Init connections
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
   volumio    = io('http://192.168.6.12:80', {transports: ['websocket']});
 
   // #########################################################################

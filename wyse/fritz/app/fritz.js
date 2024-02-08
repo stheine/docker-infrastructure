@@ -2,6 +2,8 @@
 
 /* eslint-disable new-cap */
 
+import os                       from 'node:os';
+
 import _                        from 'lodash';
 import {CallMonitor, EventKind} from 'fritz-callmonitor';
 import {execa}                  from 'execa';
@@ -16,11 +18,12 @@ import tr064Options             from '/var/fritz/tr064Options.js';
 // ###########################################################################
 // Globals
 
-let callMonitor;
-let mqttClient;
-let phonebookInterval;
-let stateInterval;
-let speedtestInterval;
+let   callMonitor;
+const hostname          = os.hostname();
+let   mqttClient;
+let   phonebookInterval;
+let   stateInterval;
+let   speedtestInterval;
 
 // ###########################################################################
 // Process handling
@@ -55,7 +58,7 @@ process.on('SIGTERM', () => stopProcess());
   // #########################################################################
   // MQTT
 
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   // #########################################################################
   // Call monitor

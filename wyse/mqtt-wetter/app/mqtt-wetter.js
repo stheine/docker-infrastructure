@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import os         from 'node:os';
 
 import _          from 'lodash';
 import axios      from 'axios';
@@ -17,8 +18,9 @@ import {
 // ###########################################################################
 // Globals
 
-let config;
-let mqttClient;
+let   config;
+const hostname   = os.hostname();
+let   mqttClient;
 
 // ###########################################################################
 // Process handling
@@ -360,7 +362,7 @@ const handleSunTimes = async function() {
 
   // #########################################################################
   // Init MQTT
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883');
+  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   // #########################################################################
   // Register MQTT events
