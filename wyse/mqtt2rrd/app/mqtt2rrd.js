@@ -68,7 +68,7 @@ process.on('SIGTERM', () => stopProcess());
       switch(topic) {
         case 'esp32-wasser/zaehlerstand/json': {
           if(message.value) {
-            const file = '/var/wasser/wasser.rrd64';
+            const file = '/var/wasser/wasser.rrd';
 
             files.push(file);
             update[file] = {
@@ -84,7 +84,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'FritzBox/tele/SENSOR': {
-          const file = '/var/fritz/fritz.rrd64';
+          const file = '/var/fritz/fritz.rrd';
 
           files.push(file);
           update[file] = {
@@ -101,7 +101,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'Fronius/solar/tele/SENSOR': {
-          const file = '/var/fronius/fronius.rrd64';
+          const file = '/var/fronius/fronius.rrd';
 
           const {battery, inverter, meter, solar} = message;
           const updates = {};
@@ -155,7 +155,7 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'FritzBox/speedtest/result': {
-          const file = '/var/fritz/speedtest.rrd64';
+          const file = '/var/fritz/speedtest.rrd';
 
           files.push(file);
           update[file] = {
@@ -170,7 +170,7 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'JalousieBackend/tele/SENSOR': {
           // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd64';
+          const file = '/var/jalousie/jalousie.rrd';
 
           files.push(file);
           update[file] = {
@@ -183,7 +183,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'Regen/tele/SENSOR': {
           // logger.info(topic, message);
           if(message.level) {
-            const file = '/var/jalousie/jalousie.rrd64';
+            const file = '/var/jalousie/jalousie.rrd';
 
             files.push(file);
             update[file] = {
@@ -198,7 +198,7 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'Sonne/tele/SENSOR': {
           // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd64';
+          const file = '/var/jalousie/jalousie.rrd';
 
           files.push(file);
           update[file] = {
@@ -212,7 +212,7 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'strom/tele/SENSOR': {
           // logger.info(topic, message);
-          const file = '/var/strom/strom.rrd64';
+          const file = '/var/strom/strom.rrd';
           const set  = {};
 
           if(message.momentanLeistung) {
@@ -240,7 +240,7 @@ process.on('SIGTERM', () => stopProcess());
           } else if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
             logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`, message);
           } else {
-            const file = '/var/strom/strom.rrd64';
+            const file = '/var/strom/strom.rrd';
 
             files.push(file);
             update[file] = {
@@ -258,7 +258,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'tasmota/espco2/tele/SENSOR': {
           // logger.info(topic, message);
           if(message.MHZ19B.CarbonDioxide) {
-            const file = '/var/jalousie/co2.rrd64';
+            const file = '/var/jalousie/co2.rrd';
 
             files.push(file);
             if(message.DHT11) {
@@ -287,7 +287,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'tasmota/espfeinstaub/tele/SENSOR': {
           // logger.info(topic, message);
           if(message.SDS0X1 && message.SDS0X1['PM2.5'] && message.SDS0X1.PM10) {
-            const file = '/var/jalousie/co2.rrd64';
+            const file = '/var/jalousie/co2.rrd';
 
             files.push(file);
             update[file] = {
@@ -299,7 +299,7 @@ process.on('SIGTERM', () => stopProcess());
             };
           }
           if(message.MHZ19B && message.MHZ19B.CarbonDioxide) {
-            const file = '/var/jalousie/co2klein.rrd64';
+            const file = '/var/jalousie/co2klein.rrd';
 
             files.push(file);
             update[file] = {
@@ -316,7 +316,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'vito/tele/SENSOR': {
           let file;
 
-          file = '/var/vito/vito.rrd64';
+          file = '/var/vito/vito.rrd';
           files.push(file);
           update[file] = {
             ...update[file],
@@ -343,7 +343,7 @@ process.on('SIGTERM', () => stopProcess());
             },
           };
 
-          file = '/var/jalousie/jalousie.rrd64';
+          file = '/var/jalousie/jalousie.rrd';
           files.push(file);
           update[file] = {
             ...update[file],
@@ -357,7 +357,7 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'Wind/tele/SENSOR': {
           // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd64';
+          const file = '/var/jalousie/jalousie.rrd';
 
           files.push(file);
           update[file] = {
@@ -371,7 +371,7 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'Wohnzimmer/tele/SENSOR': {
           // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd64';
+          const file = '/var/jalousie/jalousie.rrd';
 
           files.push(file);
           update[file] = {
@@ -387,7 +387,7 @@ process.on('SIGTERM', () => stopProcess());
         case 'Zigbee/LuftSensor Büro': {
           if(message.humidity && message.temperature) {
             // logger.info(topic, message);
-            const file = '/var/jalousie/jalousie.rrd64';
+            const file = '/var/jalousie/jalousie.rrd';
 
             files.push(file);
             update[file] = {
