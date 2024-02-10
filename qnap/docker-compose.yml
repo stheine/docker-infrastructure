@@ -3,11 +3,9 @@ version: "3.7"
 # Ports
 #    25 postfix                smtp
 #   993 dovecot                imap                          Freigabe in FritzBox
-#  1883 mosquitto-websockets   mqtt
 #  2342 photoprism             http://192.168.6.7:2342/
 #  8009 portainer_agent        portainer
 #  8925 hivemq-mqtt-web-client http://192.168.6.7:8925/
-#  9001 mosquitto-websockets   websockets
 # 16095 uptime-kuma            http://192.168.6.7:16095/
 # 26687 control-ui             http://192.168.6.7:26687/
 # 31038 watchdog               http://192.168.6.7:31038/
@@ -24,39 +22,10 @@ version: "3.7"
 #  3873-3883 ftpd              ftp -P 3873 heine7.de
 
 
-volumes:
-  mosquitto-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/mosquitto/data
-      o: bind
-
-  mosquitto-log:
-    driver: local
-    driver_opts:
-      type: none
-      device: /share/linux/data/mosquitto/log
-      o: bind
-
 services:
-  mosquitto:
-    restart: always
-    image: eclipse-mosquitto:latest
-    hostname: qnap-mosquitto
-    ports:
-      - 1883:1883
-      - 9001:9001
-    volumes:
-      - mosquitto-data:/mosquitto/data
-      - mosquitto-log:/mosquitto/log
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-
   noop:
     restart: always
     build: noop
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-noop
 
   portainer_agent:
@@ -74,8 +43,6 @@ services:
   watchdog:
     restart: always
     build: watchdog
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
     hostname: qnap-watchdog
     volumes:
       - ./watchdog/app:/app
