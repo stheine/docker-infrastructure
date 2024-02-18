@@ -8,6 +8,7 @@ import os         from 'node:os';
 
 import graphviz   from 'graphviz';
 import mqtt       from 'async-mqtt';
+import ms         from 'ms';
 
 import logger     from './logger.js';
 import rrdUpdate  from './rrdtool.js';
@@ -15,15 +16,23 @@ import rrdUpdate  from './rrdtool.js';
 // ###########################################################################
 // Globals
 
-const hostname   = os.hostname();
+let   healthInterval;
+const hostname        = os.hostname();
 let   mqttClient;
 
 // ###########################################################################
 // Process handling
 
 const stopProcess = async function() {
-  await mqttClient.end();
-  mqttClient = undefined;
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
+  if(mqttClient) {
+    await mqttClient.end();
+    mqttClient = undefined;
+  }
 
   logger.info(`Shutdown -------------------------------------------------`);
 };
@@ -67,7 +76,7 @@ process.on('SIGTERM', () => stopProcess());
 
       switch(topic) {
         case 'esp32-wasser/zaehlerstand/json': {
-          if(message.value) {
+          if(message.value && message.error === 'no error') {
             const file = '/var/wasser/wasser.rrd';
 
             files.push(file);
@@ -77,8 +86,8 @@ process.on('SIGTERM', () => stopProcess());
                 zaehlerstand: message.value,
               },
             };
-          } else {
-            logger.error('wasser', {topic, message, messageRaw});
+          // } else {
+          //   logger.error('wasser', {topic, message, messageRaw});
           }
           break;
         }
@@ -313,6 +322,37 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'tasmota/heizstab/tele/SENSOR': {
+          const file = '/var/vito/heizstab.rrd';
+
+          const updates = {
+            heizstabPower:  message.ENERGY.Power,
+            heizstabToday:  message.ENERGY.Today,
+          };
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...updates,
+          };
+          break;
+        }
+
+        case 'tasmota/heizstab/tele/STATE': {
+          const file = '/var/vito/heizstab.rrd';
+
+          const updates = {
+            heizstabSwitch: message.POWER === 'ON' ? 1 : 0,
+          };
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...updates,
+          };
+          break;
+        }
+
         case 'vito/tele/SENSOR': {
           let file;
 
@@ -444,9 +484,15 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espco2klein/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/heizstab/tele/SENSOR');
+  await mqttClient.subscribe('tasmota/heizstab/tele/STATE');
   await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wind/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribe('Zigbee/bridge/response/networkmap');
   await mqttClient.subscribe('Zigbee/LuftSensor Büro');
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publish(`mqtt2rrd/health/STATE`, 'OK');
+  }, ms('1min'));
 })();
