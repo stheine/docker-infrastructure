@@ -33,6 +33,7 @@ const hostname          = os.hostname();
 // ###########################################################################
 // Globals
 
+let healthInterval;
 let mqttClient;
 let vitoBetriebsart;
 
@@ -40,6 +41,11 @@ let vitoBetriebsart;
 // Process handling
 
 const stopProcess = async function() {
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
   if(mqttClient) {
     await mqttClient.end();
     mqttClient = undefined;
@@ -511,4 +517,8 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribe('solcast/forecasts');      // Subscribe the two SENSORs first
+
+    healthInterval = setInterval(async() => {
+    await mqttClient.publish(`mqtt-vito/health/STATE`, 'OK');
+  }, ms('1min'));
 })();

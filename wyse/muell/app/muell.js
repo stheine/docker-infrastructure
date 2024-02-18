@@ -9,6 +9,7 @@ import cron             from 'croner';
 import dayjs            from 'dayjs';
 import icsToJsonDefault from 'ics-to-json-extended';
 import mqtt             from 'async-mqtt';
+import ms               from 'ms';
 
 import logger           from './logger.js';
 
@@ -41,6 +42,7 @@ const topicKalender = 'muell/leerung/kalender';
 // ###########################################################################
 // Globals
 
+let   healthInterval;
 const hostname   = os.hostname();
 let   mqttClient;
 
@@ -50,8 +52,15 @@ let   mqttClient;
 const stopProcess = async function() {
   logger.info(`Shutdown -------------------------------------------------`);
 
-  await mqttClient.end();
-  mqttClient = undefined;
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
+  if(mqttClient) {
+    await mqttClient.end();
+    mqttClient = undefined;
+  }
 
   process.exit(0);
 };
@@ -96,6 +105,10 @@ process.on('SIGTERM', () => stopProcess());
   // MQTT
 
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publish(`muell/health/STATE`, 'OK');
+  }, ms('1min'));
 
   // #########################################################################
   // Run on startup

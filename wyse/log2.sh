@@ -12,5 +12,6 @@ docker compose logs \
   mqtt-vito \
   mqtt-volumio \
   mqtt-wetter \
+  muell \
   noop \
   watchdog

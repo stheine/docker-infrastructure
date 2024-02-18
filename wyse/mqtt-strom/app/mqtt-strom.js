@@ -22,13 +22,19 @@ const dcLimit = 5750;
 // ###########################################################################
 // Globals
 
-const hostname          = os.hostname();
+let   healthInterval;
+const hostname        = os.hostname();
 let   mqttClient;
 
 // ###########################################################################
 // Process handling
 
 const stopProcess = async function() {
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
   if(mqttClient) {
     await mqttClient.end();
     mqttClient = undefined;
@@ -584,4 +590,8 @@ process.on('SIGTERM', () => stopProcess());
   }
 
   await mqttClient.subscribe('tasmota/heizstab/stat/POWER');
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publish(`mqtt-strom/health/STATE`, 'OK');
+  }, ms('1min'));
 })();

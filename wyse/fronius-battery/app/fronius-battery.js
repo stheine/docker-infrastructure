@@ -38,6 +38,7 @@ let   froniusBatteryStatus;
 let   froniusInterval;
 const hostname = os.hostname();
 
+let   healthInterval;
 let   inverter;
 let   lastLog;
 let   lastRate;
@@ -70,6 +71,11 @@ const updateFroniusBatteryStatus = async function(set) {
 // Process handling
 
 const stopProcess = async function() {
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
   if(froniusInterval) {
     clearInterval(froniusInterval);
     // logger.info('fronius.closed');
@@ -656,6 +662,10 @@ const handleRate = async function({capacityWh, log = false}) {
   await mqttClient.subscribe('maxSun/INFO');
   await mqttClient.subscribe('strom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publish(`fronius-battery/health/STATE`, 'OK');
+  }, ms('1min'));
 
   // #########################################################################
   // Handle Fronius data

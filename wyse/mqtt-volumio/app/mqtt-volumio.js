@@ -8,12 +8,14 @@ import {setTimeout as delay} from 'node:timers/promises';
 import _      from 'lodash';
 import io     from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
 import mqtt   from 'async-mqtt';
+import ms     from 'ms';
 
 import logger from './logger.js';
 
 // ###########################################################################
 // Globals
 
+let   healthInterval;
 const hostname   = os.hostname();
 let   mqttClient;
 let   volumio;
@@ -22,10 +24,16 @@ let   volumio;
 // Process handling
 
 const stopProcess = async function() {
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
   if(mqttClient) {
     await mqttClient.end();
     mqttClient = undefined;
   }
+
   if(volumio) {
     volumio.close();
     volumio = undefined;
@@ -240,6 +248,10 @@ const getQueue = async function() {
   });
 
   await mqttClient.subscribe('volumio/cmnd/#');
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publish(`mqtt-volumio/health/STATE`, 'OK');
+  }, ms('1min'));
 
   // #########################################################################
   // Register Volumio events

@@ -19,6 +19,7 @@ import {
 // Globals
 
 let   config;
+let   healthInterval;
 const hostname   = os.hostname();
 let   mqttClient;
 
@@ -26,6 +27,11 @@ let   mqttClient;
 // Process handling
 
 const stopProcess = async function() {
+  if(healthInterval) {
+    clearInterval(healthInterval);
+    healthInterval = undefined;
+  }
+
   if(mqttClient) {
     await mqttClient.end();
     mqttClient = undefined;
@@ -374,6 +380,10 @@ const handleSunTimes = async function() {
   mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publish(`mqtt-wetter/health/STATE`, 'OK');
+  }, ms('1min'));
 
   setInterval(handleMaxSun, ms('4 hours'));
   await handleMaxSun(); // on startup
