@@ -112,7 +112,8 @@ services:
 
   zigbee2mqtt:
     restart: always
-    build: zigbee2mqtt
+    image: koenkk/zigbee2mqtt:latest
+    # build: zigbee2mqtt
     ports:
       - 1881:1881
     networks:
