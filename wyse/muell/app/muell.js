@@ -75,7 +75,7 @@ const checkMuell = async function() {
   const leerungenMorgen  = _.filter(leerungen, leerung => dayjs(leerung.startDate).toISOString() === tomorrowISO);
   const leerungenZukunft = _.filter(leerungen, leerung => dayjs(leerung.startDate).toISOString() > nowISO);
 
-  logger.info(leerungenMorgen);
+  // logger.info(leerungenMorgen);
 
   if(leerungenMorgen.length && now.hour() >= reportHour) {
     await mqttClient.publish(topicMorgen, JSON.stringify(leerungenMorgen), {retain: true});
@@ -85,7 +85,7 @@ const checkMuell = async function() {
 
   const leerungenZukunftProSorte = _.uniqBy(leerungenZukunft, 'summary');
 
-  logger.info(leerungenZukunftProSorte);
+  // logger.info(leerungenZukunftProSorte);
 
   await mqttClient.publish(topicNaechste, JSON.stringify(leerungenZukunftProSorte), {retain: true});
 
