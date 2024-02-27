@@ -286,7 +286,7 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
     note = `Charge maximum.`;
     rate = 1;
   } else if(chargeState < 20) {
-    note = `Charge to min of 20% (is ${chargeState}%).`;
+    note = `Charge to min of 20% (is ${chargeState}%) with max.`;
     rate = 1;
   } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
     _.inRange(now.format('M'), 4, 11) &&
@@ -306,49 +306,49 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
   ) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
-  } else if(toChargeWh < 250) {
-    note = `Charge the last few Wh with 1000W (${toChargeWh}Wh toCharge).`;
-    rate = wattToRate({capacityWh, watt: 1000});
+  } else if(toChargeWh < capacityWh * 0.03) {
+    note = `Charge the last few Wh with ${capacityWh * 0.05}W (${toChargeWh}Wh toCharge).`;
+    rate = wattToRate({capacityWh, watt: capacityWh * 0.05});
   } else if(maxDcPower > config.dcLimit) {
     if(limitPvHours || maxDcPower > config.dcLimit) {
       note = `PV (${maxDcPower}W) over the limit and very good forecast. ` +
-        `Charge what's over the limit minus momentanLeistung, min 100W, max ${toChargeWh / (limitPvHours || 1)}W.`;
+        `Charge what's over the limit minus momentanLeistung, min ${capacityWh * 0.1}W, max ${toChargeWh / (limitPvHours || 1)}W.`;
       rate = wattToRate({
         capacityWh,
         watt: _.max([
-          100,                                                             // At least 100W
+          capacityWh * 0.1,                                                // At least 0.1C
           maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit, // Over the limit
         ]),
       });
     } else if(highPvHours > 4) {
       note = `PV (${maxDcPower}W) over the limit and good forecast. ` +
-        `Charge what's over the limit minus momentanLeistung, min 100W, max ${toChargeWh / (limitPvHours || 1)}W.`;
+        `Charge what's over the limit minus momentanLeistung, min ${capacityWh * 0.1}W, max ${toChargeWh / (limitPvHours || 1)}W.`;
       rate = wattToRate({
         capacityWh,
         watt: _.min([
           _.max([
-            100,                                                             // At least 100W
+            capacityWh * 0.1,                                                // At least 0.1C
             maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit, // Over the limit
-            toChargeWh / highPvHours,                                          // Remaining by highPvHours
+            toChargeWh / highPvHours,                                        // Remaining by highPvHours
           ]),
-          toChargeWh / (limitPvHours || 1),                                    // Remaining by limitPvHours
+          toChargeWh / (limitPvHours || 1),                                  // Remaining by limitPvHours
         ]),
       });
     } else if(totalPvWh > 3 * toChargeWh) {
       if(now < maxSunTime) {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
-        rate = wattToRate({capacityWh, watt: _.max([500, toChargeWh / highPvHours])});
+        rate = wattToRate({capacityWh, watt: _.max([capacityWh * 0.1, toChargeWh / highPvHours])});
       } else {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. After max sun.`;
-        rate = wattToRate({capacityWh, watt: _.max([1000, toChargeWh / highPvHours])});
+        rate = wattToRate({capacityWh, watt: _.max([capacityWh * 0.2, toChargeWh / highPvHours])});
       }
     } else {
       note = `PV (${maxDcPower}W) over the limit but low forecast. Charge max.`;
       rate = 1;
     }
-  } else if(maxEinspeisung > 5700) {
-    note = `PV Einspeisung (${maxEinspeisung}W) close to the limit. Charge 500W.`;
-    rate = wattToRate({capacityWh, watt: 500});
+  } else if(maxEinspeisung > config.dcLimit - 500) {
+    note = `PV Einspeisung (${maxEinspeisung}W) close to the limit. Charge ${capacityWh * 0.1}W.`;
+    rate = wattToRate({capacityWh, watt: capacityWh * 0.1});
   } else if(limitPvWh && totalPvWh - limitPvWh > 2 * toChargeWh) {
     note = `Limit expected for later and enough PV after the limit. Wait to reach limit.`;
     rate = 0;
@@ -361,10 +361,10 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
   } else if(highPvWh && highPvHours > toChargeWh / 2000) {
     if(now < maxSunTime) {
       note = `High PV for enough hours to charge. Before max sun.`;
-      rate = wattToRate({capacityWh, watt: _.max([500, toChargeWh / highPvHours])});
+      rate = wattToRate({capacityWh, watt: _.max([capacityWh * 0.1, toChargeWh / highPvHours])});
     } else {
       note = `High PV for enough hours to charge. After max sun.`;
-      rate = wattToRate({capacityWh, watt: _.max([1000, toChargeWh / highPvHours * 2])});
+      rate = wattToRate({capacityWh, watt: _.max([capacityWh * 0.2, toChargeWh / highPvHours * 2])});
     }
   } else if(totalPvWh > 3 * toChargeWh) {
     note = `Sufficient for today, but won't reach the limit level.`;
@@ -395,7 +395,7 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
       chargeState:      `${chargeState}%`,
       toCharge:         `${_.round(toChargeWh / 1000, 1)}kWh`,
       demandOvernight:  `${_.round(demandOvernightWh / 1000, 1)}kWh`,
-      rate:             `${_.round(capacityWh * rate)}W (${_.round(rate * 100, 1)}%)`,
+      rate:             `${_.round(capacityWh * rate)}W (${_.round(rate, 2)}C)`,
       note,
     });
 
