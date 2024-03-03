@@ -260,6 +260,13 @@ volumes:
       device: /mnt/qnap/linux/data/sshd_certs
       o: bind
 
+  solcast:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/solcast
+      o: bind
+
   strom:
     driver: local
     driver_opts:
@@ -613,6 +620,14 @@ services:
       - wasser:/var/wasser
       - www:/var/www
 
+  mqtt-solcast:
+    restart: always
+    build: mqtt-solcast
+    hostname: wyse-mqtt-solcast
+    volumes:
+      - ./mqtt-solcast/app:/app
+      - solcast:/var/solcast
+
   mqtt-strom:
     restart: always
     build: mqtt-strom
@@ -826,7 +841,7 @@ services:
   vaultwarden:
     # https://github.com/dani-garcia/vaultwarden/wiki
     restart: always
-    image: vaultwarden/server:1.30.3-alpine
+    image: vaultwarden/server:latest-alpine
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: vaultwarden

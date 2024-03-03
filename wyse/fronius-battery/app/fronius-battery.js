@@ -8,7 +8,6 @@ import {setTimeout as delay} from 'node:timers/promises';
 
 import _                     from 'lodash';
 import AsyncLock             from 'async-lock';
-import axios                 from 'axios';
 import check                 from 'check-types-2';
 import cron                  from 'node-cron';
 import dayjs                 from 'dayjs';
@@ -49,6 +48,7 @@ let   mqttClient;
 const notified = {};
 let   smartMeter;
 let   smartMeterInterval;
+let   solcastForecasts;
 
 dcPowers.enq(0);
 einspeisungen.enq(0);
@@ -114,65 +114,6 @@ process.on('SIGTERM', () => stopProcess());
 // ###########################################################################
 // Solcast, weather forecast
 
-const getSolcastForecasts = async function() {
-  let cacheAge;
-  let cachedSolcast;
-  let newSolcast;
-
-  try {
-    await fsPromises.access('/var/fronius/solcast-cache.json');
-
-    const stats = await fsPromises.stat('/var/fronius/solcast-cache.json');
-
-    cacheAge = stats ? Date.now() - stats.mtime : null;
-
-    if(cacheAge) {
-      cachedSolcast = await fsExtra.readJSON('/var/fronius/solcast-cache.json');
-
-      check.assert.object(cachedSolcast);
-      check.assert.array(cachedSolcast.forecasts);
-    }
-
-    if(cacheAge && cacheAge < ms('30 minutes')) {
-      // Return cached data
-      return cachedSolcast.forecasts;
-    }
-  } catch {
-    cacheAge = null;
-  }
-
-  try {
-    // logger.info('Refresh solcast cache');
-
-    const response = await axios.get(
-      `https://api.solcast.com.au/rooftop_sites/${config.RESOURCE_ID}/forecasts?hours=36`,
-      {
-        headers: {Authorization: `Bearer ${config.API_KEY}`},
-        json:    true,
-      }
-    );
-
-    newSolcast = response.data;
-
-    check.assert.object(newSolcast);
-    check.assert.array(newSolcast.forecasts);
-
-    await fsExtra.writeJson('/var/fronius/solcast-cache.json', newSolcast, {spaces: 2});
-
-    await mqttClient.publish('solcast/forecasts', JSON.stringify(newSolcast.forecasts), {retain: true});
-
-    return newSolcast.forecasts;
-  } catch(err) {
-    // Failed to update the solcast data
-    if(cacheAge && cacheAge < ms('90 minutes')) {
-      // Return cached data
-      return cachedSolcast.forecasts;
-    }
-
-    throw new Error(`Failed to refresh solcast data and cache outdated: ${err.message}`);
-  }
-};
-
 const wattToRate = function({capacityWh, watt}) {
   if(!capacityWh) {
     return 0;
@@ -183,8 +124,11 @@ const wattToRate = function({capacityWh, watt}) {
   return rate;
 };
 
-const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}) {
+const getBatteryRate = function({capacityWh, chargeState, log}) {
   if(!capacityWh) {
+    return 0;
+  }
+  if(!solcastForecasts?.length) {
     return 0;
   }
 
@@ -312,7 +256,8 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
   } else if(maxDcPower > config.dcLimit) {
     if(limitPvHours || maxDcPower > config.dcLimit) {
       note = `PV (${maxDcPower}W) over the limit and very good forecast. ` +
-        `Charge what's over the limit minus momentanLeistung, min ${capacityWh * 0.1}W, max ${toChargeWh / (limitPvHours || 1)}W.`;
+        `Charge what's over the limit minus momentanLeistung, ` +
+        `min ${capacityWh * 0.1}W, max ${toChargeWh / (limitPvHours || 1)}W.`;
       rate = wattToRate({
         capacityWh,
         watt: _.max([
@@ -322,7 +267,8 @@ const getBatteryRate = function({capacityWh, chargeState, log, solcastForecasts}
       });
     } else if(highPvHours > 4) {
       note = `PV (${maxDcPower}W) over the limit and good forecast. ` +
-        `Charge what's over the limit minus momentanLeistung, min ${capacityWh * 0.1}W, max ${toChargeWh / (limitPvHours || 1)}W.`;
+        `Charge what's over the limit minus momentanLeistung, ` +
+        `min ${capacityWh * 0.1}W, max ${toChargeWh / (limitPvHours || 1)}W.`;
       rate = wattToRate({
         capacityWh,
         watt: _.min([
@@ -418,34 +364,11 @@ const handleRate = async function({capacityWh, log = false}) {
     // }
 
     // Get charge rate
-    let solcastForecasts;
     let chargeState;
     let dcPower;
     let rate;
     let setRate;
 
-    try {
-      let retries = 3;
-
-      do {
-        try {
-          solcastForecasts = await getSolcastForecasts();
-
-          check.assert.array(solcastForecasts,
-            `Not an array returned from getSolcastForecasts(): ${JSON.stringify(solcastForecasts)}`);
-        } catch(err) {
-          retries--;
-
-          if(retries) {
-            await delay(ms('3 seconds'));
-          } else {
-            throw new Error(`Failed after retries: ${err.message}`);
-          }
-        }
-      } while(!solcastForecasts && retries);
-    } catch(err) {
-      throw new Error(`Failed getting solcastForecasts: ${err.message}`);
-    }
     try {
       const results = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW']);
 
@@ -457,7 +380,7 @@ const handleRate = async function({capacityWh, log = false}) {
       throw new Error(`Failed getting battery state: ${err.message}`);
     }
     try {
-      rate        = getBatteryRate({capacityWh, chargeState, log, solcastForecasts});
+      rate = getBatteryRate({capacityWh, chargeState, log});
     } catch(err) {
       throw new Error(`Failed getting battery rate: ${err.message}`);
     }
@@ -540,8 +463,6 @@ const handleRate = async function({capacityWh, log = false}) {
     config = await fsExtra.readJson('/var/fronius/config.json');
 
     check.assert.object(config);
-    check.assert.string(config.API_KEY);
-    check.assert.string(config.RESOURCE_ID);
     check.assert.number(config.springChargeGoal);
     check.assert.number(config.summerChargeGoal);
   } catch(err) {
@@ -635,6 +556,10 @@ const handleRate = async function({capacityWh, log = false}) {
           maxSun = message;
           break;
 
+        case 'solcast/forecasts':
+          solcastForecasts = message;
+          break;
+
         case 'strom/tele/SENSOR':
           ({momentanLeistung} = message);
 
@@ -660,6 +585,7 @@ const handleRate = async function({capacityWh, log = false}) {
 
   await mqttClient.subscribe('Fronius/solar/cmnd');
   await mqttClient.subscribe('maxSun/INFO');
+  await mqttClient.subscribe('solcast/forecasts');
   await mqttClient.subscribe('strom/tele/SENSOR');
   await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
 
@@ -861,6 +787,8 @@ const handleRate = async function({capacityWh, log = false}) {
       try {
         const runningVersion = await inverter.readRegister('Vr');
         const latestVersion  = await getLatestVersion();
+        // eslint-disable-next-line max-len
+        const url = 'https://www.fronius.com/de-de/germany/download-center#!/searchconfig/%7B%22countryPath%22%3A%22%2Fsitecore%2Fcontent%2FGermany%22%2C%22language%22%3A%22de-DE%22%2C%22searchword%22%3A%22gen24%22%2C%22selectedCountry%22%3A%22Germany%22%2C%22solarenergy%22%3A%7B%22facets%22%3A%5B%7B%22id%22%3A%22Firmware%22%2C%22categoryId%22%3A%22DocumentType%22%7D%5D%7D%7D';
 
         logger.info('Software version check', {runningVersion, latestVersion});
 

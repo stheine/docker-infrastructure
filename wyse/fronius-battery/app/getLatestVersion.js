@@ -21,7 +21,12 @@ export default async function getLatestVersion() {
 
   // 3) new implementation in January 2024
   const url = 'https://www.fronius.com/search/getdownloadcenter';
-  const data = '{"searchword":"update gen24 tauro","countryPath":"/sitecore/content/Germany","language":"de-DE","selectedCountry":"Germany"}';
+  const data = '{' +
+    '"searchword":"update gen24 tauro",' +
+    '"countryPath":"/sitecore/content/Germany",' +
+    '"language":"de-DE",' +
+    '"selectedCountry":"Germany"' +
+    '}';
 
   const response = await axios.post(url, data);
 
@@ -49,4 +54,4 @@ export default async function getLatestVersion() {
 //      title: 'Fronius Update GEN24 Tauro V1.28.7-1',
 //      link: '/~/downloads/Solar%20Energy/Firmware/SE_FW_Fronius_Solar.update_GEN24_Tauro_DE_EN.swu'
 //    },
-};
+}
