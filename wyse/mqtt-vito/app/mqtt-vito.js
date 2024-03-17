@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
 /* eslint-disable camelcase */
+/* eslint-disable max-len */
+/* eslint-disable no-lonely-if */
 
 import fsPromises            from 'node:fs/promises';
 import os                    from 'node:os';
 import {setTimeout as delay} from 'node:timers/promises';
 
 import _                     from 'lodash';
-import babar                 from 'babar';
+// import babar                 from 'babar';
 import dayjs                 from 'dayjs';
 import fsExtra               from 'fs-extra';
 import isBetween             from 'dayjs/plugin/isBetween.js';
@@ -17,7 +19,7 @@ import utc                   from 'dayjs/plugin/utc.js';
 import timezone              from 'dayjs/plugin/timezone.js';
 
 import logger                from './logger.js';
-import {sendMail}            from './mail.js';
+// import {sendMail}            from './mail.js';
 
 dayjs.extend(isBetween);
 dayjs.extend(timezone);
@@ -65,6 +67,7 @@ process.on('SIGTERM', () => stopProcess());
   let sunnyHours              = 0;
   let tempAussen              = null;
   let tempInnen               = null;
+  let verbrauchSeitLetzterLeerung;
 
   // #########################################################################
   // Startup
@@ -134,7 +137,6 @@ process.on('SIGTERM', () => stopProcess());
           let   newSunnyHours       = 0;
           let   sunnyHoursStartIn   = null;
           let   graphEstimates      = [];
-          let   graphSunnyEstimates = [];
 
           if(tempAussen === null || tempInnen === null) {
             let retries = 60;
@@ -184,8 +186,8 @@ process.on('SIGTERM', () => stopProcess());
 
             estimates.push(estimate);
 
-            graphEstimates.push([(new Date(period_end_date)).getHours() +
-              (new Date(period_end_date)).getMinutes() / 100, estimate]);
+            graphEstimates.push([new Date(period_end_date).getHours() +
+              new Date(period_end_date).getMinutes() / 100, estimate]);
 
             if(estimate > 3500) {
               // Estimate is for 30 minute period
@@ -231,11 +233,9 @@ process.on('SIGTERM', () => stopProcess());
 
           sunnyHours = newSunnyHours;
 
-          if(graphEstimates.length > 3) {
-            if(graphEstimates.length % 2 === 0) {
-              // The estimates graph x-labels look better with an odd number of entries
-              graphEstimates.push([_.last(graphEstimates)[0] + 0.3, 0]);
-            }
+          if(graphEstimates.length > 3 && graphEstimates.length % 2 === 0) {
+            // The estimates graph x-labels look better with an odd number of entries
+            graphEstimates.push([_.last(graphEstimates)[0] + 0.3, 0]);
 
 //            logger.debug(babar(graphEstimates, {
 //              caption:    'Estimates',
@@ -290,18 +290,21 @@ process.on('SIGTERM', () => stopProcess());
         }
 
         case 'vito/tele/SENSOR': {
-          const {dateTime, error01,
+          const {
+            dateTime,
+            error01,
             brennerVerbrauch:   brennerVerbrauchString,
+            hk1Betriebsart,
             hk1BetriebsartSpar: betriebsartSparString,
             drehzahlIst:        drehzahlString,
             tempAussen:         tempAussenString,
+            tempKessel,
           } = message;
 
           betriebsartSpar = Boolean(Number(betriebsartSparString));
           tempAussen      = Number(tempAussenString);
-          vitoBetriebsart = Number(message.hk1Betriebsart);
+          vitoBetriebsart = Number(hk1Betriebsart);
 
-          const {tempKessel}     = message;
           const brennerVerbrauch = Number(brennerVerbrauchString);
           const drehzahl         = Number(drehzahlString);
 
@@ -329,17 +332,27 @@ process.on('SIGTERM', () => stopProcess());
           if(tempKessel > 87 && // Codieradresse 06 erlaubt 85 Grad
             (!reportedTempKessel || dayjs(reportedTempKessel).isBefore(twoDaysAgo))
           ) {
-            try {
-              await sendMail({
-                to:      'stefan@heine7.de',
-                subject: `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`,
-                html:    `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`,
-              });
+            const notifyTitle   = `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`;
+            const notifyMessage = `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`;
 
-              reportedTempKessel = now;
-            } catch(err) {
-              logger.error(`Failed to send error mail: ${err.message}`);
-            }
+            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+              sound:   'siren',
+              html:    1,
+              message: notifyMessage,
+              title:   notifyTitle,
+            }));
+
+            reportedTempKessel = now;
+
+//            try {
+//              await sendMail({
+//                to:      'stefan@heine7.de',
+//                subject: notifyTitle,
+//                html:    notifyMessage,
+//              });
+//            } catch(err) {
+//              logger.error(`Failed to send error mail: ${err.message}`);
+//            }
           } else {
             reportedTempKessel = null;
           }
@@ -354,17 +367,27 @@ process.on('SIGTERM', () => stopProcess());
           if(reportedFehlerDateTime !== fehlerDateTime) {
             await mqttClient.publish(`vito/tele/FEHLER`, JSON.stringify({code, dateTime: fehlerDateTime}));
 
-            try {
-              await sendMail({
-                to:      'stefan@heine7.de',
-                subject: `Heizung Störung (${code})`,
-                html:    `Störung ${code}: ${fehlerDateTime}`,
-              });
+            const notifyTitle   = `Heizung Störung (${code})`;
+            const notifyMessage = `Störung ${code}: ${fehlerDateTime}`;
 
-              reportedFehlerDateTime = fehlerDateTime;
-            } catch(err) {
-              logger.error(`Failed to send error mail: ${err.message}`);
-            }
+            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+              sound:   'siren',
+              html:    1,
+              message: notifyMessage,
+              title:   notifyTitle,
+            }));
+
+            reportedFehlerDateTime = fehlerDateTime;
+
+//            try {
+//              await sendMail({
+//                to:      'stefan@heine7.de',
+//                subject: notifyTitle,
+//                html:    notifyMessage,
+//              });
+//            } catch(err) {
+//              logger.error(`Failed to send error mail: ${err.message}`);
+//            }
 
             await fsPromises.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
           }
@@ -378,32 +401,8 @@ process.on('SIGTERM', () => stopProcess());
             const leerungen     = leerungenRaw.split('\n');
             const letzteLeerung = _.last(_.compact(leerungen));
             const letzteLeerungVerbrauch = Number(letzteLeerung.split(' ')[1]);
-            const verbrauchSeitLetzterLeerung = brennerVerbrauch - letzteLeerungVerbrauch;
 
-            if(((verbrauchSeitLetzterLeerung > 500 && verbrauchSeitLetzterLeerung < 510) ||
-              verbrauchSeitLetzterLeerung > 580) &&
-              (!reportedLeerung || dayjs(reportedLeerung).isBefore(twoDaysAgo))
-            ) {
-              try {
-                await sendMail({
-                  to:      'stefan@heine7.de',
-                  subject: 'Asche leeren',
-                  html:
-                    `<p>` +
-                    `Verbrauch seit letzter Leerung: ${verbrauchSeitLetzterLeerung} kg` +
-                    `<br />` +
-                    `Asche leeren.` +
-                    `</p>` +
-                    `<p>` +
-                    `<a href="https://heine7.de/vito/ascheGeleert.sh">Asche geleert</a>` +
-                    `</p>`,
-                });
-
-                reportedLeerung = dayjs();
-              } catch(err) {
-                logger.error(`Failed to send error mail: ${err.message}`);
-              }
-            }
+            verbrauchSeitLetzterLeerung = brennerVerbrauch - letzteLeerungVerbrauch;
 
             // Check Asche Verbrauch - Speicher leer?
             const speicherRaw = await fsPromises.readFile('/var/vito/_pelletsSpeicher.log', 'utf8');
@@ -426,26 +425,77 @@ process.on('SIGTERM', () => stopProcess());
             ) ||
               vorrat < 30
             ) {
-              try {
-                await sendMail({
-                  to:      'stefan@heine7.de',
-                  subject: 'Speicher bald leer',
-                  html:
-                    `<p>` +
-                    `Der Pelletsspeicher enhält nur noch etwa ${vorrat} kg.` +
-                    `<br />` +
-                    `Nachschub bestellen.` +
-                    `</p>` +
-                    `<p>` +
-                    `<a href='https://heine7.de/vito/pelletsNachschub.sh'>Pellets Nachschub</a>` +
-                    `</p>`,
-                });
+              const notifyTitle   = 'Speicher bald leer';
+              const notifyMessage =
+                `<p>` +
+                `Der Pelletsspeicher enhält nur noch etwa ${vorrat} kg.` +
+                `<br />` +
+                `Nachschub bestellen.` +
+                `</p>`;
+              const notifyUrl = 'https://heine7.de/vito/pelletsNachschub.sh';
+              const notifyUrlTitle = 'Pellets Nachschub';
 
-                reportedSpeicher = dayjs();
-              } catch(err) {
-                logger.error(`Failed to send error mail: ${err.message}`);
-              }
+              await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+                sound:   'none',
+                html:    1,
+                message: notifyMessage,
+                title:   notifyTitle,
+                url:       notifyUrl,
+                url_title: notifyUrlTitle,
+              }));
+
+              reportedSpeicher = dayjs();
+
+//              try {
+//                await sendMail({
+//                  to:      'stefan@heine7.de',
+//                  subject: notifyTitle,
+//                  html:    notifyMessage +
+//                    `<p>` +
+//                    `<a href='${notifyUrl}'>${notifyUrlTitle}</a>` +
+//                    `</p>`,
+//                });
+//              } catch(err) {
+//                logger.error(`Failed to send error mail: ${err.message}`);
+//              }
             }
+          }
+
+          if((verbrauchSeitLetzterLeerung > 500 || verbrauchSeitLetzterLeerung > 580) &&
+            (!reportedLeerung || dayjs(reportedLeerung).isBefore(twoDaysAgo)) &&
+            !drehzahl
+          ) {
+            const notifyUrl      = 'https://heine7.de/vito/ascheGeleert.sh';
+            const notifyUrlTitle = 'Asche geleert';
+            const notifyTitle    = 'Asche leeren';
+            const notifyMessage  = `<p>Verbrauch seit letzter Leerung: ${verbrauchSeitLetzterLeerung} kg</p>`;
+
+            setTimeout(async() => {
+              await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+                sound:     'none',
+                html:      1,
+                message:   notifyMessage,
+                title:     notifyTitle,
+                url:       notifyUrl,
+                url_title: notifyUrlTitle,
+              }));
+
+              reportedLeerung = dayjs();
+
+//              try {
+//                await sendMail({
+//                  to:      'stefan@heine7.de',
+//                  subject: notifyTitle,
+//                  html:    notifyMessage +
+//                    `<p>` +
+//                    `<a href="${notifyUrl}">${notifyUrlTitle}</a>` +
+//                    `</p>`;
+//                });
+//
+//              } catch(err) {
+//                logger.error(`Failed to send error mail: ${err.message}`);
+//              }
+            }, ms('2hours'));
           }
 
           // #######################################################################################
@@ -463,22 +513,32 @@ process.on('SIGTERM', () => stopProcess());
           ) {
             logger.warn(`Uhrzeit geht falsch um ${diffSeconds} Sekunden.`);
 
-            try {
-              await sendMail({
-                to:      'stefan@heine7.de',
-                subject: 'Vito Uhrzeit falsch',
-                html:
-                  `Vito Uhrzeit geht falsch um ${diffSeconds} Sekunden.` +
-                  `<p>` +
-                  `vito: ${vitoDateTime}` +
-                  `<br>` +
-                  `system: ${nowCompare}`,
-              });
+            const notifyTitle = 'Vito Uhrzeit falsch';
+            const notifyMessage =
+              `Vito Uhrzeit geht falsch um ${diffSeconds} Sekunden.` +
+              `<p>` +
+              `vito: ${vitoDateTime}` +
+              `<br>` +
+              `system: ${nowCompare}`;
 
-              reportedZeit = dayjs();
-            } catch(err) {
-              logger.error(`Failed to send error mail: ${err.message}`);
-            }
+            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+              sound:   'none',
+              html:    1,
+              message: notifyMessage,
+              title:   notifyTitle,
+            }));
+
+            reportedZeit = dayjs();
+
+//            try {
+//              await sendMail({
+//                to:      'stefan@heine7.de',
+//                subject: notifyTitle,
+//                html:    notifyMessage,
+//              });
+//            } catch(err) {
+//              logger.error(`Failed to send error mail: ${err.message}`);
+//            }
           }
 
           // #######################################################################################
@@ -518,7 +578,7 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribe('solcast/forecasts');      // Subscribe the two SENSORs first
 
-    healthInterval = setInterval(async() => {
+  healthInterval = setInterval(async() => {
     await mqttClient.publish(`mqtt-vito/health/STATE`, 'OK');
   }, ms('1min'));
 })();
