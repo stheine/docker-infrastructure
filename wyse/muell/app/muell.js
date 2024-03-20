@@ -8,10 +8,9 @@ import _                from 'lodash';
 import cron             from 'croner';
 import dayjs            from 'dayjs';
 import icsToJsonDefault from 'ics-to-json-extended';
+import {logger}         from '@stheine/helpers';
 import mqtt             from 'async-mqtt';
 import ms               from 'ms';
-
-import logger           from './logger.js';
 
 const icsToJson = icsToJsonDefault.default;
 
