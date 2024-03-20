@@ -13,7 +13,6 @@ version: "3.8"
 # 16095 uptime-kuma            http://192.168.6.5:16095/
 # 26687 control-ui             http://192.168.6.5:26687/
 # 31038 watchdog               http://192.168.6.5:31038/
-# 45458 node-red               http://192.168.6.5:45458/
 # 57699 proxy                  http://192.168.6.5:57699/
 # 59080 nginx (http)           http://192.168.6.5:59080/     Freigabe in FritzBox
 # 59443 nginx (https)          https://192.168.6.5:59443/    Freigabe in FritzBox
@@ -216,13 +215,6 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/linux/data/muell
-      o: bind
-
-  node-red:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap/linux/data/node-red
       o: bind
 
 ##  photoprism:
@@ -706,17 +698,6 @@ services:
       - homer
       - mediawiki
       - vaultwarden
-
-  node-red:
-    restart: always
-    image: nodered/node-red
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-node-red
-    ports:
-      - 45458:1880
-    volumes:
-      - node-red:/data
 
   noop:
     restart: always
