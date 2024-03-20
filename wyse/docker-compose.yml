@@ -620,6 +620,14 @@ services:
       - wasser:/var/wasser
       - www:/var/www
 
+  mqtt-notify:
+    restart: always
+    build: mqtt-notify
+    hostname: wyse-mqtt-notify
+    volumes:
+      - ./mqtt-notify/app:/app
+      - pushover:/var/pushover
+
   mqtt-solcast:
     restart: always
     build: mqtt-solcast
