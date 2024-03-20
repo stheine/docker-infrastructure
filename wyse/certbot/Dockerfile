@@ -1,4 +1,12 @@
+# ##############################################################################
+# Install docker cli binary only
+# https://github.com/docker/cli/issues/2281#issuecomment-577745894
+ARG DOCKER_VERSION=25-cli
+FROM docker:${DOCKER_VERSION} AS docker-cli
+
+# ##############################################################################
 FROM debian:bookworm-slim
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/
 
 # ##############################################################################
 # Install all the base packages needed for the following installs

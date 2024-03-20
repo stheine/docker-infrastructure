@@ -365,6 +365,7 @@ services:
     hostname: wyse-certbot
     volumes:
       - ./certbot/renew.sh:/renew.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
       - letsencrypt:/etc/letsencrypt:nocopy
       - letsencrypt_www:/var/letsencrypt
 
