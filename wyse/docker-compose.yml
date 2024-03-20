@@ -621,6 +621,13 @@ services:
       - wasser:/var/wasser
       - www:/var/www
 
+  mqtt-fenster:
+    restart: always
+    build: mqtt-fenster
+    hostname: wyse-mqtt-fenster
+    volumes:
+      - ./mqtt-fenster/app:/app
+
   mqtt-notify:
     restart: always
     build: mqtt-notify
