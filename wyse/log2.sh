@@ -8,6 +8,8 @@ docker compose logs \
   delete-video \
   fritz \
   mqtt2rrd \
+  mqtt-fenster \
+  mqtt-notify \
   mqtt-solcast \
   mqtt-strom \
   mqtt-vito \
