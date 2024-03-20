@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
-import https      from 'https';
+import https from 'node:https';
 
-import axios      from 'axios';
-import cron       from 'croner';
+import axios from 'axios';
+import cron  from 'croner';
+import {
+  logger,
+  sendMail,
+} from '@stheine/helpers';
 
-import logger     from './logger.js';
-import {sendMail} from './mail.js';
 import {
   baseUrl,
   comics,
