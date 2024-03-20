@@ -253,6 +253,13 @@ volumes:
       device: /mnt/qnap/linux/data/postfix_creds
       o: bind
 
+  pushover:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/pushover
+      o: bind
+
   sshd_certs:
     driver: local
     driver_opts:
