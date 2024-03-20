@@ -3,29 +3,36 @@
 import dayjs from 'dayjs';
 
 export default {
+  trace(msg, params) {
+    if(arguments.length > 1) {
+      console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} TRACE`, msg, params);
+    } else {
+      console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} TRACE`, msg);
+    }
+  },
   debug(msg, params) {
-    if(params) {
+    if(arguments.length > 1) {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} DEBUG`, msg, params);
     } else {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} DEBUG`, msg);
     }
   },
   info(msg, params) {
-    if(params) {
+    if(arguments.length > 1) {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg, params);
     } else {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} INFO`, msg);
     }
   },
   warn(msg, params) {
-    if(params) {
+    if(arguments.length > 1) {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg, params);
     } else {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} WARN`, msg);
     }
   },
   error(msg, params) {
-    if(params) {
+    if(arguments.length > 1) {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg, params);
     } else {
       console.log(`${dayjs().format('YYYY-MM-DD HH:mm:ss')} ERROR`, msg);

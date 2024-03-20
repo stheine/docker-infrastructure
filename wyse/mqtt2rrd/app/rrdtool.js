@@ -3,9 +3,8 @@ import {setTimeout as delay} from 'node:timers/promises';
 import _         from 'lodash';
 import AsyncLock from 'async-lock';
 import {execa}   from 'execa';
+import {logger}  from '@stheine/helpers';
 import ms        from 'ms';
-
-import logger    from './logger.js';
 
 const lock    = new AsyncLock();
 const retries = 20;
@@ -53,7 +52,8 @@ export default async function rrdUpdate(rrdFile, rrdUpdates) {
             logger.error('rrdtool.update() could not lock RRD', rrdFile);
           }
         } else {
-          logger.error(`rrdtool.update() execa error: ${err.message.replace(/^(RRDtool|Usage| {17}).*$/gm, '').replace(/\n/g, '')}`, {rrdFile, rrdUpdates});
+          logger.error(`rrdtool.update() execa error: ` +
+            `${err.message.replace(/RRDtool|Usage| {17}/m, '').replaceAll('\n', '')}`, {rrdFile, rrdUpdates});
           retry = 0;
         }
       }

@@ -7,10 +7,10 @@ import fsPromises from 'node:fs/promises';
 import os         from 'node:os';
 
 import graphviz   from 'graphviz';
+import {logger}   from '@stheine/helpers';
 import mqtt       from 'async-mqtt';
 import ms         from 'ms';
 
-import logger     from './logger.js';
 import rrdUpdate  from './rrdtool.js';
 
 // ###########################################################################
@@ -69,7 +69,7 @@ process.on('SIGTERM', () => stopProcess());
 
       try {
         message = JSON.parse(messageRaw);
-      } catch {
+      } catch{
         // ignore
         // logger.debug('JSON.parse', {messageRaw, errMessage: err.message});
       }
@@ -391,7 +391,6 @@ process.on('SIGTERM', () => stopProcess());
               temperatureOutside: message.tempAussen,
             },
           };
-          await fsPromises.writeFile('/var/vito/_brennerVerbrauch.dat', message.brennerVerbrauch);
           break;
         }
 
