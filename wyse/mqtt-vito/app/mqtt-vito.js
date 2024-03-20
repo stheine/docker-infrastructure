@@ -4,22 +4,20 @@
 /* eslint-disable max-len */
 /* eslint-disable no-lonely-if */
 
-import fsPromises            from 'node:fs/promises';
-import os                    from 'node:os';
 import {setTimeout as delay} from 'node:timers/promises';
+import os                    from 'node:os';
 
 import _                     from 'lodash';
 // import babar                 from 'babar';
 import dayjs                 from 'dayjs';
 import fsExtra               from 'fs-extra';
 import isBetween             from 'dayjs/plugin/isBetween.js';
+import {logger}              from '@stheine/helpers';
 import mqtt                  from 'async-mqtt';
 import ms                    from 'ms';
-import utc                   from 'dayjs/plugin/utc.js';
 import timezone              from 'dayjs/plugin/timezone.js';
-
-import logger                from './logger.js';
-// import {sendMail}            from './mail.js';
+import utc                   from 'dayjs/plugin/utc.js';
+// import {sendMail}         from '@stheine/helpers';
 
 dayjs.extend(isBetween);
 dayjs.extend(timezone);
@@ -29,7 +27,7 @@ dayjs.tz.setDefault(dayjs.tz.guess());
 // ###########################################################################
 // Constants
 
-const graphDisplayLimit = 100;
+// const graphDisplayLimit = 100;
 const hostname          = os.hostname();
 
 // ###########################################################################
@@ -55,6 +53,7 @@ const stopProcess = async function() {
 
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
@@ -79,15 +78,12 @@ process.on('SIGTERM', () => stopProcess());
 
   const status = await fsExtra.readJson('/var/vito/vito.json');
 
-  let {lastDrehzahl, reportedFehlerDateTime, reportedLeerung, reportedSpeicher, reportedTempKessel,
-    reportedZeit} = status;
-
   // #########################################################################
   // Signal handler (SIGHUP) to dump current state
   process.on('SIGHUP', async() => {
     logger.debug({
       betriebsartSpar,
-      lastDrehzahl,
+      lastDrehzahl:            status.lastDrehzahl,
       letzterBrennerVerbrauch,
       sunnyHours,
       tempAussen,
@@ -119,12 +115,32 @@ process.on('SIGTERM', () => stopProcess());
 
       try {
         message = JSON.parse(messageRaw);
-      } catch(errParse) {
-        logger.error(`Failed to parse mqtt message for '${topic}': ${messageRaw}`, errParse.message);
+      } catch(err) {
+        logger.error(`Failed to parse mqtt message for '${topic}': ${messageRaw}`, err.message);
         // ignore
       }
 
       switch(topic) {
+        case 'mqtt-vito/ascheGeleert':
+          if(!status.ascheGeleert) {
+            status.ascheGeleert = [];
+          }
+
+          logger.info(`Asche geleert bei ${letzterBrennerVerbrauch} kg`);
+
+          status.ascheGeleert.push(`${dayjs.format('YYYY-MM-DD')} ${letzterBrennerVerbrauch}`);
+          break;
+
+        case 'mqtt-vito/pelletsSpeicher':
+          if(!status.pelletsSpeicher) {
+            status.pelletsSpeicher = [];
+          }
+
+          logger.info(`Pellets Nachschub ${message} kg`);
+
+          status.pelletsSpeicher.push(`${dayjs.format('YYYY-MM-DD')} ${message}`);
+          break;
+
         case 'solcast/forecasts': {
           const solcastForecasts    = message;
           const now                 = dayjs();
@@ -136,7 +152,7 @@ process.on('SIGTERM', () => stopProcess());
           let   sunnyEstimates      = [];
           let   newSunnyHours       = 0;
           let   sunnyHoursStartIn   = null;
-          let   graphEstimates      = [];
+//          let   graphEstimates      = [];
 
           if(tempAussen === null || tempInnen === null) {
             let retries = 60;
@@ -186,8 +202,8 @@ process.on('SIGTERM', () => stopProcess());
 
             estimates.push(estimate);
 
-            graphEstimates.push([new Date(period_end_date).getHours() +
-              new Date(period_end_date).getMinutes() / 100, estimate]);
+//            graphEstimates.push([new Date(period_end_date).getHours() +
+//              new Date(period_end_date).getMinutes() / 100, estimate]);
 
             if(estimate > 3500) {
               // Estimate is for 30 minute period
@@ -208,20 +224,20 @@ process.on('SIGTERM', () => stopProcess());
             return result;
           }, []);
 
-          graphEstimates = _.reduceRight(graphEstimates, (result, estimate) => {
-            if(estimate[1] > graphDisplayLimit || result.length) {
-              result.unshift(estimate);
-            }
-
-            return result;
-          }, []);
-          graphEstimates = _.reduce(graphEstimates, (result, estimate) => {
-            if(estimate[1] > graphDisplayLimit || result.length) {
-              result.push(estimate);
-            }
-
-            return result;
-          }, []);
+//          graphEstimates = _.reduceRight(graphEstimates, (result, estimate) => {
+//            if(estimate[1] > graphDisplayLimit || result.length) {
+//              result.unshift(estimate);
+//            }
+//
+//            return result;
+//          }, []);
+//          graphEstimates = _.reduce(graphEstimates, (result, estimate) => {
+//            if(estimate[1] > graphDisplayLimit || result.length) {
+//              result.push(estimate);
+//            }
+//
+//            return result;
+//          }, []);
 
           sunnyEstimates = _.reduceRight(sunnyEstimates, (result, estimate) => {
             if(estimate || result.length) {
@@ -233,10 +249,10 @@ process.on('SIGTERM', () => stopProcess());
 
           sunnyHours = newSunnyHours;
 
-          if(graphEstimates.length > 3 && graphEstimates.length % 2 === 0) {
-            // The estimates graph x-labels look better with an odd number of entries
-            graphEstimates.push([_.last(graphEstimates)[0] + 0.3, 0]);
-
+//          if(graphEstimates.length > 3 && graphEstimates.length % 2 === 0) {
+//            // The estimates graph x-labels look better with an odd number of entries
+//            graphEstimates.push([_.last(graphEstimates)[0] + 0.3, 0]);
+//
 //            logger.debug(babar(graphEstimates, {
 //              caption:    'Estimates',
 //              color:      'ascii',
@@ -245,7 +261,7 @@ process.on('SIGTERM', () => stopProcess());
 //              width:      5 + graphEstimates.length * 3,
 //              xFractions: 2,
 //            }));
-          }
+//          }
 
           if(vitoBetriebsart === 3) {
             if(sunnyHours >= 4 ||
@@ -316,21 +332,21 @@ process.on('SIGTERM', () => stopProcess());
 
           // #######################################################################################
           // Check lambda - to detect the Brenner Beginn
-          if(drehzahl && !lastDrehzahl) {
+          if(drehzahl && !status.lastDrehzahl) {
             logger.debug('Brenner Beginn');
             await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster zu (falls es schon auf war)
             await delay(ms('20s'));
             await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power1', '1'); // Fenster auf
-          } else if(!drehzahl && lastDrehzahl) {
+          } else if(!drehzahl && status.lastDrehzahl) {
             logger.debug('Brenner Ende');
             await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster auf
           }
-          lastDrehzahl = drehzahl;
+          status.lastDrehzahl = drehzahl;
 
           // #######################################################################################
           // Check Kessel Temperatur - Überhitzung?
           if(tempKessel > 87 && // Codieradresse 06 erlaubt 85 Grad
-            (!reportedTempKessel || dayjs(reportedTempKessel).isBefore(twoDaysAgo))
+            (!status.reportedTempKessel || dayjs(status.reportedTempKessel).isBefore(twoDaysAgo))
           ) {
             const notifyTitle   = `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`;
             const notifyMessage = `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`;
@@ -342,7 +358,7 @@ process.on('SIGTERM', () => stopProcess());
               title:   notifyTitle,
             }));
 
-            reportedTempKessel = now;
+            status.reportedTempKessel = now;
 
 //            try {
 //              await sendMail({
@@ -354,7 +370,7 @@ process.on('SIGTERM', () => stopProcess());
 //              logger.error(`Failed to send error mail: ${err.message}`);
 //            }
           } else {
-            reportedTempKessel = null;
+            status.reportedTempKessel = null;
           }
 
           // #######################################################################################
@@ -364,7 +380,7 @@ process.on('SIGTERM', () => stopProcess());
           const fehlerDateTime = [date, time].join(' ');
 
           // Check if this error/timestamp is already reported
-          if(reportedFehlerDateTime !== fehlerDateTime) {
+          if(status.reportedFehlerDateTime !== fehlerDateTime) {
             await mqttClient.publish(`vito/tele/FEHLER`, JSON.stringify({code, dateTime: fehlerDateTime}));
 
             const notifyTitle   = `Heizung Störung (${code})`;
@@ -377,7 +393,7 @@ process.on('SIGTERM', () => stopProcess());
               title:   notifyTitle,
             }));
 
-            reportedFehlerDateTime = fehlerDateTime;
+            status.reportedFehlerDateTime = fehlerDateTime;
 
 //            try {
 //              await sendMail({
@@ -389,7 +405,11 @@ process.on('SIGTERM', () => stopProcess());
 //              logger.error(`Failed to send error mail: ${err.message}`);
 //            }
 
-            await fsPromises.appendFile('/var/vito/vitoStoerungen.log', `${code}: ${fehlerDateTime}\n`);
+            if(!status.stoerungen) {
+              status.stoerungen = [];
+            }
+
+            status.stoerungen.push(`${code}: ${fehlerDateTime}\n`);
           }
 
           // #######################################################################################
@@ -397,17 +417,12 @@ process.on('SIGTERM', () => stopProcess());
           if(brennerVerbrauch !== letzterBrennerVerbrauch) {
             letzterBrennerVerbrauch = brennerVerbrauch;
 
-            const leerungenRaw = await fsPromises.readFile('/var/vito/_ascheGeleert.log', 'utf8');
-            const leerungen     = leerungenRaw.split('\n');
-            const letzteLeerung = _.last(_.compact(leerungen));
-            const letzteLeerungVerbrauch = Number(letzteLeerung.split(' ')[1]);
+            const letzteLeerungVerbrauch = Number(status.ascheGeleert.at(-1).split(' ')[1]);
 
             verbrauchSeitLetzterLeerung = brennerVerbrauch - letzteLeerungVerbrauch;
 
             // Check Asche Verbrauch - Speicher leer?
-            const speicherRaw = await fsPromises.readFile('/var/vito/_pelletsSpeicher.log', 'utf8');
-            const speicher    = _.compact(speicherRaw.split('\n'));
-            const gesamt      = _.reduce(speicher, (summe, line) => {
+            const gesamt      = _.reduce(status.pelletsSpeicher, (summe, line) => {
               const fuellung    = Number(line.split(' ')[1]);
               const gesamtSumme = summe + fuellung;
 
@@ -415,13 +430,13 @@ process.on('SIGTERM', () => stopProcess());
             }, 0);
             const vorrat = gesamt - brennerVerbrauch;
 
-            // logger.info('status', {verbrauchSeitLetzterLeerung, gesamt, brennerVerbrauch, vorrat});
+            logger.info('status', {letzteLeerungVerbrauch, verbrauchSeitLetzterLeerung, gesamt, brennerVerbrauch, vorrat});
 
             stats.gesamt = gesamt;
             stats.vorrat = vorrat;
 
             if((vorrat < 200 &&
-                (!reportedSpeicher || dayjs(reportedSpeicher).isBefore(twoDaysAgo))
+                (!status.reportedSpeicher || dayjs(status.reportedSpeicher).isBefore(twoDaysAgo))
             ) ||
               vorrat < 30
             ) {
@@ -444,7 +459,7 @@ process.on('SIGTERM', () => stopProcess());
                 url_title: notifyUrlTitle,
               }));
 
-              reportedSpeicher = dayjs();
+              status.reportedSpeicher = dayjs();
 
 //              try {
 //                await sendMail({
@@ -462,7 +477,7 @@ process.on('SIGTERM', () => stopProcess());
           }
 
           if((verbrauchSeitLetzterLeerung > 500 || verbrauchSeitLetzterLeerung > 580) &&
-            (!reportedLeerung || dayjs(reportedLeerung).isBefore(twoDaysAgo)) &&
+            (!status.reportedLeerung || dayjs(status.reportedLeerung).isBefore(twoDaysAgo)) &&
             !drehzahl
           ) {
             const notifyUrl      = 'https://heine7.de/vito/ascheGeleert.sh';
@@ -480,7 +495,7 @@ process.on('SIGTERM', () => stopProcess());
                 url_title: notifyUrlTitle,
               }));
 
-              reportedLeerung = dayjs();
+              status.reportedLeerung = dayjs();
 
 //              try {
 //                await sendMail({
@@ -509,7 +524,7 @@ process.on('SIGTERM', () => stopProcess());
           // logger.info(`systemZeit=${nowCompare}   vitoZeit=${vitoDateTime}   zeitDiff=${diffSeconds}`);
 
           if(diffSeconds > 600 &&
-            (!reportedZeit || dayjs(reportedZeit).isBefore(twoDaysAgo))
+            (!status.reportedZeit || dayjs(status.reportedZeit).isBefore(twoDaysAgo))
           ) {
             logger.warn(`Uhrzeit geht falsch um ${diffSeconds} Sekunden.`);
 
@@ -528,7 +543,7 @@ process.on('SIGTERM', () => stopProcess());
               title:   notifyTitle,
             }));
 
-            reportedZeit = dayjs();
+            status.reportedZeit = dayjs();
 
 //            try {
 //              await sendMail({
@@ -547,15 +562,6 @@ process.on('SIGTERM', () => stopProcess());
             await mqttClient.publish('vito/tele/STATS', JSON.stringify(stats), {retain: true});
           }
 
-          // #######################################################################################
-          await fsExtra.writeJson('/var/vito/vito.json', {
-            lastDrehzahl,
-            reportedFehlerDateTime,
-            reportedLeerung,
-            reportedSpeicher,
-            reportedTempKessel,
-            reportedZeit,
-          }, {spaces: 2});
           break;
         }
 
@@ -569,14 +575,21 @@ process.on('SIGTERM', () => stopProcess());
           logger.error(`Unhandled topic '${topic}'`, messageRaw);
           break;
       }
+
+      // #######################################################################################
+      await fsExtra.writeJson('/var/vito/vito.json', status, {spaces: 2});
     } catch(err) {
+      logger.error(err);
       logger.error(`Error while handling '${topic}'`, err.message);
     }
   });
 
   await mqttClient.subscribe('vito/tele/SENSOR');
   await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
-  await mqttClient.subscribe('solcast/forecasts');      // Subscribe the two SENSORs first
+
+  await mqttClient.subscribe('mqtt-vito/ascheGeleert');    // Subscribe the two SENSORs first
+  await mqttClient.subscribe('mqtt-vito/pelletsSpeicher'); // Subscribe the two SENSORs first
+  await mqttClient.subscribe('solcast/forecasts');         // Subscribe the two SENSORs first
 
   healthInterval = setInterval(async() => {
     await mqttClient.publish(`mqtt-vito/health/STATE`, 'OK');
