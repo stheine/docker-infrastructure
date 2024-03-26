@@ -36,10 +36,10 @@ export const refresh = async function({fritzbox, logger}) {
 
       if(_.isArray(contact.telephony.number)) {
         for(const number of contact.telephony.number) {
-          phonebook[number._text.replace(/[\s/]/g, '')] = name;
+          phonebook[number._text.replaceAll(/[\s/]/g, '')] = name;
         }
       } else {
-        phonebook[contact.telephony.number._text.replace(/[\s/]/g, '')] = name;
+        phonebook[contact.telephony.number._text.replaceAll(/[\s/]/g, '')] = name;
       }
     }
   }
@@ -56,7 +56,7 @@ export const refresh = async function({fritzbox, logger}) {
 // ###########################################################################
 // Refresh phone number
 export const resolve = function({logger, number, phonebook}) {
-  const resolveNumber = number.replace(/#$/, '').replace(/\s/g, '');
+  const resolveNumber = number.replace(/#$/, '').replaceAll(/\s/g, '');
   let   name;
 
   if(!resolveNumber) {

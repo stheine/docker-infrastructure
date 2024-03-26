@@ -1,40 +1,48 @@
-FROM arm32v6/node:20-alpine
+FROM node:20-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
 # Set up timezone
 
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN \
-  apk update && \
-  apk add \
-    bash \
-    ca-certificates \
+  apt-get update && \
+  apt-get upgrade -y && \
+  apt-get install -y \
+    apt-utils && \
+  apt-get install -y \
+    dnsutils \
+    locales \
     tzdata \
+    unzip \
     vim \
-    wget && \
+    wget \
+    xz-utils && \
   cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
   echo "Europe/Berlin" > /etc/timezone && \
-  apk del tzdata
+  sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && \
+  locale-gen && \
+  dpkg-reconfigure locales && \
+  /sbin/ldconfig
+
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
-ENV TZ Europe/Berlin
 
 # ##############################################################################
-# Install and run watchdog app
+# Configure root account
 
 WORKDIR /root
 
+COPY docker_container_profile .profile
 COPY npmrc .npmrc
 COPY vimrc .vimrc
 
 # ##############################################################################
-# Install and run watchdog app
+# Run app
 
 WORKDIR /app
 
-COPY docker_container_profile /root/.profile
-
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
 CMD ["/usr/local/bin/node", "/app/watchdog.js"]
-# CMD ["/bin/bash", "-l"]

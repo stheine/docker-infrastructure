@@ -2,18 +2,25 @@
 
 /* eslint-disable new-cap */
 
-import os                       from 'node:os';
+import os           from 'node:os';
 
-import _                        from 'lodash';
-import {CallMonitor, EventKind} from 'fritz-callmonitor';
-import {execa}                  from 'execa';
-import Fritzbox                 from 'tr-064-async';
-import mqtt                     from 'async-mqtt';
-import ms                       from 'ms';
+import _            from 'lodash';
+import check        from 'check-types-2';
+import {execa}      from 'execa';
+import Fritzbox     from 'tr-064-async';
+import {logger}     from '@stheine/helpers';
+import mqtt         from 'async-mqtt';
+import ms           from 'ms';
+import {
+  CallMonitor,
+  EventKind,
+} from 'fritz-callmonitor';
 
-import logger                   from './logger.js';
-import {refresh, resolve}       from './phonebookUtils.js';
-import tr064Options             from '/var/fritz/tr064Options.js';
+import tr064Options from '/var/fritz/tr064Options.js';
+import {
+  refresh,
+  resolve,
+} from './phonebookUtils.js';
 
 // ###########################################################################
 // Globals
@@ -242,17 +249,24 @@ process.on('SIGTERM', () => stopProcess());
 
     do {
       try {
-        ({stdout} = await execa('/usr/local/bin/SpeedTest', [
-          '--test-server',
-          'voiptest.starface.de:8080',
-          '--output',
-          'json',
+        ({stdout} = await execa('/usr/bin/speedtest', [
+          '--host', 'voiptest.starface.de',
+          '--format', 'json-pretty',
+          '--accept-license',
+          '--accept-gdpr',
         ]));
 
         // logger.debug(stdout);
         const results = JSON.parse(stdout);
 
-        ({download, upload} = results);
+        check.assert.nonEmptyObject(results, `Unexpected ${results}`);
+        check.assert.nonEmptyObject(results.download, `Unexpected ${results}`);
+        check.assert.number(results.download.bandwidth, `Unexpected ${results}`);
+        check.assert.nonEmptyObject(results.upload, `Unexpected ${results}`);
+        check.assert.number(results.upload.bandwidth, `Unexpected ${results}`);
+
+        download = results.download.bandwidth / 125000 * 1024 * 1024;
+        upload   = results.upload.bandwidth / 125000 * 1024 * 1024;
 
         logger.info('speedtest', {
           download: _.round(download / 1024 / 1024),
@@ -265,8 +279,8 @@ process.on('SIGTERM', () => stopProcess());
       retries--;
     } while(retries && (!download || !upload));
 
-    if(mqttClient) {
-      await mqttClient.publish(`FritzBox/speedtest/result`, stdout);
+    if(mqttClient && stdout) {
+      await mqttClient.publish(`FritzBox/speedtest/result`, JSON.stringify({download, upload}));
     }
   };
 

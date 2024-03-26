@@ -1,6 +1,3 @@
-" Support 256 colors
-":set t_Co=256
-
 :set mouse=
 
 :syntax on
@@ -58,19 +55,3 @@ nmap <silent> <C-n> <Esc>:call ToggleHLSearch()<CR>
 :    set t_Sb=^[[4%dm
 :  endif
 :endif
-
-
-" Pathogen plugin manager
-execute pathogen#infect()
-
-" eslint integration
-set statusline+=%#warningmsg#
-set statusline+=%{SyntasticStatuslineFlag()}
-set statusline+=%*
-
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_auto_loc_list = 1
-let g:syntastic_check_on_open = 1
-let g:syntastic_check_on_wq = 1
-let g:syntastic_javascript_checkers = ['eslint']
-let b:syntastic_javascript_eslint_exec = 'eslint_d'

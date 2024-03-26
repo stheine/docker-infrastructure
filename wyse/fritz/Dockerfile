@@ -35,25 +35,18 @@ WORKDIR /source
 
 # ##############################################################################
 # Install and run speedtest
-# https://github.com/taganaka/SpeedTest
-# Note, there is another, similar test at https://www.speedtest.net/apps/cli & https://www.speedtest.net/apps/cli
+# https://www.speedtest.net/de/apps/cli
 
 WORKDIR /build
 
 RUN \
+  apt-get remove -y \
+    speedtest-cli && \
   apt-get install -y \
-    build-essential \
-    cmake \
-    git \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libxml2-dev
-
-RUN \
-  git clone https://github.com/taganaka/SpeedTest && \
-  cd SpeedTest && \
-  cmake -DCMAKE_BUILD_TYPE=Release . && \
-  make install
+    curl && \
+  curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | sudo bash && \
+  apt-get install -y \
+    speedtest
 
 # ##############################################################################
 # Install and run fritz app
