@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 
-import Fritzbox           from 'tr-064-async';
+import Fritzbox     from 'tr-064-async';
+import {logger}     from '@stheine/helpers';
 
-import logger             from './logger.js';
-import {refresh, resolve} from './phonebookUtils.js';
-import tr064Options       from '/var/fritz/tr064Options.js';
+import tr064Options from '/var/fritz/tr064Options.js';
+import {
+  refresh,
+  resolve,
+} from './phonebookUtils.js';
 
 (async() => {
   const fritzbox = new Fritzbox.Fritzbox(tr064Options);

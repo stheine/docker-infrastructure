@@ -124,6 +124,7 @@ import tr064Options from '/share/linux/data/fritz/tr064Options.js';
   } catch(err) {
     console.error(err);
 
+    // eslint-disable-next-line no-process-exit
     process.exit(1);
   }
 })();
