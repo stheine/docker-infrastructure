@@ -69,6 +69,7 @@ sudo mkdir /docker-data
 git config --global core.editor vim
 git config --global user.email stheine@arcor.de
 git config --global user.name 'Stefan Heine'
+git config pull.rebase false
 
 git clone git@github.com:stheine/docker-infrastructure.git
 ln -s docker-infrastructure/jalousie docker
