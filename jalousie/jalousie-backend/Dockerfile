@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM node:20-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -8,13 +8,12 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN \
   apt-get update && \
+  apt-get upgrade -y && \
   apt-get install -y \
     apt-utils && \
-  apt-get upgrade -y && \
   apt-get install -y \
     dnsutils \
     locales \
-    sudo \
     tzdata \
     unzip \
     vim \
@@ -31,36 +30,19 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
-WORKDIR /source
-
 # ##############################################################################
-# Install and run jalousie-backend app
+# Configure root account
 
 WORKDIR /root
 
-RUN \
-  apt-get install -y \
-    git \
-    python && \
-  /sbin/ldconfig
-
+COPY docker_container_profile .profile
 COPY npmrc .npmrc
 COPY vimrc .vimrc
-RUN \
-  apt-get install -y \
-    curl && \
-  npm install --global eslint-cli eslint_d && \
-  mkdir -p .vim/autoload .vim/bundle && \
-  curl -LSso .vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim && \
-  cd .vim/bundle && \
-  git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
-  git config --global user.email stheine@arcor.de && \
-  git config --global user.name 'Stefan Heine'
-ENV TZ Europe/Berlin
 
-COPY docker_container_profile /root/.profile
+# ##############################################################################
+# Run app
 
 WORKDIR /app
 
-CMD ["/usr/local/bin/node", "/app/lib/jalousie-backend.js"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
+CMD ["/usr/local/bin/node", "/app/lib/jalousie-backend.js"]

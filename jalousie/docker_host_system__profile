@@ -22,7 +22,7 @@ function set_ps1
     PS1+="\[$BOLDRED\]$FAILEDX($LAST_RESULT)\[$NORMAL\] "
   fi
 
-  PS1+="\[$BGGREEN\]hypriot\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] $ "
+  PS1+="\[$BGGREEN\]jalousie\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] $ "
 }
 PROMPT_COMMAND='set_ps1'
 

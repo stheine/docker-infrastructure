@@ -1,9 +1,4 @@
-version: "3.2"
-
 volumes:
-  # Forcing the qnap/192.168.6.7 mounts to nfsvers=3, as nfs4 causes i/o errors
-  # while [ true ]; do echo `date` > dieZeit; cat dieZeit; sleep 1; done
-
   jalousie:
     driver: local
     driver_opts:
@@ -39,27 +34,21 @@ volumes:
       device: /mnt/qnap_linux/data/zigbee2mqtt
       o: bind
 
-networks:
-  backend:
-    driver: bridge
-
 services:
   jalousie-backend:
     restart: always
     build: jalousie-backend
     hostname: pi-jalousie-backend
-    networks:
-      - backend
     volumes:
       - jalousie:/var/jalousie:nocopy
       - ./jalousie-backend/app:/app
+    depends_on:
+      - pihole
 
   jalousie-io:
     restart: always
     build: jalousie-io
     hostname: pi-jalousie-io
-    networks:
-      - backend
     cap_add:
       - SYS_RAWIO
     privileged: true
@@ -68,6 +57,8 @@ services:
     volumes:
       - jalousie:/var/jalousie:nocopy
       - ./jalousie-io/app:/app
+    depends_on:
+      - pihole
 
   pihole:
     restart: always
@@ -105,10 +96,10 @@ services:
     hostname: pi-jalousie-watchdog
     volumes:
       - ./watchdog/app:/app
-    networks:
-      - backend
     ports:
       - 31038:31038
+    depends_on:
+      - pihole
 
   zigbee2mqtt:
     restart: always
@@ -116,8 +107,6 @@ services:
     # build: zigbee2mqtt
     ports:
       - 1881:1881
-    networks:
-      - backend
     volumes:
       - zigbee2mqtt:/app/data
     devices:
