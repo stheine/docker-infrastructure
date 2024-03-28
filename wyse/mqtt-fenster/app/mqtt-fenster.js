@@ -16,6 +16,7 @@ import {
 
 let   healthInterval;
 const hostname        = os.hostname();
+const notified        = {};
 const timeouts        = {};
 let   mqttClient;
 let   tempAussen;
@@ -114,17 +115,23 @@ const triggerNotify = async function(raum) {
           // logger.trace('Fenster', {raum, tempAussen, contact});
 
           if(contact) {
+            if(notified[raum]) {
+              Reflect.deleteProperty(notified, raum);
+            }
+
             if(timeouts[raum]) {
               logger.debug('clearTimeout', {raum});
               clearTimeout(timeouts[raum]);
               Reflect.deleteProperty(timeouts, raum);
             }
-          } else if(!timeouts[raum]) {
+          } else if(!notified[raum] && !timeouts[raum]) {
             logger.debug('setTimeout', {raum});
             timeouts[raum] = setTimeout(async() => {
               Reflect.deleteProperty(timeouts, raum);
 
               await triggerNotify(raum);
+
+              notified[raum] = true;
             }, ms('10m'));
           }
           break;
