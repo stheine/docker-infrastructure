@@ -12,6 +12,11 @@ import {
 } from '@stheine/helpers';
 
 // ###########################################################################
+// Config
+const notifyTempLimit = 15;
+const timeoutToNotify = ms('10m');
+
+// ###########################################################################
 // Globals
 
 let   healthInterval;
@@ -124,7 +129,7 @@ const triggerNotify = async function(raum) {
               clearTimeout(timeouts[raum]);
               Reflect.deleteProperty(timeouts, raum);
             }
-          } else if(!notified[raum] && !timeouts[raum]) {
+          } else if(!notified[raum] && !timeouts[raum] && tempAussen <= notifyTempLimit) {
             logger.debug('setTimeout', {raum});
             timeouts[raum] = setTimeout(async() => {
               Reflect.deleteProperty(timeouts, raum);
@@ -132,7 +137,7 @@ const triggerNotify = async function(raum) {
               await triggerNotify(raum);
 
               notified[raum] = true;
-            }, ms('10m'));
+            }, timeoutToNotify);
           }
           break;
         }
