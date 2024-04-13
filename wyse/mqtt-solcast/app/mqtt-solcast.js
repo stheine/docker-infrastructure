@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-import os   from 'node:os';
+import os       from 'node:os';
 
-import _    from 'lodash';
-import mqtt from 'async-mqtt';
-import ms   from 'ms';
+import _        from 'lodash';
+import {logger} from '@stheine/helpers';
+import mqtt     from 'async-mqtt';
+import ms       from 'ms';
 
 import configFile            from './configFile.js';
 import {getSolcastForecasts} from './solcast.js';
-import logger                from './logger.js';
 
 // ###########################################################################
 // Globals
@@ -34,6 +34,7 @@ const stopProcess = async function() {
 
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 

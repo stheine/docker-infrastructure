@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
+import {logger}   from '@stheine/helpers';
+
 import configFile from './configFile.js';
-import logger     from './logger.js';
 import {
   getMaxSun,
   getSunTimes,

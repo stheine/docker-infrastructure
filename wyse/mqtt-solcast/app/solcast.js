@@ -28,7 +28,7 @@ export const getSolcastForecasts = async function(config) {
       // Return cached data
       return cachedSolcast.forecasts;
     }
-  } catch {
+  } catch{
     cacheAge = null;
   }
 
