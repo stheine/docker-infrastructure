@@ -1,10 +1,9 @@
-import _       from 'lodash';
-import axios   from 'axios';
-import check   from 'check-types-2';
-import ms      from 'ms';
-import suncalc from 'suncalc';
-
-import logger  from './logger.js';
+import _        from 'lodash';
+import axios    from 'axios';
+import check    from 'check-types-2';
+import {logger} from '@stheine/helpers';
+import ms       from 'ms';
+import suncalc  from 'suncalc';
 
 const degToRad = function(degrees) {
   return degrees * (Math.PI / 180);
