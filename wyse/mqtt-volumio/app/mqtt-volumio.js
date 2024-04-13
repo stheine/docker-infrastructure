@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 
-import os                    from 'node:os';
-import {setTimeout as delay} from 'node:timers/promises';
+import os       from 'node:os';
 
-                                       // DEBUG=* ./mqtt-volumio.js
-                                       // https://socket.io/docs/v2/
-import _      from 'lodash';
-import io     from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
-import mqtt   from 'async-mqtt';
-import ms     from 'ms';
-
-import logger from './logger.js';
+                                         // DEBUG=* ./mqtt-volumio.js
+                                         // https://socket.io/docs/v2/
+import _        from 'lodash';
+import io       from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
+import {logger} from '@stheine/helpers';
+import mqtt     from 'async-mqtt';
+import ms       from 'ms';
 
 // ###########################################################################
 // Globals
@@ -41,6 +39,7 @@ const stopProcess = async function() {
 
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
@@ -84,7 +83,7 @@ const getQueue = async function() {
 
       try {
         message = JSON.parse(messageRaw);
-      } catch {
+      } catch{
         // ignore
       }
 
@@ -285,9 +284,9 @@ const getQueue = async function() {
     logger.info('pushBrowseSources', data);
   });
 
-  volumio.on('pushQueue', data => {
-    // logger.info('pushQueue', data);
-  });
+  // volumio.on('pushQueue', data => {
+  //   logger.info('pushQueue', data);
+  // });
 })();
 
 
