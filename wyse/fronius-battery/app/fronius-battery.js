@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 /* eslint-disable camelcase */
+/* eslint-disable function-call-argument-newline */
 
+import {setTimeout as delay} from 'node:timers/promises';
 import fsPromises            from 'node:fs/promises';
 import os                    from 'node:os';
-import {setTimeout as delay} from 'node:timers/promises';
 
 import _                     from 'lodash';
 import AsyncLock             from 'async-lock';
@@ -12,16 +13,18 @@ import check                 from 'check-types-2';
 import cron                  from 'node-cron';
 import dayjs                 from 'dayjs';
 import fsExtra               from 'fs-extra';
-import ms                    from 'ms';
 import mqtt                  from 'async-mqtt';
+import ms                    from 'ms';
 import promiseAllByKeys      from 'promise-results/allKeys.js';
 import Ringbuffer            from '@stheine/ringbufferjs';
 import utc                   from 'dayjs/plugin/utc.js';
+import {
+  logger,
+  sendMail,
+} from '@stheine/helpers';
 
 import FroniusClient         from './fronius-client.js';
 import getLatestVersion      from './getLatestVersion.js';
-import logger                from './logger.js';
-import {sendMail}            from './mail.js';
 import sunspecInverter       from './sunspec_map_inverter.js';
 import sunspecSmartMeter     from './sunspec_map_smart_meter.js';
 
@@ -106,6 +109,7 @@ const stopProcess = async function() {
 
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
@@ -468,6 +472,7 @@ const handleRate = async function({capacityWh, log = false}) {
   } catch(err) {
     logger.error('Failed to read JSON in /var/fronius/config.json', err.message);
 
+    // eslint-disable-next-line no-process-exit
     process.exit(1);
   }
 
@@ -480,6 +485,7 @@ const handleRate = async function({capacityWh, log = false}) {
   } catch(err) {
     logger.error('Failed to read JSON in /var/fronius/fronius-battery.json', err.message);
 
+    // eslint-disable-next-line no-process-exit
     process.exit(1);
   }
 

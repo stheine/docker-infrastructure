@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import FroniusClient  from './fronius-client.js';
-import logger         from './logger.js';
-import sunspec        from './sunspec_map_smart_meter.js';
+import {logger}      from '@stheine/helpers';
+
+import FroniusClient from './fronius-client.js';
+import sunspec       from './sunspec_map_smart_meter.js';
 
 (async() => {
   const smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec});

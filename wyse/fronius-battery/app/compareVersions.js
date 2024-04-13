@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
+import {logger}         from '@stheine/helpers';
+
 import FroniusClient    from './fronius-client.js';
 import getLatestVersion from './getLatestVersion.js';
-import logger           from './logger.js';
 import sunspec          from './sunspec_map_inverter.js';
 
 (async() => {

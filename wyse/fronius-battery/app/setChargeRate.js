@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import FroniusClient  from './fronius-client.js';
-import logger         from './logger.js';
-import sunspec        from './sunspec_map_inverter.js';
+import FroniusClient from './fronius-client.js';
+import sunspec       from './sunspec_map_inverter.js';
 
 (async() => {
   const inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec});
@@ -31,7 +30,6 @@ import sunspec        from './sunspec_map_inverter.js';
     } catch(err) {
       throw new Error(`Failed writing battery charge rate ${setRate}: ${err.message}`);
     }
-
   } finally {
     await inverter.close();
   }

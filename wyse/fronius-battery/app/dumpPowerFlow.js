@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import fronius from 'fronius';
-
-import logger  from './logger.js';
+import fronius  from 'fronius';
+import {logger} from '@stheine/helpers';
 
 (async() => {
   // #########################################################################

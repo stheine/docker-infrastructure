@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
+/* eslint-disable function-call-argument-newline */
+
 import _         from 'lodash';
 import check     from 'check-types-2';
+import {logger}  from '@stheine/helpers';
 import ModbusRTU from 'modbus-serial';
-
-import logger  from './logger.js';
 
 const toBitfield = function(num, bits) {
   const bitString = _.padStart(num.toString(2), bits, '0');
@@ -28,7 +29,7 @@ const convertData = function({name, dataBuffer, scaleBuffer, spec}) {
     case 'bitfield16': out = toBitfield(dataBuffer.readUInt16BE(), 16); break;
     case 'bitfield32': out = toBitfield(dataBuffer.readUInt32BE(), 32); break;
     case 'float32':    out = dataBuffer.readFloatBE(); break;
-    case 'string':     out = dataBuffer.toString().replace(/[\s\0]+$/g, ''); break;
+    case 'string':     out = dataBuffer.toString().replaceAll(/[\s\0]+$/g, ''); break;
     case 'uint16':     out = dataBuffer.readUInt16BE(); break;
     case 'int16':      out = dataBuffer.readInt16BE(); break;
     case 'count':      out = dataBuffer.readInt16BE(); break;
