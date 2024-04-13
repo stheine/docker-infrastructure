@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=alpine:3.17
+ARG BASE_IMAGE=alpine:3.19
 FROM ${BASE_IMAGE} AS builder
 
 RUN apk add --no-cache  \
@@ -7,12 +7,14 @@ RUN apk add --no-cache  \
     curl-dev \
     duktape-dev \
     ffmpeg4-dev \
+    jpeg-dev \
     file-dev \
     fmt-dev \
     g++ \
     gcc \
     git \
     libebml-dev \
+    expat-dev brotli-dev inih-dev inih-inireader-dev \
     libexif-dev \
     libmatroska-dev \
     wavpack wavpack-dev \
@@ -29,13 +31,14 @@ RUN apk add --no-cache  \
     autoconf \
     automake \
     libtool \
+    wget \
     file
 
 
 # ##############################################################################
 # Install and run from https://github.com/gerbera/gerbera
 
-ARG GERBERA_VERSION=2.0.0
+ARG GERBERA_VERSION=2.1.0
 WORKDIR /source
 
 RUN \
@@ -52,6 +55,11 @@ RUN ./install-ffmpegthumbnailer.sh
 WORKDIR /libupnp_build
 RUN cp /gerbera_build/scripts/install-pupnp.sh /gerbera_build/scripts/versions.sh ./
 RUN ./install-pupnp.sh
+
+# Build libexiv2
+WORKDIR /libexiv2_build
+RUN cp /gerbera_build/scripts/install-libexiv2.sh /gerbera_build/scripts/versions.sh ./
+RUN ./install-libexiv2.sh
 
 WORKDIR /gerbera_build
 
@@ -76,12 +84,16 @@ FROM ${BASE_IMAGE} AS gerbera
 RUN apk add --no-cache \
     curl \
     duktape \
-    ffmpeg4-libs \
+    ffmpeg4-libavutil \
+    ffmpeg4-libavformat \
+    ffmpeg4-libavcodec \
+    ffmpeg4-libavfilter \
     libjpeg \
     file \
     fmt \
     libebml \
     libexif \
+    expat brotli inih inih-inireader \
     libmatroska \
     wavpack \
     mariadb-connector-c \
@@ -98,6 +110,9 @@ RUN apk add --no-cache \
 
 # Copy libupnp
 COPY --from=builder /usr/local/lib/libixml.so.* /usr/local/lib/libupnp.so.* /usr/lib/
+
+# Copy libexiv2
+COPY --from=builder /usr/local/lib/libexiv2.so* /usr/lib/
 
 # Copy ffmpegthumbnailer
 COPY --from=builder /usr/local/lib/libffmpegthumbnailer.so* /usr/lib/
