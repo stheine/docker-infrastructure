@@ -60,8 +60,9 @@ COPY docker_container_profile /root/.profile
 
 WORKDIR /app
 
-# ONBUILD \
-#   npm install
+RUN \
+  npm install --global nodemon
 
+# CMD nodemon
 CMD ["/usr/local/bin/node", "/app/mqtt-strom.js"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]

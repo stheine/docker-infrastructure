@@ -63,6 +63,6 @@ WORKDIR /app
 RUN \
   npm install --global nodemon
 
-CMD nodemon
-# CMD ["/usr/local/bin/node", "/app/mqtt-fenster.js"]
+# CMD nodemon
+CMD ["/usr/local/bin/node", "/app/mqtt-fenster.js"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
