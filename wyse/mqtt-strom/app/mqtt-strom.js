@@ -19,6 +19,14 @@ dayjs.extend(utc);
 
 const dcLimit = 5750;
 
+// vitoBetriebsart
+// 0 Warmwasser
+// 1 ? Reduziert?
+// 2 ? Normal?
+// 3 Heizung+Warmwasser
+// 4 ? H+WW FS?
+// 5 Abschaltbetrieb
+
 // ###########################################################################
 // Globals
 
@@ -381,18 +389,18 @@ process.on('SIGTERM', () => stopProcess());
                 ) ||
                   (vitoBetriebsart !== 3 && (
                     aktuellerUeberschuss > 3000 ||
-                    (aktuellerUeberschuss > 2000 &&
+                    (aktuellerUeberschuss > 2400 &&
                       (batteryLevel > 30 && solcastHighPvHours > 4) ||
                       (batteryLevel > 60 && solcastHighPvHours > 3)
                     )
                   ))
                 ) {
-                  logger.debug('Ausreichend Einspeisung. Erlaube Speicherheizung.',
-                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours, vitoBetriebsart});
+//                  logger.debug('Ausreichend Einspeisung. Erlaube Speicherheizung.',
+//                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours, vitoBetriebsart});
 
                   await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'ON');
                 }
-              }, ms('1 minutes'));
+              }, ms('15s'));
               break;
 
             case 'ON':
