@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 
 /* eslint-disable camelcase */
+/* eslint-disable object-curly-newline */
+/* eslint-disable object-property-newline */
 
-import fsPromises  from 'node:fs/promises';
-import os          from 'node:os';
+import {setTimeout as delay} from 'node:timers/promises';
+import fsPromises            from 'node:fs/promises';
+import os                    from 'node:os';
 
-import _           from 'lodash';
-import dayjs       from 'dayjs';
-import fsExtra     from 'fs-extra';
-import mqtt        from 'async-mqtt';
-import ms          from 'ms';
-import utc         from 'dayjs/plugin/utc.js';
-
-import logger      from './logger.js';
-import {sendMail}  from './mail.js';
+import _       from 'lodash';
+import dayjs   from 'dayjs';
+import fsExtra from 'fs-extra';
+import mqtt    from 'async-mqtt';
+import ms      from 'ms';
+import utc     from 'dayjs/plugin/utc.js';
+import {
+  logger,
+  sendMail,
+} from '@stheine/helpers';
 
 dayjs.extend(utc);
 
@@ -50,6 +54,7 @@ const stopProcess = async function() {
 
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
@@ -84,12 +89,12 @@ process.on('SIGTERM', () => stopProcess());
     const nowUtc = dayjs.utc();
 
     logger.debug('Dump', {
-      solarDachLeistung:   solarDachLeistung,
-      inverterLeistung:    inverterLeistung,
-      batteryLeistung:     batteryLeistung,
+      solarDachLeistung,
+      inverterLeistung,
+      batteryLeistung,
       batteryLevel,
-      zaehlerLeistung:     zaehlerLeistung,
-      momentanLeistung:    momentanLeistung,
+      zaehlerLeistung,
+      momentanLeistung,
       solcastHighPvHours,
       solcastLimitPvHours,
       maxSun:              maxSun.format('YYYY-MM-DD HH:mm:ss UTC'),
@@ -110,9 +115,10 @@ process.on('SIGTERM', () => stopProcess());
 
   try {
     status = await fsExtra.readJson('/var/strom/strom.json');
-  } catch {
+  } catch{
     logger.error('Failed to read JSON in /var/strom/strom.json');
 
+    // eslint-disable-next-line no-process-exit
     process.exit(1);
   }
 
@@ -146,7 +152,7 @@ process.on('SIGTERM', () => stopProcess());
 
       try {
         message = JSON.parse(messageRaw);
-      } catch {
+      } catch{
         // ignore
       }
 
@@ -395,8 +401,9 @@ process.on('SIGTERM', () => stopProcess());
                     )
                   ))
                 ) {
-//                  logger.debug('Ausreichend Einspeisung. Erlaube Speicherheizung.',
-//                    {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours, vitoBetriebsart});
+//                  logger.debug('Ausreichend Einspeisung. Erlaube Speicherheizung.', {
+//                    zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss,
+//                    solcastHighPvHours, vitoBetriebsart});
 
                   await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'ON');
                 }
@@ -404,8 +411,9 @@ process.on('SIGTERM', () => stopProcess());
               break;
 
             case 'ON':
-              logger.info('Heizstab ON. Warte auf Ende der Einspeisung.',
-                {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss,solcastHighPvHours, vitoBetriebsart});
+              logger.info('Heizstab ON. Warte auf Ende der Einspeisung.', {
+                zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss,
+                solcastHighPvHours, vitoBetriebsart});
 
               if(heizstabInterval) {
                 clearInterval(heizstabInterval);
