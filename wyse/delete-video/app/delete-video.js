@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
-import fsPromises from 'fs/promises';
-import path       from 'path';
+import fsPromises from 'node:fs/promises';
+import path       from 'node:path';
 
 import cron       from 'croner';
+import {logger}   from '@stheine/helpers';
 import ms         from 'ms';
-
-import logger     from './logger.js';
 
 const baseDir = '/video/Nachrichten';
 
@@ -16,6 +15,7 @@ const baseDir = '/video/Nachrichten';
 const stopProcess = async function() {
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
