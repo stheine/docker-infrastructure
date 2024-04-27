@@ -1,10 +1,11 @@
-version: "3.8"
+# version: "3.8"
 
 # Ports
 #    25 postfix                smtp
 #   993 dovecot                imap                          Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
 ###  2342 photoprism             http://192.168.6.5:2342/
+#  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
 #  8080 homer                  http://192.168.6.5:8080/
 #  8285 vaultwarden            http://192.168.6.5:8285/
@@ -215,6 +216,48 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/linux/data/muell
+      o: bind
+
+  paperless-consume:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/paperless-consume
+      o: bind
+
+  paperless-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/paperless/data
+      o: bind
+
+  paperless-database:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/paperless/database
+      o: bind
+
+  paperless-export:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/paperless/export
+      o: bind
+
+  paperless-media:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/paperless/media
+      o: bind
+
+  paperless-redis:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/paperless/redis
       o: bind
 
 ##  photoprism:
@@ -703,6 +746,46 @@ services:
     restart: always
     build: noop
     hostname: wyse-noop
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    depends_on:
+      - paperless-broker
+      - paperless-database
+    ports:
+      - 7273:8000
+    volumes:
+      - paperless-consume:/usr/src/paperless/consume
+      - paperless-data:/usr/src/paperless/data
+      - paperless-export:/usr/src/paperless/export
+      - paperless-media:/usr/src/paperless/media
+    env_file: paperless/paperless.env
+    environment:
+      PAPERLESS_REDIS: redis://paperless-broker:6379
+      PAPERLESS_DBENGINE: mariadb
+      PAPERLESS_DBHOST: paperless-database
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: paperless
+      PAPERLESS_DBPORT: 3306
+
+  paperless-broker:
+    image: docker.io/library/redis:7
+    restart: unless-stopped
+    volumes:
+      - paperless-redis:/data
+
+  paperless-database:
+    image: docker.io/library/mariadb:10
+    restart: unless-stopped
+    volumes:
+     - paperless-database:/var/lib/mysql
+    environment:
+      MARIADB_HOST: paperless
+      MARIADB_DATABASE: paperless
+      MARIADB_USER: paperless
+      MARIADB_PASSWORD: paperless
+      MARIADB_ROOT_PASSWORD: paperless
 
 ##  photoprism:
 ##    image: photoprism/photoprism:armv7
