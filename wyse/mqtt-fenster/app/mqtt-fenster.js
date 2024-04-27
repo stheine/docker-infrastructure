@@ -14,7 +14,7 @@ import {
 // ###########################################################################
 // Config
 const notifyTempLimit = 15;
-const timeoutToNotify = ms('10m');
+const timeoutToNotify = ms('15m');
 
 // ###########################################################################
 // Globals
