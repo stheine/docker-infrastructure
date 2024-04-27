@@ -61,8 +61,8 @@ export const getWeather = async function({openWeatherLocation, suncalcLocation})
 
   // Getting data from OpenWeatherMap and extract the relevant information.
   const host  = 'api.openweathermap.org';
-  const base  = '/data/2.5';
-  const appId = `&APPID=${openWeatherLocation.appId}`;
+  const base  = '/data/3.0';
+  const appId = `&appid=${openWeatherLocation.appId}`;
 
   try {
     const url = `https://${host}${base}/onecall?` +
@@ -72,6 +72,7 @@ export const getWeather = async function({openWeatherLocation, suncalcLocation})
       `&lang=de` +
       `&units=metric` +
       `${appId}`;
+
     const result = await await axios.get(url, {timeout: ms('2 seconds')});
 
     check.assert.object(result, `result not an object`);
