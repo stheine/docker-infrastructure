@@ -29,6 +29,13 @@
 
 
 volumes:
+  backup-rclone:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/backup
+      o: bind
+
   comics:
     driver: local
     driver_opts:
@@ -243,7 +250,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/linux/data/paperless/export
+      device: /mnt/qnap/linux/data/paperless-export
       o: bind
 
   paperless-media:
@@ -400,6 +407,16 @@ services:
       - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
     # healthcheck:
     #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
+
+  backup:
+    restart: always
+    build: backup
+    volumes:
+      - ./backup/backup.sh:/backup.sh:ro
+      - ./docker-compose.yml:/docker/docker-compose.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - backup-rclone:/root/.config/rclone
+      - paperless-export:/data/paperless-export
 
   certbot:
     restart: always
@@ -758,7 +775,7 @@ services:
     volumes:
       - paperless-consume:/usr/src/paperless/consume
       - paperless-data:/usr/src/paperless/data
-      - paperless-export:/usr/src/paperless/export
+      - paperless-export:/export
       - paperless-media:/usr/src/paperless/media
     env_file: paperless/paperless.env
     environment:
