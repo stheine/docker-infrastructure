@@ -51,6 +51,7 @@ COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 RUN \
   apt-get install -y \
+    gpg \
     rclone
 
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf

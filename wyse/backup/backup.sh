@@ -9,11 +9,18 @@ echo "$(date +"%Y-%m-%d %H:%M:%S") Backup start" | tee -a /backup.log
 cd /data
 
 for dir in $(ls -1); do
-  echo "$(date +"%Y-%m-%d %H:%M:%S") Backup start: $(dir)" | tee -a /backup.log
+  echo "$(date +"%Y-%m-%d %H:%M:%S") Backup start: ${dir}" | tee -a /backup.log
 
-  tar -zcf /backup/$(dir)_$(date +%Y-%m-%d).tgz . || exit $?
+  tarFile=/backup/${dir}_$(date +%Y-%m-%d).tgz
 
-  echo "$(date +"%Y-%m-%d %H:%M:%S") Backup finished: $(dir)" | tee -a /backup.log
+  tar -zcf ${tarFile} ${dir} || exit $?
+
+  echo "$(date +"%Y-%m-%d %H:%M:%S") Backup finished: ${dir}" | tee -a /backup.log
+
+  gpg --batch --symmetric --no-symkey-cache --passphrase-file /root/.config/rclone/pass ${tarFile}
+  rm ${tarFile}
+
+  echo "$(date +"%Y-%m-%d %H:%M:%S") Backup encrypted: ${dir}" | tee -a /backup.log
 done
 
 echo "$(date +"%Y-%m-%d %H:%M:%S") Cloud Copy start" | tee -a /backup.log
