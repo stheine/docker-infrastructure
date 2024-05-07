@@ -1,10 +1,9 @@
-# version: "3.8"
-
 # Ports
 #    25 postfix                smtp
 #   993 dovecot                imap                          Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
 ###  2342 photoprism             http://192.168.6.5:2342/
+#  5233 ladder                 http://192.168.6.5:5233/
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
 #  8080 homer                  http://192.168.6.5:8080/
@@ -607,6 +606,32 @@ services:
       - ./imapfilter/config.lua:/root/.imapfilter/config.lua
       - imapfilter:/config
 
+  ladder:
+    restart: always
+    image: ghcr.io/everywall/ladder:latest
+    container_name: ladder
+    stop_signal: SIGKILL
+    environment:
+      - PORT=5233
+      - RULESET=https://raw.githubusercontent.com/everywall/ladder-rules/main/ruleset.yaml
+      #- RULESET=/app/ruleset.yaml
+      #- ALLOWED_DOMAINS=example.com,example.org
+      #- ALLOWED_DOMAINS_RULESET=false
+      #- EXPOSE_RULESET=true
+      #- PREFORK=false
+      #- DISABLE_FORM=false
+      - FORM_PATH=/app/form.html
+      #- X_FORWARDED_FOR=66.249.66.1
+      #- USER_AGENT=Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)
+      #- USERPASS=foo:bar
+      #- LOG_URLS=true
+      #- GODEBUG=netdns=go
+    ports:
+      - 5233:5233
+    volumes:
+      - ./ladder/ruleset.yaml:/app/ruleset.yaml
+      - ./ladder/handlers/form.html:/app/form.html
+
   mediawiki:
     restart: always
     build: mediawiki
@@ -746,6 +771,7 @@ services:
     restart: always
     build: nginx
     hostname: wyse-nginx
+    stop_signal: SIGINT
     ports:
       - 59080:80
       - 59443:443
@@ -756,6 +782,7 @@ services:
     depends_on:
       - apache2
       - homer
+      - ladder
       - mediawiki
       - vaultwarden
 
