@@ -12,6 +12,7 @@
   "dependencies": {
     "@stheine/helpers": "1.0.3",
     "axios": "1.6.8",
+    "check-types-2": "11.6.0",
     "croner": "8.0.1"
   }
 }

@@ -3,6 +3,7 @@
 import https from 'node:https';
 
 import axios from 'axios';
+import check from 'check-types-2';
 import cron  from 'croner';
 import {
   logger,
@@ -16,12 +17,17 @@ import {
   cronMinute,
 } from '/var/comics/config.js';
 
+const httpsAgent = new https.Agent({
+//  rejectUnauthorized: false,
+});
+
 // ###########################################################################
 // Process handling
 
 const stopProcess = async function() {
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
@@ -44,36 +50,47 @@ const renderComics = function(metas) {
 };
 
 const readComic = async function(comic) {
-  const httpsAgent = new https.Agent({
-    rejectUnauthorized: false,
-  });
+  let url;
 
-  const pageResponse = await axios.get(`${baseUrl}/${comic}/`, {httpsAgent});
+  try {
+    url = `${baseUrl}/${comic}/`;
 
-  const page = pageResponse.data;
+    const pageResponse = await axios.get(url, {httpsAgent});
 
-  const date = page
-    .replace(/^[\S\s]*<span class="cur">/, '')
-    .replace(/<\/span>[\S\s]*$/, '');
+    const page = pageResponse.data;
 
-  const figure = page
-    .replace(/^[\S\s]*<figure class="comic">\s*/, '')
-    .replace(/\s*<\/figure>[\S\s]*$/, '');
-  const img = figure
-    .replace(/\s*<cite.*<\/cite>/, '');
-  const src = img
-    .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
-    .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="" class="[^"]*" title="[^"]*" \/>/, '');
+    const date = page
+      .replace(/^[\S\s]*<span class="cur">/, '')
+      .replace(/<\/span>[\S\s]*$/, '');
 
-  const label = page
-    .replace(/^[\S\s]*<meta property="og:title" content="/, '')
-    .replace(/"\/>[\S\s]*$/, '');
+    check.assert.less(date.length, 20, `${comic} Failed to read date '${date}'`);
 
-  const imageResponse = await axios.get(src, {httpsAgent, responseType: 'arraybuffer'});
-  const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-  const imageBase64 = imageBuffer.toString('base64');
+    const figure = page
+      .replace(/^[\S\s]*?<figure class="comic">\s*/, '')
+      .replace(/\s*<\/figure>[\S\s]*$/, '');
+    const img = figure
+      .replace(/\s*<cite.*<\/cite>/, '');
 
-  return {date, imageBase64, label};
+    url = img
+      .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
+      .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="" class="[^"]*" title="[^"]*" \/>/, '');
+
+    check.assert.match(url, /^https:/, `${comic} Failed to parse img url from '${figure}'`);
+
+    const label = page
+      .replace(/^[\S\s]*<meta property="og:title" content="/, '')
+      .replace(/"\/>[\S\s]*$/, '');
+
+    check.assert.less(date.length, 40, `${comic} Failed to read label '${label}'`);
+
+    const imageResponse = await axios.get(url, {httpsAgent, responseType: 'arraybuffer'});
+    const imageBuffer = Buffer.from(imageResponse.data, 'binary');
+    const imageBase64 = imageBuffer.toString('base64');
+
+    return {date, imageBase64, label};
+  } catch(err) {
+    logger.error(`Failed reading ${url}`, err.message);
+  }
 };
 
 const readComics = async function() {
@@ -82,10 +99,9 @@ const readComics = async function() {
   for(const comic of comics) {
     const meta = await readComic(comic);
 
-    // console.log(image);
-    // console.log(imageBase64);
-
-    metas.push(meta);
+    if(meta) {
+      metas.push(meta);
+    }
   }
 
   return metas;
@@ -103,7 +119,9 @@ const mailComics = async function(metas) {
 const sendComics = async function() {
   const metas = await readComics();
 
-  await mailComics(metas);
+  if(metas.length) {
+    await mailComics(metas);
+  }
 };
 
 (async() => {
