@@ -63,6 +63,8 @@ services:
   pihole:
     restart: always
     image: pihole/pihole:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     shm_size: '200mb'
     hostname: pi-pihole
     dns:
@@ -83,6 +85,8 @@ services:
   portainer_agent:
     restart: always
     image: portainer/agent
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     hostname: qnap-portainer-agent
     ports:
       - 8009:9001
@@ -101,9 +105,23 @@ services:
     depends_on:
       - pihole
 
+  watchtower:
+    image: containrrr/watchtower
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    hostname: jalousie-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_LABEL_ENABLE: 1
+      WATCHTOWER_NOTIFICATIONS: shoutrrr
+      WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
+
   zigbee2mqtt:
     restart: always
     image: koenkk/zigbee2mqtt:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     # build: zigbee2mqtt
     ports:
       - 1881:1881
