@@ -25,3 +25,4 @@ PROMPT_COMMAND='set_ps1'
 alias ll='ls -l'
 set -o vi
 
+alias vi=vim
