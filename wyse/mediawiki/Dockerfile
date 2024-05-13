@@ -14,6 +14,8 @@ RUN \
     vim \
     wget
 
+ENV TZ Europe/Berlin
+
 # Performance tuning via puppet
 # https://www.mediawiki.org/wiki/Manual:Performance_tuning
 

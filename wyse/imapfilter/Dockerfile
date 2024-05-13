@@ -13,6 +13,8 @@ RUN \
     pcre2 \
     pcre2-dev
 
+ENV TZ Europe/Berlin
+
 WORKDIR /source
 
 ARG IMAPFILTER_VERSION=2.8.2
@@ -40,8 +42,6 @@ RUN \
     luarocks \
     tzdata && \
   luarocks-5.1 install luatz
-
-ENV TZ Europe/Berlin
 
 RUN \
   apk add \

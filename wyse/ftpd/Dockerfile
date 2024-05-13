@@ -11,6 +11,8 @@ RUN \
     shadow \
     vsftpd
 
+ENV TZ Europe/Berlin
+
 # User
 RUN \
   addgroup -g 1000 foto && \

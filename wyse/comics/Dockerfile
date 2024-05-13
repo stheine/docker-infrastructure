@@ -30,6 +30,7 @@ RUN \
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
+ENV TZ Europe/Berlin
 
 # ##############################################################################
 # Install and run comics app
@@ -52,7 +53,6 @@ RUN \
   git clone --depth=1 https://github.com/vim-syntastic/syntastic.git && \
   git config --global user.email stheine@arcor.de && \
   git config --global user.name 'Stefan Heine'
-ENV TZ Europe/Berlin
 
 COPY docker_container_profile /root/.profile
 

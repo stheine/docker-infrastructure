@@ -14,6 +14,8 @@ RUN \
   echo "Europe/Berlin" > /etc/timezone && \
   apk del tzdata
 
+ENV TZ Europe/Berlin
+
 # ##############################################################################
 # Set up some basic tooling
 RUN \
