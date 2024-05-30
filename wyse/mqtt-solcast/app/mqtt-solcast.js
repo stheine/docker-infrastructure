@@ -15,8 +15,9 @@ import {getSolcastForecasts} from './solcast.js';
 
 let   config;
 let   healthInterval;
-const hostname   = os.hostname();
+const hostname        = os.hostname();
 let   mqttClient;
+let   status          = 'OK';
 
 // ###########################################################################
 // Process handling
@@ -41,9 +42,17 @@ const stopProcess = async function() {
 process.on('SIGTERM', () => stopProcess());
 
 const handleSolcast = async function() {
-  const forecasts = await getSolcastForecasts(config);
+  try {
+    const forecasts = await getSolcastForecasts(config);
 
-  await mqttClient.publish('solcast/forecasts', JSON.stringify(forecasts), {retain: true});
+    await mqttClient.publish('solcast/forecasts', JSON.stringify(forecasts), {retain: true});
+
+    status = 'OK';
+  } catch(err) {
+    logger.error(err.message);
+
+    status = `FAIL: ${err.message}`;
+  }
 };
 
 (async() => {
@@ -71,9 +80,12 @@ const handleSolcast = async function() {
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-solcast/health/STATE`, 'OK');
-  }, ms('1min'));
+    await mqttClient.publish(`mqtt-solcast/health/STATE`, status);
+  }, ms('1 minute'));
 
   setInterval(handleSolcast, ms('30 minutes'));
-  await handleSolcast(); // on startup
+
+  // Trigger once on startup
+  await handleSolcast();
+  await mqttClient.publish(`mqtt-solcast/health/STATE`, status);
 })();
