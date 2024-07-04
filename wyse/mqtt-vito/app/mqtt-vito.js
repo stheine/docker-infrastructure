@@ -128,7 +128,7 @@ process.on('SIGTERM', () => stopProcess());
 
           logger.info(`Asche geleert bei ${letzterBrennerVerbrauch} kg`);
 
-          status.ascheGeleert.push(`${dayjs.format('YYYY-MM-DD')} ${letzterBrennerVerbrauch}`);
+          status.ascheGeleert.push(`${dayjs().format('YYYY-MM-DD')} ${letzterBrennerVerbrauch}`);
           break;
 
         case 'mqtt-vito/pelletsSpeicher':
@@ -138,7 +138,7 @@ process.on('SIGTERM', () => stopProcess());
 
           logger.info(`Pellets Nachschub ${message} kg`);
 
-          status.pelletsSpeicher.push(`${dayjs.format('YYYY-MM-DD')} ${message}`);
+          status.pelletsSpeicher.push(`${dayjs().format('YYYY-MM-DD')} ${message}`);
           break;
 
         case 'solcast/forecasts': {
@@ -485,17 +485,16 @@ process.on('SIGTERM', () => stopProcess());
             const notifyTitle    = 'Asche leeren';
             const notifyMessage  = `<p>Verbrauch seit letzter Leerung: ${verbrauchSeitLetzterLeerung} kg</p>`;
 
-            setTimeout(async() => {
-              await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
-                sound:     'none',
-                html:      1,
-                message:   notifyMessage,
-                title:     notifyTitle,
-                url:       notifyUrl,
-                url_title: notifyUrlTitle,
-              }));
+            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+              sound:     'none',
+              html:      1,
+              message:   notifyMessage,
+              title:     notifyTitle,
+              url:       notifyUrl,
+              url_title: notifyUrlTitle,
+            }));
 
-              status.reportedLeerung = dayjs();
+            status.reportedLeerung = dayjs();
 
 //              try {
 //                await sendMail({
@@ -510,7 +509,6 @@ process.on('SIGTERM', () => stopProcess());
 //              } catch(err) {
 //                logger.error(`Failed to send error mail: ${err.message}`);
 //              }
-            }, ms('2hours'));
           }
 
           // #######################################################################################
