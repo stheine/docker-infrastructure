@@ -41,7 +41,7 @@ export default async function getLatestVersion() {
 
   check.assert.nonEmptyObject(firmware);
 
-  return firmware.title.replace('Fronius Update GEN24 Tauro V', '');
+  return firmware.title.replace('Fronius Update GEN24 Tauro Verto ', '');
 
 //    {
 //      type: 'Firmware',
