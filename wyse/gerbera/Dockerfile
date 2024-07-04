@@ -7,6 +7,7 @@ RUN apk add --no-cache  \
     curl-dev \
     duktape-dev \
     ffmpeg4-dev \
+    ffmpeg \
     jpeg-dev \
     file-dev \
     fmt-dev \
@@ -14,6 +15,8 @@ RUN apk add --no-cache  \
     gcc \
     git \
     libebml-dev \
+    libjpeg \
+    libpng \
     expat-dev brotli-dev inih-dev inih-inireader-dev \
     libexif-dev \
     libmatroska-dev \
