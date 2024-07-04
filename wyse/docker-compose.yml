@@ -915,10 +915,11 @@ services:
     restart: always
     build: postfix
     hostname: wyse-postfix
+    stop_signal: SIGKILL
     ports:
       - "25:25"
     volumes:
-      - postfix_creds:/postfix_creds
+      - postfix_creds:/etc/postfix/creds
 
   proxy:
     restart: always

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-cp /postfix_creds/* /etc/postfix/creds/
 /usr/sbin/postmap /etc/postfix/creds/sender_canonical
 /usr/sbin/postmap /etc/postfix/creds/sasl_password
 /usr/sbin/postfix set-permissions 2>/dev/null

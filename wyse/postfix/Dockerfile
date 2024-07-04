@@ -40,25 +40,28 @@ RUN \
   sed -i 's/^root:x:0:0:root:/root:x:0:0::/' /etc/passwd
 
 RUN \
-  apt-get install -y postfix mailutils rsyslog && \
+  apt-get install -y postfix mailutils rsyslog
+RUN \
   /usr/sbin/postconf -e 'compatibility_level = 2' && \
   /usr/sbin/postconf -e 'inet_interfaces = all' && \
   /usr/sbin/postconf -e 'inet_protocols = ipv4' && \
-  /usr/sbin/postconf -e 'myhostname = qnap.heine7.de' && \
+  /usr/sbin/postconf -e 'mydestination = $myhostname, wyse, localhost.localdomain, localhost' && \
+  /usr/sbin/postconf -e 'mydomain = heine7.de' && \
+  /usr/sbin/postconf -e 'myorigin = $mydomain' && \
+  /usr/sbin/postconf -e 'myhostname = wyse.fritz.box' && \
   /usr/sbin/postconf -e 'mynetworks = 172.0.0.0/8, 192.168.0.0/16, 127.0.0.0/8' && \
   /usr/sbin/postconf -e 'relayhost = [smtp.strato.de]:465' && \
   /usr/sbin/postconf -e 'sender_canonical_maps = hash:/etc/postfix/creds/sender_canonical' && \
-  /usr/sbin/postconf -e 'smtp_generic_maps = hash:/etc/postfix/generic' && \
   /usr/sbin/postconf -e 'smtp_sasl_auth_enable = yes' && \
   /usr/sbin/postconf -e 'smtp_sasl_security_options = noplaintext noanonymous' && \
   /usr/sbin/postconf -e 'smtp_sasl_password_maps = hash:/etc/postfix/creds/sasl_password' && \
   /usr/sbin/postconf -e 'smtp_tls_security_level = encrypt' && \
-  /usr/sbin/postconf -e 'smtp_tls_wrappermode = yes' && \
-  /usr/sbin/postconf -e 'smtputf8_enable = no' && \
-  mkdir /etc/postfix/creds && \
-  echo "pirate@pi-docker	stefan@heine7.de" >> /etc/postfix/generic && \
-  echo "root@pi-docker	stefan@heine7.de" >> /etc/postfix/generic && \
-  postmap /etc/postfix/generic
+  /usr/sbin/postconf -e 'smtp_tls_wrappermode = yes'
+#  && \
+#  /usr/sbin/postconf -e 'smtp_generic_maps = hash:/etc/postfix/generic' && \
+#  echo "root	wyse@heine7.de" >> /etc/postfix/generic && \
+#  echo "root@wyse	wyse@heine7.de" >> /etc/postfix/generic && \
+#  postmap /etc/postfix/generic
 
 COPY docker_container_profile /root/.profile
 
@@ -66,9 +69,6 @@ COPY start.sh /
 CMD /start.sh
 # CMD ["/bin/bash", "-l"]
 
-EXPOSE 25
-VOLUME /postfix_creds
-
 # echo -e "testing email\n\nsent on: $(date)" | mailx -r technik@heine7.de -s "test cli email $(date)" stefan@heine7.de
 
-# echo "Subject: sendmail test" | sendmail -v stefan@heine7.de
+# echo -e "Subject: sendmail test\n\ntest" | sendmail -v stefan@heine7.de
