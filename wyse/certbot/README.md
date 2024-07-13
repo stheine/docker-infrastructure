@@ -16,6 +16,7 @@ cd /etc/letsencrypt/live/heine7.de/
 /usr/bin/certbot certonly --webroot --webroot-path=/var/letsencrypt \
   -d heine7.de \
   -d bitwarden.heine7.de \
+  -d cloud.heine7.de \
   -d homer.heine7.de \
   -d ladder.heine7.de \
   -d wiki.heine7.de

@@ -4,6 +4,7 @@
 #  1883 mosquitto-websockets   mqtt
 ###  2342 photoprism             http://192.168.6.5:2342/
 #  5233 ladder                 http://192.168.6.5:5233/
+#  6398 nextcloud              http://192.168.6.5:6398/
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
 #  8080 homer                  http://192.168.6.5:8080/
@@ -222,6 +223,27 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/linux/data/muell
+      o: bind
+
+  nextcloud:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/nextcloud
+      o: bind
+
+  nextcloud-creds:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/nextcloud-creds
+      o: bind
+
+  nextcloud-database:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/nextcloud-database
       o: bind
 
   paperless-consume:
@@ -767,6 +789,38 @@ services:
       - muell:/data
       - ./muell/app:/app
 
+  nextcloud-database:
+    image: mariadb:10.6
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    volumes:
+      # - nextcloud-creds:/creds
+      - nextcloud-database:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      # - MYSQL_PASSWORD_FILE=/creds/mysql_password
+      # - MYSQL_ROOT_PASSWORD_FILE=/creds/mysql_root_password
+      - MYSQL_PASSWORD=abcdefg
+      - MYSQL_ROOT_PASSWORD=abcdefg
+
+  nextcloud:
+    image: nextcloud
+    restart: always
+    ports:
+      - 6398:80
+    links:
+      - nextcloud-database
+    volumes:
+      # - nextcloud-creds:/creds
+      - nextcloud:/var/www/html
+    environment:
+      - MYSQL_HOST=nextcloud-database
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      # - MYSQL_PASSWORD_FILE=/creds/mysql_password
+      - MYSQL_PASSWORD=abcdefg
+
   nginx:
     restart: always
     build: nginx
@@ -784,6 +838,7 @@ services:
       - homer
       - ladder
       - mediawiki
+      - nextcloud
       - vaultwarden
 
   noop:
