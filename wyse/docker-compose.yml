@@ -64,6 +64,13 @@ volumes:
 #      device: /mnt/qnap/linux/data/ftpd
 #      o: bind
 
+  gerbera-config:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/gerberaConfig
+      o: bind
+
   gerbera-filme:
     driver: local
     driver_opts:
@@ -517,76 +524,69 @@ services:
 #       to detect the upnp server.
   gerbera-filme:
     restart: always
-    build: gerbera
+    image: gerbera/gerbera:latest
     hostname: wyse-filme
     network_mode: host
-    environment:
-      - CONFIG=59158-filme
+    command: gerbera --config /var/run/gerbera/59158-filme/config.xml
     volumes:
-      - ./gerbera/config:/etc/gerbera/config
-      - media_filme:/media:ro
+      - gerbera-config:/var/run/gerbera
       - gerbera-filme:/gerbera_home
+      - media_filme:/mnt/content:ro
 
 ##  gerbera-fotos:
 ##    restart: always
-##    build: gerbera
+##    image: gerbera/gerbera:latest
 ##    hostname: wyse-fotos
 ##    network_mode: host
-##    environment:
-##      - CONFIG=59157-fotos
+##    command: gerbera --config /var/run/gerbera/59157-fotos/config.xml
 ##    volumes:
-##      - ./gerbera/config:/etc/gerbera/config
-##      - media_fotos:/media:ro
+##      - gerbera-config:/var/run/gerbera
 ##      - gerbera-fotos:/gerbera_home
+##      - media_fotos:/mnt/content:ro
 
   gerbera-kinder-filme:
     restart: always
-    build: gerbera
+    image: gerbera/gerbera:latest
     hostname: wyse-kinder-filme
     network_mode: host
-    environment:
-      - CONFIG=59155-kinder-filme
+    command: gerbera --config /var/run/gerbera/59155-kinder-filme/config.xml
     volumes:
-      - ./gerbera/config:/etc/gerbera/config
-      - media_kinder-filme:/media:ro
+      - gerbera-config:/var/run/gerbera
       - gerbera-kinder-filme:/gerbera_home
+      - media_kinder-filme:/mnt/content:ro
 
 ##  gerbera-kinder-cds:
 ##    restart: always
-##    build: gerbera
+##    image: gerbera/gerbera:latest
 ##    hostname: wyse-kinder-cds
 ##    network_mode: host
-##    environment:
-##      - CONFIG=59156-kinder-cds
+##    command: gerbera --config /var/run/gerbera/59156-kinder-cds/config.xml
 ##    volumes:
-##      - ./gerbera/config:/etc/gerbera/config
-##      - media_kinder-cds:/media:ro
+##      - gerbera-config:/var/run/gerbera
 ##      - gerbera-kinder-cds:/gerbera_home
+##      - media_kinder-cds:/mnt/content:ro
 
   gerbera-musik:
     restart: always
-    build: gerbera
+    image: gerbera/gerbera:latest
     hostname: wyse-gerbera-musik
     network_mode: host
-    environment:
-      - CONFIG=59154-musik
-#      - EXTRA_PARAMETERS=--debug
+    command: gerbera --config /var/run/gerbera/59154-musik/config.xml
     volumes:
-      - ./gerbera/config:/etc/gerbera/config
-      - media_musik:/media:ro
+      - gerbera-config:/var/run/gerbera
       - gerbera-musik:/gerbera_home
+      - media_musik:/mnt/content:ro
 
 ##  gerbera-video:
 ##    restart: always
-##    build: gerbera
+##    image: gerbera/gerbera:latest
 ##    hostname: wyse-gerbera-video
 ##    network_mode: host
-##    environment:
-##      - CONFIG=59159-video
+##    command: gerbera --config /var/run/gerbera/59159-video/config.xml
 ##    volumes:
-##      - ./gerbera/config:/etc/gerbera/config
-##      - media_video:/media:ro
+##      - gerbera-config:/var/run/gerbera
 ##      - gerbera-video:/gerbera_home
+##      - media_video:/mnt/content:ro
 
   hivemq-mqtt-web-client:
     restart: always
