@@ -8,9 +8,12 @@ import notify     from './notify.js';
 (async() => {
   const config = await configFile.read();
 
-  await notify({config, data: {
-    message: 'this is a message',
-    title:   'title',
-    ttl:     60,
-  }});
+  await notify({config,
+    data: {
+      message: 'this is a message',
+      title:   'title',
+      ttl:     60,
+    }});
+
+  logger.info('OK');
 })();

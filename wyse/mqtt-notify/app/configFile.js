@@ -1,10 +1,21 @@
 import fsExtra from 'fs-extra';
 
-const configFile = '/var/pushover/config.json';
+const configFile     = '/var/pushover/config.json';
+const configFileHost = '/mnt/qnap/linux/data/pushover/config.json';
 
 export default {
   async read() {
-    const config = await fsExtra.readJson(configFile);
+    let config;
+
+    try {
+      config = await fsExtra.readJson(configFile);
+    } catch(err) {
+      if(err.message.includes('no such file')) {
+        config = await fsExtra.readJson(configFileHost);
+      } else {
+        throw err;
+      }
+    }
 
     return config;
   },
