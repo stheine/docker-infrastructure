@@ -53,10 +53,11 @@ RUN \
   /usr/sbin/postconf -e 'relayhost = [smtp.strato.de]:465' && \
   /usr/sbin/postconf -e 'sender_canonical_maps = hash:/etc/postfix/creds/sender_canonical' && \
   /usr/sbin/postconf -e 'smtp_sasl_auth_enable = yes' && \
-  /usr/sbin/postconf -e 'smtp_sasl_security_options = noplaintext noanonymous' && \
+  /usr/sbin/postconf -e 'smtp_sasl_security_options = noanonymous' && \
   /usr/sbin/postconf -e 'smtp_sasl_password_maps = hash:/etc/postfix/creds/sasl_password' && \
   /usr/sbin/postconf -e 'smtp_tls_security_level = encrypt' && \
-  /usr/sbin/postconf -e 'smtp_tls_wrappermode = yes'
+  /usr/sbin/postconf -e 'smtp_tls_wrappermode = yes' && \
+  /usr/sbin/postconf -e 'smtp_use_tls = yes'
 #  && \
 #  /usr/sbin/postconf -e 'smtp_generic_maps = hash:/etc/postfix/generic' && \
 #  echo "root	wyse@heine7.de" >> /etc/postfix/generic && \
