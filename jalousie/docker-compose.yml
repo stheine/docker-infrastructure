@@ -10,21 +10,21 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /docker-data/pihole/etc_dnsmasq.d
+      device: /mnt/qnap_linux/data/pihole/etc_dnsmasq.d
       o: bind
 
   pihole_etc_lighttpd:
     driver: local
     driver_opts:
       type: none
-      device: /docker-data/pihole/etc_lighttpd
+      device: /mnt/qnap_linux/data/pihole/etc_lighttpd
       o: bind
 
   pihole_etc_pihole:
     driver: local
     driver_opts:
       type: none
-      device: /docker-data/pihole/etc_pihole
+      device: /mnt/qnap_linux/data/pihole/etc_pihole
       o: bind
 
   zigbee2mqtt:
