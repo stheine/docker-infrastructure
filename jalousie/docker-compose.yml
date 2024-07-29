@@ -60,6 +60,11 @@ services:
     depends_on:
       - pihole
 
+  noop:
+    restart: always
+    build: noop
+    hostname: wyse-noop
+
   pihole:
     restart: always
     image: pihole/pihole:latest
