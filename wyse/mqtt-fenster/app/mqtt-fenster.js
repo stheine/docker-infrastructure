@@ -3,7 +3,7 @@
 import os   from 'node:os';
 
 import _    from 'lodash';
-import mqtt from 'async-mqtt';
+import mqtt from 'mqtt';
 import ms   from 'ms';
 import {
   logger,
@@ -36,7 +36,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -50,7 +50,7 @@ process.on('SIGTERM', () => stopProcess());
 
 const triggerNotify = async function(raum) {
   logger.debug('notify', {raum});
-  await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+  await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
     message: `${raum} Fenster schliessen`,
     sound:   'none',
     title:   'Fenster',
@@ -85,7 +85,7 @@ const triggerNotify = async function(raum) {
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-fenster/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt-fenster/health/STATE`, 'OK');
   }, ms('1min'));
 
   mqttClient.on('message', async(topic, messageBuffer) => {
@@ -151,9 +151,9 @@ const triggerNotify = async function(raum) {
     }
   });
 
-  mqttClient.subscribe('vito/tele/SENSOR');
-  mqttClient.subscribe('Zigbee/FensterSensor Toilette');
-  mqttClient.subscribe('Zigbee/FensterSensor Kinderbad');
-  mqttClient.subscribe('Zigbee/FensterSensor Badezimmer');
-  mqttClient.subscribe('Zigbee/FensterSensor Sonoff 1');
+  mqttClient.subscribeAsync('vito/tele/SENSOR');
+  mqttClient.subscribeAsync('Zigbee/FensterSensor Toilette');
+  mqttClient.subscribeAsync('Zigbee/FensterSensor Kinderbad');
+  mqttClient.subscribeAsync('Zigbee/FensterSensor Badezimmer');
+  mqttClient.subscribeAsync('Zigbee/FensterSensor Sonoff 1');
 })();
