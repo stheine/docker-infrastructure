@@ -6,7 +6,7 @@
 
 - `rpi-imager`
 - `Raspberry Pi 3`
-- `Raspberry Pi OS (other) / Raspberry Pi OS (Legacy, 32-bit) Lite`
+- `Raspberry Pi OS (other) / Raspberry Pi OS (Bullseye, 32-bit) Lite`
 - Next
 - Edit settings
 - [x] Set hostname
@@ -29,14 +29,19 @@ sudo vi /boot/config.txt
 ```
 echo "# Enable the optional hardware interface, SPI
 dtparam=spi=on
+
+dtoverlay=disable-wifi
+dtoverlay=disable-bt
 ```
 
 ### Install NFS and vim
 
 ```
-sudo apt update
-sudo apt upgrade -y
+sudo apt update && \
+sudo apt upgrade -y && \
 sudo apt install -y nfs-common vim
+
+sudo reboot
 
 echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > .selected-editor
 
@@ -46,6 +51,17 @@ sudo mount -a
 
 echo "@reboot /bin/sleep 20 && /bin/mount -a" | sudo tee -a /var/spool/cron/crontabs/root >/dev/null
 ```
+
+### Prepare for git access
+
+```
+ssh-keygen
+
+cat ~/.ssh/id_rsa.pub
+```
+
+https://github.com/settings/keys
+Add the new SSH key into the git allowed SSH keys
 
 ### Install docker
 
@@ -64,17 +80,16 @@ sudo service docker restart
 ### Prepare for docker
 
 ```
-sudo mkdir /docker-data
-
 git config --global core.editor vim
 git config --global user.email stheine@arcor.de
 git config --global user.name 'Stefan Heine'
-git config pull.rebase false
 
 git clone git@github.com:stheine/docker-infrastructure.git
 ln -s docker-infrastructure/jalousie docker
 
 cp docker/docker_host_system__profile .profile
+
+# Log out and in
 
 cd ~/docker/jalousie-backend
 git clone git@github.com:stheine/jalousie-backend.git app/
@@ -90,9 +105,9 @@ docker compose build
 
 docker compose run --rm jalousie-backend npm install
 docker compose run --rm jalousie-io npm install
-docker compose run --rm jalousie-watchdog npm install
+docker compose run --rm watchdog npm install
 
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Check postfix
