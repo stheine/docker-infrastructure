@@ -232,26 +232,34 @@ volumes:
       device: /mnt/qnap/linux/data/muell
       o: bind
 
-  nextcloud:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/linux/data/nextcloud
+      device: /mnt/qnap/linux/data/nextcloud-aio
       o: bind
 
-  nextcloud-creds:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap/linux/data/nextcloud-creds
-      o: bind
-
-  nextcloud-database:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap/linux/data/nextcloud-database
-      o: bind
+#  nextcloud:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /mnt/qnap/linux/data/nextcloud
+#      o: bind
+#
+#  nextcloud-creds:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /mnt/qnap/linux/data/nextcloud-creds
+#      o: bind
+#
+#  nextcloud-database:
+#    driver: local
+#    driver_opts:
+#      type: none
+#      device: /mnt/qnap/linux/data/nextcloud-database
+#      o: bind
 
   paperless-consume:
     driver: local
@@ -789,37 +797,51 @@ services:
       - muell:/data
       - ./muell/app:/app
 
-  nextcloud-database:
-    image: mariadb:10.6
+  nextcloud-aio-mastercontainer:
+    image: nextcloud/all-in-one:latest
+    init: true
     restart: always
-    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    container_name: nextcloud-aio-mastercontainer
     volumes:
-      # - nextcloud-creds:/creds
-      - nextcloud-database:/var/lib/mysql
-    environment:
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      # - MYSQL_PASSWORD_FILE=/creds/mysql_password
-      # - MYSQL_ROOT_PASSWORD_FILE=/creds/mysql_root_password
-      - MYSQL_PASSWORD=abcdefg
-      - MYSQL_ROOT_PASSWORD=abcdefg
-
-  nextcloud:
-    image: nextcloud
-    restart: always
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - 6398:80
-    links:
-      - nextcloud-database
-    volumes:
-      # - nextcloud-creds:/creds
-      - nextcloud:/var/www/html
+      - 6398:8080
     environment:
-      - MYSQL_HOST=nextcloud-database
-      - MYSQL_DATABASE=nextcloud
-      - MYSQL_USER=nextcloud
-      # - MYSQL_PASSWORD_FILE=/creds/mysql_password
-      - MYSQL_PASSWORD=abcdefg
+      - APACHE_PORT=11000
+      - APACHE_IP_BINDING=0.0.0.0
+
+#  nextcloud-database:
+#    image: mariadb:10.6
+#    restart: always
+#    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+#    volumes:
+#      # - nextcloud-creds:/creds
+#      - nextcloud-database:/var/lib/mysql
+#    environment:
+#      - MYSQL_DATABASE=nextcloud
+#      - MYSQL_USER=nextcloud
+#      # - MYSQL_PASSWORD_FILE=/creds/mysql_password
+#      # - MYSQL_ROOT_PASSWORD_FILE=/creds/mysql_root_password
+#      - MYSQL_PASSWORD=abcdefg
+#      - MYSQL_ROOT_PASSWORD=abcdefg
+#
+#  nextcloud:
+#    image: nextcloud
+#    restart: always
+#    ports:
+#      - 6398:80
+#    links:
+#      - nextcloud-database
+#    volumes:
+#      # - nextcloud-creds:/creds
+#      - nextcloud:/var/www/html
+#    environment:
+#      - MYSQL_HOST=nextcloud-database
+#      - MYSQL_DATABASE=nextcloud
+#      - MYSQL_USER=nextcloud
+#      # - MYSQL_PASSWORD_FILE=/creds/mysql_password
+#      - MYSQL_PASSWORD=abcdefg
 
   nginx:
     restart: always
@@ -838,7 +860,7 @@ services:
       - homer
       - ladder
       - mediawiki
-      - nextcloud
+      - nextcloud-aio-mastercontainer
       - vaultwarden
 
   noop:
@@ -1036,8 +1058,6 @@ services:
       - vaultwarden:/data
     ports:
       - 8285:80
-    environment:
-      DOMAIN: "https://bitwarden.heine7.de"
 
   vaultwarden-backup:
     restart: always
