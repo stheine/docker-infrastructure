@@ -48,7 +48,7 @@ RUN \
 
 WORKDIR /source
 
-ARG DOVECOT_VERSION=2.3.21
+ARG DOVECOT_VERSION=2.3.21.1
 RUN \
   wget https://github.com/dovecot/core/archive/$DOVECOT_VERSION.tar.gz && \
   tar xf $DOVECOT_VERSION.tar.gz
