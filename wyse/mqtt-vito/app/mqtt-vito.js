@@ -13,7 +13,7 @@ import dayjs                 from 'dayjs';
 import fsExtra               from 'fs-extra';
 import isBetween             from 'dayjs/plugin/isBetween.js';
 import {logger}              from '@stheine/helpers';
-import mqtt                  from 'async-mqtt';
+import mqtt                  from 'mqtt';
 import ms                    from 'ms';
 import timezone              from 'dayjs/plugin/timezone.js';
 import utc                   from 'dayjs/plugin/utc.js';
@@ -47,7 +47,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -274,7 +274,7 @@ process.on('SIGTERM', () => stopProcess());
                   logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
                     `Sparmodus wegen ${sunnyHours} Stunden Sonne`);
 
-                  await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '1', {retain: true});
+                  await mqttClient.publishAsync('vito/cmnd/setHK1BetriebsartSpar', '1', {retain: true});
                 } else {
                   logger.info(`Heizung wartet auf Sparmodus wegen Sonne beginnend in ` +
                     `${sunnyHoursStartIn} Stunden`);
@@ -288,7 +288,7 @@ process.on('SIGTERM', () => stopProcess());
                 logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
                   `zurück zum Normalmodus wegen ${sunnyHours} Stunden Sonne`);
 
-                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
+                await mqttClient.publishAsync('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
               }
             } else {
               // logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
@@ -298,7 +298,7 @@ process.on('SIGTERM', () => stopProcess());
                 logger.info(`Heizung (aussen: ${_.round(tempAussen, 1)}°C, innen: ${tempInnen}°C) ` +
                   `zurück zum Normalmodus wegen ${sunnyHours} Stunden Sonne`);
 
-                await mqttClient.publish('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
+                await mqttClient.publishAsync('vito/cmnd/setHK1BetriebsartSpar', '0', {retain: true});
               }
             }
           }
@@ -334,12 +334,12 @@ process.on('SIGTERM', () => stopProcess());
           // Check lambda - to detect the Brenner Beginn
           if(drehzahl && !status.lastDrehzahl) {
             logger.debug('Brenner Beginn');
-            await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster zu (falls es schon auf war)
+            await mqttClient.publishAsync('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster zu (falls es schon auf war)
             await delay(ms('20s'));
-            await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power1', '1'); // Fenster auf
+            await mqttClient.publishAsync('tasmota/fenstermotor-heizungskeller/cmnd/Power1', '1'); // Fenster auf
           } else if(!drehzahl && status.lastDrehzahl) {
             logger.debug('Brenner Ende');
-            await mqttClient.publish('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster auf
+            await mqttClient.publishAsync('tasmota/fenstermotor-heizungskeller/cmnd/Power2', '1'); // Fenster auf
           }
           status.lastDrehzahl = drehzahl;
 
@@ -351,7 +351,7 @@ process.on('SIGTERM', () => stopProcess());
             const notifyTitle   = `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`;
             const notifyMessage = `Heizung Kessel überhitzt (tempKessel = ${tempKessel}°C)`;
 
-            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
               sound:   'siren',
               html:    1,
               message: notifyMessage,
@@ -381,12 +381,12 @@ process.on('SIGTERM', () => stopProcess());
 
           // Check if this error/timestamp is already reported
           if(status.reportedFehlerDateTime !== fehlerDateTime) {
-            await mqttClient.publish(`vito/tele/FEHLER`, JSON.stringify({code, dateTime: fehlerDateTime}));
+            await mqttClient.publishAsync(`vito/tele/FEHLER`, JSON.stringify({code, dateTime: fehlerDateTime}));
 
             const notifyTitle   = `Heizung Störung (${code})`;
             const notifyMessage = `Störung ${code}: ${fehlerDateTime}`;
 
-            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
               sound:   'siren',
               html:    1,
               message: notifyMessage,
@@ -450,7 +450,7 @@ process.on('SIGTERM', () => stopProcess());
               const notifyUrl = 'https://heine7.de/vito/pelletsNachschub.sh';
               const notifyUrlTitle = 'Pellets Nachschub';
 
-              await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+              await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
                 sound:   'none',
                 html:    1,
                 message: notifyMessage,
@@ -485,7 +485,7 @@ process.on('SIGTERM', () => stopProcess());
             const notifyTitle    = 'Asche leeren';
             const notifyMessage  = `<p>Verbrauch seit letzter Leerung: ${verbrauchSeitLetzterLeerung} kg</p>`;
 
-            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
               sound:     'none',
               html:      1,
               message:   notifyMessage,
@@ -534,7 +534,7 @@ process.on('SIGTERM', () => stopProcess());
               `<br>` +
               `system: ${nowCompare}`;
 
-            await mqttClient.publish(`mqtt-notify/notify`, JSON.stringify({
+            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
               sound:   'none',
               html:    1,
               message: notifyMessage,
@@ -557,7 +557,7 @@ process.on('SIGTERM', () => stopProcess());
           // #######################################################################################
           // Publish to mqtt
           if(!_.isEmpty(stats)) {
-            await mqttClient.publish('vito/tele/STATS', JSON.stringify(stats), {retain: true});
+            await mqttClient.publishAsync('vito/tele/STATS', JSON.stringify(stats), {retain: true});
           }
 
           break;
@@ -582,14 +582,14 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  await mqttClient.subscribe('vito/tele/SENSOR');
-  await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
+  await mqttClient.subscribeAsync('vito/tele/SENSOR');
+  await mqttClient.subscribeAsync('Wohnzimmer/tele/SENSOR');
 
-  await mqttClient.subscribe('mqtt-vito/ascheGeleert');    // Subscribe the two SENSORs first
-  await mqttClient.subscribe('mqtt-vito/pelletsSpeicher'); // Subscribe the two SENSORs first
-  await mqttClient.subscribe('solcast/forecasts');         // Subscribe the two SENSORs first
+  await mqttClient.subscribeAsync('mqtt-vito/ascheGeleert');    // Subscribe the two SENSORs first
+  await mqttClient.subscribeAsync('mqtt-vito/pelletsSpeicher'); // Subscribe the two SENSORs first
+  await mqttClient.subscribeAsync('solcast/forecasts');         // Subscribe the two SENSORs first
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-vito/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt-vito/health/STATE`, 'OK');
   }, ms('1min'));
 })();

@@ -9,7 +9,7 @@ import cron             from 'croner';
 import dayjs            from 'dayjs';
 import icsToJsonDefault from 'ics-to-json-extended';
 import {logger}         from '@stheine/helpers';
-import mqtt             from 'async-mqtt';
+import mqtt             from 'mqtt';
 import ms               from 'ms';
 
 const icsToJson = icsToJsonDefault.default;
@@ -57,7 +57,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -77,19 +77,19 @@ const checkMuell = async function() {
   // logger.info(leerungenMorgen);
 
   if(leerungenMorgen.length && now.hour() >= reportHour) {
-    await mqttClient.publish(topicMorgen, JSON.stringify(leerungenMorgen), {retain: true});
+    await mqttClient.publishAsync(topicMorgen, JSON.stringify(leerungenMorgen), {retain: true});
   } else {
-    await mqttClient.publish(topicMorgen, null, {retain: true});
+    await mqttClient.publishAsync(topicMorgen, null, {retain: true});
   }
 
   const leerungenZukunftProSorte = _.uniqBy(leerungenZukunft, 'summary');
 
   // logger.info(leerungenZukunftProSorte);
 
-  await mqttClient.publish(topicNaechste, JSON.stringify(leerungenZukunftProSorte), {retain: true});
+  await mqttClient.publishAsync(topicNaechste, JSON.stringify(leerungenZukunftProSorte), {retain: true});
 
   if(leerungenZukunft.length < 10) {
-    await mqttClient.publish(topicKalender, JSON.stringify({TODO: 'Bitte Kalender aktualisieren!'}));
+    await mqttClient.publishAsync(topicKalender, JSON.stringify({TODO: 'Bitte Kalender aktualisieren!'}));
   }
 };
 
@@ -106,7 +106,7 @@ process.on('SIGTERM', () => stopProcess());
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`muell/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`muell/health/STATE`, 'OK');
   }, ms('1min'));
 
   // #########################################################################
@@ -126,6 +126,6 @@ process.on('SIGTERM', () => stopProcess());
 
   // Clean
   cron(`0 0  ${cleanHour} * * *`, {timezone: 'Europe/Berlin'}, async() => {
-    await mqttClient.publish(topicMorgen, null, {retain: true});
+    await mqttClient.publishAsync(topicMorgen, null, {retain: true});
   });
 })();

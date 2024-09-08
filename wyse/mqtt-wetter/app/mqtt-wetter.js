@@ -5,7 +5,7 @@ import _          from 'lodash';
 import axios      from 'axios';
 import check      from 'check-types-2';
 import {logger}   from '@stheine/helpers';
-import mqtt       from 'async-mqtt';
+import mqtt       from 'mqtt';
 import ms         from 'ms';
 
 import configFile from './configFile.js';
@@ -33,7 +33,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -209,7 +209,7 @@ const handleWeatherDWD = async function() {
 //    temp:  _.map(nightHourly, 'temp'),
 //  });
 
-  await mqttClient.publish('wetter/dwd/INFO', JSON.stringify({
+  await mqttClient.publishAsync('wetter/dwd/INFO', JSON.stringify({
     current,
     forecast,
 //    dayMaxWind,
@@ -333,7 +333,7 @@ const handleWeather = async function() {
 //    temp:  _.map(nightHourly, 'temp'),
 //  });
 
-  await mqttClient.publish('wetter/openweather/INFO', JSON.stringify({
+  await mqttClient.publishAsync('wetter/openweather/INFO', JSON.stringify({
     ...weather,
     dayMaxWind,
     dayMinTemp,
@@ -349,13 +349,13 @@ const handleWeather = async function() {
 const handleMaxSun = async function() {
   const maxSun = await getMaxSun({suncalcLocation: config.suncalcLocation});
 
-  await mqttClient.publish('maxSun/INFO', JSON.stringify(maxSun), {retain: true});
+  await mqttClient.publishAsync('maxSun/INFO', JSON.stringify(maxSun), {retain: true});
 };
 
 const handleSunTimes = async function() {
   const sunTimes = await getSunTimes({suncalcLocation: config.suncalcLocation});
 
-  await mqttClient.publish('sunTimes/INFO', JSON.stringify(sunTimes), {retain: true});
+  await mqttClient.publishAsync('sunTimes/INFO', JSON.stringify(sunTimes), {retain: true});
 };
 
 (async() => {
@@ -383,7 +383,7 @@ const handleSunTimes = async function() {
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-wetter/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt-wetter/health/STATE`, 'OK');
   }, ms('1min'));
 
   setInterval(handleMaxSun, ms('4 hours'));

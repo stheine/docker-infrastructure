@@ -7,7 +7,7 @@ import os       from 'node:os';
 import _        from 'lodash';
 import io       from 'socket.io-client'; // https://socket.io/docs/v3/migrating-from-2-x-to-3-0/
 import {logger} from '@stheine/helpers';
-import mqtt     from 'async-mqtt';
+import mqtt     from 'mqtt';
 import ms       from 'ms';
 
 // ###########################################################################
@@ -28,7 +28,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -246,10 +246,10 @@ const getQueue = async function() {
     }
   });
 
-  await mqttClient.subscribe('volumio/cmnd/#');
+  await mqttClient.subscribeAsync('volumio/cmnd/#');
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-volumio/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt-volumio/health/STATE`, 'OK');
   }, ms('1min'));
 
   // #########################################################################
@@ -267,7 +267,7 @@ const getQueue = async function() {
   });
 
   volumio.on('pushState', data => {
-    mqttClient.publish('volumio/stat/pushState', JSON.stringify(data), {retain: true});
+    mqttClient.publishAsync('volumio/stat/pushState', JSON.stringify(data), {retain: true});
 
     // logger.info('pushState', data);
   });

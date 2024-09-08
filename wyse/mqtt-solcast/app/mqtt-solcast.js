@@ -4,7 +4,7 @@ import os       from 'node:os';
 
 import _        from 'lodash';
 import {logger} from '@stheine/helpers';
-import mqtt     from 'async-mqtt';
+import mqtt     from 'mqtt';
 import ms       from 'ms';
 
 import configFile            from './configFile.js';
@@ -29,7 +29,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -45,7 +45,7 @@ const handleSolcast = async function() {
   try {
     const forecasts = await getSolcastForecasts(config);
 
-    await mqttClient.publish('solcast/forecasts', JSON.stringify(forecasts), {retain: true});
+    await mqttClient.publishAsync('solcast/forecasts', JSON.stringify(forecasts), {retain: true});
 
     status = 'OK';
   } catch(err) {
@@ -80,12 +80,12 @@ const handleSolcast = async function() {
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-solcast/health/STATE`, status);
+    await mqttClient.publishAsync(`mqtt-solcast/health/STATE`, status);
   }, ms('1 minute'));
 
   setInterval(handleSolcast, ms('30 minutes'));
 
   // Trigger once on startup
   await handleSolcast();
-  await mqttClient.publish(`mqtt-solcast/health/STATE`, status);
+  await mqttClient.publishAsync(`mqtt-solcast/health/STATE`, status);
 })();

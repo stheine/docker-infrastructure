@@ -11,7 +11,7 @@ import os                    from 'node:os';
 import _       from 'lodash';
 import dayjs   from 'dayjs';
 import fsExtra from 'fs-extra';
-import mqtt    from 'async-mqtt';
+import mqtt    from 'mqtt';
 import ms      from 'ms';
 import utc     from 'dayjs/plugin/utc.js';
 import {
@@ -48,7 +48,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -195,9 +195,9 @@ process.on('SIGTERM', () => stopProcess());
             return;
           }
 
-          await mqttClient.publish(`tasmota/espstrom/cmnd/LedPower1`, '1');
+          await mqttClient.publishAsync(`tasmota/espstrom/cmnd/LedPower1`, '1');
           setTimeout(async() => {
-            await mqttClient.publish(`tasmota/espstrom/cmnd/LedPower1`, '0');
+            await mqttClient.publishAsync(`tasmota/espstrom/cmnd/LedPower1`, '0');
           }, ms('0.1 seconds'));
 
           // {SML: {Einspeisung, Verbrauch, Leistung}}
@@ -226,7 +226,7 @@ process.on('SIGTERM', () => stopProcess());
             if(wallboxLaedt) {
               // Einspeisung(W) / Ladespannung(V) * 1000 => mA;
               wallboxStrom = Math.max(wallboxStrom - zaehlerLeistung / 410 * 1000, 0);
-              await mqttClient.publish(`Wallbox/evse/current_limit`, JSON.stringify({current: wallboxStrom}));
+              await mqttClient.publishAsync(`Wallbox/evse/current_limit`, JSON.stringify({current: wallboxStrom}));
             }
 
             payload.gesamtEinspeisung  = gesamtEinspeisung;
@@ -241,7 +241,7 @@ process.on('SIGTERM', () => stopProcess());
             verbrauchHaus,
           }, {spaces: 2});
 
-          await mqttClient.publish(`strom/tele/SENSOR`, JSON.stringify(payload));
+          await mqttClient.publishAsync(`strom/tele/SENSOR`, JSON.stringify(payload));
           break;
         }
 
@@ -324,7 +324,7 @@ process.on('SIGTERM', () => stopProcess());
               if(!spuelmaschineInterval) {
                 logger.info('Spülmaschine OFF. Start waiting for Einspeisung.');
 
-                await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
+                await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
 
                 spuelmaschineInterval = setInterval(async() => {
                   if(zaehlerLeistung === null || batteryLeistung === null || batteryLevel === null) {
@@ -348,7 +348,7 @@ process.on('SIGTERM', () => stopProcess());
                   }
 
                   if(triggerOn) {
-                    await mqttClient.publish(`tasmota/spuelmaschine/cmnd/POWER`, 'ON');
+                    await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/POWER`, 'ON');
                   }
                 }, ms('5 minutes'));
               }
@@ -358,7 +358,7 @@ process.on('SIGTERM', () => stopProcess());
               if(spuelmaschineInterval) {
                 logger.info('Spülmaschine ON. Finish waiting.');
 
-                await mqttClient.publish(`tasmota/spuelmaschine/cmnd/LedPower2`, '0');
+                await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/LedPower2`, '0');
 
                 clearInterval(spuelmaschineInterval);
 
@@ -405,7 +405,7 @@ process.on('SIGTERM', () => stopProcess());
 //                    zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss,
 //                    solcastHighPvHours, vitoBetriebsart});
 
-                  await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'ON');
+                  await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'ON');
                 }
               }, ms('15s'));
               break;
@@ -431,7 +431,7 @@ process.on('SIGTERM', () => stopProcess());
                   logger.info('Geringe Einspeisung. Beende Speicherheizung.',
                     {zaehlerLeistung, batteryLeistung, batteryLevel, aktuellerUeberschuss, solcastHighPvHours});
 
-                  await mqttClient.publish(`tasmota/heizstab/cmnd/POWER`, 'OFF');
+                  await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'OFF');
                 }
               }, ms('15 seconds'));
               break;
@@ -448,7 +448,7 @@ process.on('SIGTERM', () => stopProcess());
               if(!waschmaschineInterval) {
                 logger.info('Waschmaschine OFF. Start waiting for Einspeisung.');
 
-                await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
+                await mqttClient.publishAsync(`tasmota/waschmaschine/cmnd/LedPower2`, '1');
 
                 waschmaschineInterval = setInterval(async() => {
                   if(zaehlerLeistung === null || batteryLeistung === null || batteryLevel === null) {
@@ -472,7 +472,7 @@ process.on('SIGTERM', () => stopProcess());
                   }
 
                   if(triggerOn) {
-                    await mqttClient.publish(`tasmota/waschmaschine/cmnd/POWER`, 'ON');
+                    await mqttClient.publishAsync(`tasmota/waschmaschine/cmnd/POWER`, 'ON');
                   }
                 }, ms('5 minutes'));
               }
@@ -482,7 +482,7 @@ process.on('SIGTERM', () => stopProcess());
               if(waschmaschineInterval) {
                 logger.info('Waschmaschine ON. Finish waiting.');
 
-                await mqttClient.publish(`tasmota/waschmaschine/cmnd/LedPower2`, '0');
+                await mqttClient.publishAsync(`tasmota/waschmaschine/cmnd/LedPower2`, '0');
 
                 clearInterval(waschmaschineInterval);
 
@@ -580,34 +580,34 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  await mqttClient.publish('tasmota/espstrom/cmnd/TelePeriod', '10'); // MQTT Status every 10 seconds
+  await mqttClient.publishAsync('tasmota/espstrom/cmnd/TelePeriod', '10'); // MQTT Status every 10 seconds
 
-  await mqttClient.publish('tasmota/spuelmaschine/cmnd/LedState', '0');
-  await mqttClient.publish('tasmota/spuelmaschine/cmnd/LedMask', '0');
-  await mqttClient.publish('tasmota/spuelmaschine/cmnd/SetOption31', '1');
-  await mqttClient.publish('tasmota/spuelmaschine/cmnd/LedPower1', '0'); // Blue/Link off
+  await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedState', '0');
+  await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedMask', '0');
+  await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/SetOption31', '1');
+  await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedPower1', '0'); // Blue/Link off
 
-  await mqttClient.publish('tasmota/waschmaschine/cmnd/LedState', '0');
-  await mqttClient.publish('tasmota/waschmaschine/cmnd/LedMask', '0');
-  await mqttClient.publish('tasmota/waschmaschine/cmnd/SetOption31', '1');
-  await mqttClient.publish('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
+  await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedState', '0');
+  await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedMask', '0');
+  await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/SetOption31', '1');
+  await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
-  await mqttClient.subscribe('maxSun/INFO');
-  await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
-  await mqttClient.subscribe('solcast/forecasts');
-  await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/spuelmaschine/stat/POWER');
-  await mqttClient.subscribe('tasmota/waschmaschine/stat/POWER');
-  await mqttClient.subscribe('vito/tele/SENSOR');
-  await mqttClient.subscribe('Wallbox/evse/state');
+  await mqttClient.subscribeAsync('maxSun/INFO');
+  await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
+  await mqttClient.subscribeAsync('solcast/forecasts');
+  await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/spuelmaschine/stat/POWER');
+  await mqttClient.subscribeAsync('tasmota/waschmaschine/stat/POWER');
+  await mqttClient.subscribeAsync('vito/tele/SENSOR');
+  await mqttClient.subscribeAsync('Wallbox/evse/state');
 
   while(_.isNull(vitoBetriebsart)) {
     await delay(ms('100ms'));
   }
 
-  await mqttClient.subscribe('tasmota/heizstab/stat/POWER');
+  await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-strom/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt-strom/health/STATE`, 'OK');
   }, ms('1min'));
 })();

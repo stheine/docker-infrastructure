@@ -4,7 +4,7 @@ import os         from 'node:os';
 
 import _          from 'lodash';
 import {logger}   from '@stheine/helpers';
-import mqtt       from 'async-mqtt';
+import mqtt       from 'mqtt';
 import ms         from 'ms';
 
 import configFile from './configFile.js';
@@ -28,7 +28,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -64,7 +64,7 @@ process.on('SIGTERM', () => stopProcess());
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt-notify/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt-notify/health/STATE`, 'OK');
   }, ms('1min'));
 
   mqttClient.on('message', async(topic, messageBuffer) => {
@@ -94,5 +94,5 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  mqttClient.subscribe('mqtt-notify/notify')
+  mqttClient.subscribeAsync('mqtt-notify/notify')
 })();

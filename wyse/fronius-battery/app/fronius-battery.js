@@ -13,7 +13,7 @@ import check                 from 'check-types-2';
 import cron                  from 'node-cron';
 import dayjs                 from 'dayjs';
 import fsExtra               from 'fs-extra';
-import mqtt                  from 'async-mqtt';
+import mqtt                  from 'mqtt';
 import ms                    from 'ms';
 import promiseAllByKeys      from 'promise-results/allKeys.js';
 import Ringbuffer            from '@stheine/ringbufferjs';
@@ -60,7 +60,7 @@ const updateFroniusBatteryStatus = async function(set) {
   await lock.acquire('fronius-battery.json', async() => {
     froniusBatteryStatus = {...froniusBatteryStatus, ...set};
 
-    await mqttClient.publish('Fronius/solar/tele/STATUS', JSON.stringify(froniusBatteryStatus),
+    await mqttClient.publishAsync('Fronius/solar/tele/STATUS', JSON.stringify(froniusBatteryStatus),
       {retain: true});
 
     await fsPromises.copyFile('/var/fronius/fronius-battery.json',
@@ -103,7 +103,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -589,14 +589,14 @@ const handleRate = async function({capacityWh, log = false}) {
     }
   });
 
-  await mqttClient.subscribe('Fronius/solar/cmnd');
-  await mqttClient.subscribe('maxSun/INFO');
-  await mqttClient.subscribe('solcast/forecasts');
-  await mqttClient.subscribe('strom/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
+  await mqttClient.subscribeAsync('Fronius/solar/cmnd');
+  await mqttClient.subscribeAsync('maxSun/INFO');
+  await mqttClient.subscribeAsync('solcast/forecasts');
+  await mqttClient.subscribeAsync('strom/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`fronius-battery/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`fronius-battery/health/STATE`, 'OK');
   }, ms('1min'));
 
   // #########################################################################
@@ -636,7 +636,7 @@ const handleRate = async function({capacityWh, log = false}) {
 
       await updateFroniusBatteryStatus(newFroniusBatteryStatus);
 
-      await mqttClient.publish('Fronius/solar/tele/SENSOR', JSON.stringify({
+      await mqttClient.publishAsync('Fronius/solar/tele/SENSOR', JSON.stringify({
         time: Date.now(),
         battery: {
           powerIncoming: resultsMppt['3_DCW'],
@@ -728,7 +728,7 @@ const handleRate = async function({capacityWh, log = false}) {
 //
 //      // console.log(SML);
 //
-//      await mqttClient.publish('tasmota/espstrom/tele/SENSOR', JSON.stringify({SML}));
+//      await mqttClient.publishAsync('tasmota/espstrom/tele/SENSOR', JSON.stringify({SML}));
 //    } catch(err) {
 //      logger.error(`Failed to publish smartMeter: ${err.message}`);
 //    }

@@ -12,11 +12,11 @@
   "dependencies": {
     "@stheine/helpers": "1.0.3",
     "async-lock": "1.4.1",
-    "async-mqtt": "2.6.3",
-    "dayjs": "1.11.10",
-    "execa": "8.0.1",
+    "dayjs": "1.11.13",
+    "execa": "9.3.1",
     "graphviz": "0.0.9",
     "lodash": "4.17.21",
+    "mqtt": "5.10.1",
     "ms": "2.1.3"
   }
 }

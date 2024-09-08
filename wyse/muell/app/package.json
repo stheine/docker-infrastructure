@@ -11,11 +11,11 @@
   "license": "ISC",
   "dependencies": {
     "@stheine/helpers": "1.0.3",
-    "async-mqtt": "2.6.3",
-    "croner": "8.0.1",
-    "dayjs": "1.11.10",
+    "croner": "8.1.1",
+    "dayjs": "1.11.13",
     "ics-to-json-extended": "1.1.4",
     "lodash": "4.17.21",
+    "mqtt": "5.10.1",
     "ms": "2.1.3"
   }
 }

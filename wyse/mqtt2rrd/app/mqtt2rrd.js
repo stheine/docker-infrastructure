@@ -8,7 +8,7 @@ import os         from 'node:os';
 
 import graphviz   from 'graphviz';
 import {logger}   from '@stheine/helpers';
-import mqtt       from 'async-mqtt';
+import mqtt       from 'mqtt';
 import ms         from 'ms';
 
 import rrdUpdate  from './rrdtool.js';
@@ -30,7 +30,7 @@ const stopProcess = async function() {
   }
 
   if(mqttClient) {
-    await mqttClient.end();
+    await mqttClient.endAsync();
     mqttClient = undefined;
   }
 
@@ -471,27 +471,27 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  await mqttClient.subscribe('esp32-wasser/zaehlerstand/json');
-  await mqttClient.subscribe('FritzBox/tele/SENSOR');
-  await mqttClient.subscribe('FritzBox/speedtest/result');
-  await mqttClient.subscribe('Fronius/solar/tele/SENSOR');
-  await mqttClient.subscribe('JalousieBackend/tele/SENSOR');
-  await mqttClient.subscribe('Regen/tele/SENSOR');
-  await mqttClient.subscribe('Sonne/tele/SENSOR');
-  await mqttClient.subscribe('strom/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/espstrom/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/espco2/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/espco2klein/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/espfeinstaub/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/heizstab/tele/SENSOR');
-  await mqttClient.subscribe('tasmota/heizstab/tele/STATE');
-  await mqttClient.subscribe('vito/tele/SENSOR');
-  await mqttClient.subscribe('Wind/tele/SENSOR');
-  await mqttClient.subscribe('Wohnzimmer/tele/SENSOR');
-  await mqttClient.subscribe('Zigbee/bridge/response/networkmap');
-  await mqttClient.subscribe('Zigbee/LuftSensor Büro');
+  await mqttClient.subscribeAsync('esp32-wasser/zaehlerstand/json');
+  await mqttClient.subscribeAsync('FritzBox/tele/SENSOR');
+  await mqttClient.subscribeAsync('FritzBox/speedtest/result');
+  await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
+  await mqttClient.subscribeAsync('JalousieBackend/tele/SENSOR');
+  await mqttClient.subscribeAsync('Regen/tele/SENSOR');
+  await mqttClient.subscribeAsync('Sonne/tele/SENSOR');
+  await mqttClient.subscribeAsync('strom/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/espco2/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/espco2klein/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/espfeinstaub/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/heizstab/tele/STATE');
+  await mqttClient.subscribeAsync('vito/tele/SENSOR');
+  await mqttClient.subscribeAsync('Wind/tele/SENSOR');
+  await mqttClient.subscribeAsync('Wohnzimmer/tele/SENSOR');
+  await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
+  await mqttClient.subscribeAsync('Zigbee/LuftSensor Büro');
 
   healthInterval = setInterval(async() => {
-    await mqttClient.publish(`mqtt2rrd/health/STATE`, 'OK');
+    await mqttClient.publishAsync(`mqtt2rrd/health/STATE`, 'OK');
   }, ms('1min'));
 })();

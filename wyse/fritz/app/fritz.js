@@ -9,7 +9,7 @@ import check        from 'check-types-2';
 import {execa}      from 'execa';
 import Fritzbox     from 'tr-064-async';
 import {logger}     from '@stheine/helpers';
-import mqtt         from 'async-mqtt';
+import mqtt         from 'mqtt';
 import ms           from 'ms';
 import {
   CallMonitor,
@@ -43,7 +43,7 @@ const stopProcess = async function() {
   callMonitor.end();
   callMonitor = undefined;
 
-  await mqttClient.end();
+  await mqttClient.endAsync();
   mqttClient = undefined;
 
   logger.info(`Shutdown -------------------------------------------------`);
@@ -111,7 +111,7 @@ process.on('SIGTERM', () => stopProcess());
         };
 
         if(mqttClient) {
-          await mqttClient.publish('control-ui/cmnd/dialog', JSON.stringify({
+          await mqttClient.publishAsync('control-ui/cmnd/dialog', JSON.stringify({
             header: 'Telefon',
             data:   [callerName || caller],
           }));
@@ -157,7 +157,7 @@ process.on('SIGTERM', () => stopProcess());
     // logger.info('Publish to mqtt', {topic, payload});
 
     if(mqttClient) {
-      await mqttClient.publish(topic, JSON.stringify(payload));
+      await mqttClient.publishAsync(topic, JSON.stringify(payload));
     }
   });
 
@@ -235,7 +235,7 @@ process.on('SIGTERM', () => stopProcess());
 //    logger.info('MQTT publish', tele);
 
     if(mqttClient) {
-      await mqttClient.publish(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
+      await mqttClient.publishAsync(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
     }
   }, ms('20 seconds'));
 
@@ -280,7 +280,7 @@ process.on('SIGTERM', () => stopProcess());
     } while(retries && (!download || !upload));
 
     if(mqttClient && stdout) {
-      await mqttClient.publish(`FritzBox/speedtest/result`, JSON.stringify({download, upload}));
+      await mqttClient.publishAsync(`FritzBox/speedtest/result`, JSON.stringify({download, upload}));
     }
   };
 
