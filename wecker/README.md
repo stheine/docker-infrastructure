@@ -1,5 +1,9 @@
 # docker setup for the `wecker` raspi
 
+# WARNING, conflict with pigpio
+
+https://github.com/joan2937/pigpio/issues/152
+
 ## Raspberry PI OS
 
 2024, Raspbian 11, bullseye
@@ -34,11 +38,12 @@ ssh-keygen
 
 ### Special hardware support
 
-/boot/config.txt
+/boot/firmware/config.txt
 
 ```
 # Enable Hifiberry Miniamp
 dtoverlay=hifiberry-dac
+dtparam=audio=on
 
 # Enable the optional hardware interfaces
 dtparam=i2c1=on
@@ -59,6 +64,23 @@ dtoverlay=pi3-disable-bt
 [pi4]
 # Disable Bluetooth
 dtoverlay=pi3-disable-bt
+```
+
+```
+vi /etc/modules
+```
+
+```
+i2c-dev
+```
+
+Reboot
+
+```
+sudo apt install -y i2c-tools
+
+i2cdetect -y 1
+# Should indidcate device on 3c
 ```
 
 ### Swap
@@ -138,17 +160,17 @@ Logout & Login again
 ```
 cd docker
 
-docker-compose build wecker
-docker-compose run wecker npm install
+docker compose build wecker
+docker compose run --rm wecker npm install
 
-docker-compose build watchdog
-docker-compose run watchdog npm install
+docker compose build watchdog
+docker compose run --rm watchdog npm install
 
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Check wecker
 
 ```
-docker-compose logs --tail 10 --follow wecker
+docker compose logs --tail 10 --follow wecker
 ```
