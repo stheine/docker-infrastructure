@@ -26,7 +26,7 @@ import sunspec       from './sunspec_map_inverter.js';
     try {
       setRate = rate * 100 * 100;
 
-      await inverter.writeRegister('InWRte', [setRate]); // rate% von 5120W => max Ladeleistung
+      await inverter.writeRegister('InWRte', [setRate]); // rate% von max Ladeleistung
     } catch(err) {
       throw new Error(`Failed writing battery charge rate ${setRate}: ${err.message}`);
     }

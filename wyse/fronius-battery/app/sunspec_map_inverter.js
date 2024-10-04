@@ -252,7 +252,7 @@ const sunspecMap = [{
   start:  40151,
   end:    40151,
   type:   'uint16',
-  expect: 5120,
+  expect: 7680,
   scale:  'WHRtg_SF',
 }, {
   name:   'WHRtg_SF',
