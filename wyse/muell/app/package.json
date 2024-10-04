@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@stheine/helpers": "1.0.3",
-    "croner": "8.1.1",
+    "croner": "8.1.2",
     "dayjs": "1.11.13",
     "ics-to-json-extended": "1.1.4",
     "lodash": "4.17.21",
