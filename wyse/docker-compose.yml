@@ -532,6 +532,8 @@ services:
 #       to detect the upnp server.
   gerbera-filme:
     restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     image: gerbera/gerbera:latest
     hostname: wyse-filme
     network_mode: host
@@ -543,6 +545,8 @@ services:
 
 ##  gerbera-fotos:
 ##    restart: always
+##    labels:
+##      - "com.centurylinklabs.watchtower.enable=true"
 ##    image: gerbera/gerbera:latest
 ##    hostname: wyse-fotos
 ##    network_mode: host
@@ -554,6 +558,8 @@ services:
 
   gerbera-kinder-filme:
     restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     image: gerbera/gerbera:latest
     hostname: wyse-kinder-filme
     network_mode: host
@@ -565,6 +571,8 @@ services:
 
 ##  gerbera-kinder-cds:
 ##    restart: always
+##    labels:
+##      - "com.centurylinklabs.watchtower.enable=true"
 ##    image: gerbera/gerbera:latest
 ##    hostname: wyse-kinder-cds
 ##    network_mode: host
@@ -576,6 +584,8 @@ services:
 
   gerbera-musik:
     restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     image: gerbera/gerbera:latest
     hostname: wyse-gerbera-musik
     network_mode: host
@@ -587,6 +597,8 @@ services:
 
 ##  gerbera-video:
 ##    restart: always
+##    labels:
+##      - "com.centurylinklabs.watchtower.enable=true"
 ##    image: gerbera/gerbera:latest
 ##    hostname: wyse-gerbera-video
 ##    network_mode: host
