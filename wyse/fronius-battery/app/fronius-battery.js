@@ -41,6 +41,7 @@ let   froniusInterval;
 const hostname = os.hostname();
 
 let   healthInterval;
+let   heizstabLeistung = null;
 let   inverter;
 let   lastLog;
 let   lastRate;
@@ -266,7 +267,7 @@ const getBatteryRate = function({capacityWh, chargeState, log}) {
         capacityWh,
         watt: _.max([
           capacityWh * 0.1,                                                // At least 0.1C
-          maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit, // Over the limit
+          maxDcPower + 10 - _.max([0, momentanLeistung + heizstabLeistung]) - config.dcLimit, // Over the limit
         ]),
       });
     } else if(highPvHours > 4) {
@@ -278,7 +279,7 @@ const getBatteryRate = function({capacityWh, chargeState, log}) {
         watt: _.min([
           _.max([
             capacityWh * 0.1,                                                // At least 0.1C
-            maxDcPower + 10 - _.max([0, momentanLeistung]) - config.dcLimit, // Over the limit
+            maxDcPower + 10 - _.max([0, momentanLeistung + heizstabLeistung]) - config.dcLimit, // Over the limit
             toChargeWh / highPvHours,                                        // Remaining by highPvHours
           ]),
           toChargeWh / (limitPvHours || 1),                                  // Remaining by limitPvHours
@@ -342,6 +343,7 @@ const getBatteryRate = function({capacityWh, chargeState, log}) {
       maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
       maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
       momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
+      heizstabLeistung: `${_.round(heizstabLeistung / 1000, 1)}kW`,
       chargeState:      `${chargeState}%`,
       toCharge:         `${_.round(toChargeWh / 1000, 1)}kWh`,
       demandOvernight:  `${_.round(demandOvernightWh / 1000, 1)}kWh`,
@@ -407,7 +409,7 @@ const handleRate = async function({capacityWh, log = false}) {
     try {
       setRate = _.round(rate * 100 * 100);
 
-      await inverter.writeRegister('InWRte', [setRate]); // rate% von 5120W => max Ladeleistung
+      await inverter.writeRegister('InWRte', [setRate]); // rate% von max Ladeleistung
     } catch(err) {
       throw new Error(`Failed writing battery charge rate ${setRate}: ${err.message}`);
     }
@@ -531,7 +533,13 @@ const handleRate = async function({capacityWh, log = false}) {
     const messageRaw = messageBuffer.toString();
 
     try {
-      const message = JSON.parse(messageRaw);
+      let message;
+
+      try {
+        message = JSON.parse(messageRaw);
+      } catch{
+        // ignore
+      }
 
       switch(topic) {
         case 'Fronius/solar/cmnd':
@@ -580,12 +588,35 @@ const handleRate = async function({capacityWh, log = false}) {
           break;
         }
 
+        case 'tasmota/heizstab/stat/POWER': {
+          switch(messageRaw) {
+            case 'OFF':
+              heizstabLeistung = 0;
+              break;
+
+            case 'ON':
+              if(!heizstabLeistung) {
+                heizstabLeistung = 2000;
+              }
+              break;
+
+            default:
+              logger.error(`Unhandled message '${topic}'`, messageRaw);
+              break;
+          }
+          break;
+        }
+
+        case 'tasmota/heizstab/tele/SENSOR':
+          heizstabLeistung = message.ENERGY.Power;
+          break;
+
         default:
           logger.error(`Unhandled topic '${topic}'`, message);
           break;
       }
     } catch(err) {
-      logger.eror('mqtt handler failed', {topic, messageRaw, errMessage: err.message});
+      logger.error('mqtt handler failed', {topic, messageRaw, errMessage: err.message});
     }
   });
 
@@ -594,6 +625,8 @@ const handleRate = async function({capacityWh, log = false}) {
   await mqttClient.subscribeAsync('solcast/forecasts');
   await mqttClient.subscribeAsync('strom/tele/SENSOR');
   await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
+  await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
+  await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
 
   healthInterval = setInterval(async() => {
     await mqttClient.publishAsync(`fronius-battery/health/STATE`, 'OK');
