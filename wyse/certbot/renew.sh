@@ -4,8 +4,13 @@ SUCCESS=false
 
 echo "$(date +"%Y-%m-%d %H:%M:%S") renew.sh started"
 
+/usr/local/bin/docker ps >/dev/null 2>&1 || \
+  { echo "Failed to run docker"; exit 1; }
+
+echo "$(date +"%Y-%m-%d %H:%M:%S") docker access ok"
+
 until $(${SUCCESS}); do
-  echo "$(date +"%Y-%m-%d %H:%M:%S") Calling certbot renew"
+  echo "$(date +"%Y-%m-%d %H:%M:%S") calling certbot renew"
 
   RESULT=`/usr/bin/certbot renew --webroot --webroot-path=/var/letsencrypt 2>/tmp/certbot.error`
   RESULT_CODE=${?}
@@ -16,7 +21,7 @@ until $(${SUCCESS}); do
     if [ -n "`echo \"${RESULT}\" | grep 'heine7\.de.*success'`" ]; then
       echo "$(date +"%Y-%m-%d %H:%M:%S") certs updated"
 
-      docker restart docker-dovecot-1 docker-nginx-1
+      /usr/local/bin/docker restart docker-dovecot-1 docker-nginx-1
       if [ $? = 0 ]; then
         echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate updated\n\nCertificate updated\n\nContainers restarted" | /usr/sbin/sendmail -t
       else
