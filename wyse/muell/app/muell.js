@@ -4,16 +4,20 @@
 
 import fsPromises       from 'node:fs/promises';
 import os               from 'node:os';
+import path             from 'node:path';
 
 import _                from 'lodash';
 import cron             from 'croner';
 import dayjs            from 'dayjs';
 import icsToJsonDefault from 'ics-to-json-extended';
-import {logger}         from '@stheine/helpers';
 import mqtt             from 'mqtt';
 import ms               from 'ms';
 import timezone         from 'dayjs/plugin/timezone.js';
 import utc              from 'dayjs/plugin/utc.js';
+import {
+  logger,
+  sendMail,
+} from '@stheine/helpers';
 
 const icsToJson = icsToJsonDefault.default;
 
@@ -24,27 +28,27 @@ dayjs.tz.setDefault(dayjs.tz.guess());
 // ###########################################################################
 // Reference
 // https://github.com/MHohenberg/NextTrash
-//
-// https://www.awb-bb.de/start.html
-// - Abfuhrtermine
-// - Stadt/Gemeinde: Nufringen
-// - [x] Biomüll
-// - [x] Papier
-// - [x] Restmüll
-// - Zeitraum: <Jahr>
-// - Herunterladen als ICS
-// - Datei speichern unter /mnt/qnap_linux/data/muell/allestrassennufringen.ics
 
-// TODO mehrere files von verschiedenen Jahren lesen und zusammenfuegen
-// TODO Warnung (per email), wenn nur noch wenige zukuenftige leerungen im kalender sind -
-// man soll das neue ics file laden
+const notifyMessage = `<a href='https://www.awb-bb.de/start.html'>Abfallwirtschaft Böblingen</a>
+<p />
+<ul>
+  <li>Abfuhrtermine</li>
+  <li>Stadt/Gemeinde: Nufringen</li>
+  <li>[x] Biomüll</li>
+  <li>[x] Papier 120l/240l</li>
+  <li>[x] Restmüll 120l/240l</li>
+  <li>Zeitraum: &lt;Jahr&gt;</li>
+  <li>Herunterladen als ICS</li>
+  <li>Datei speichern unter /mnt/qnap_linux/data/muell/allestrassennufringen.&lt;Jahr&gt;.ics</li>
+</ul>
+`;
 
-const icsFile       = '/data/allestrassennufringen.ics';
-const reportHour    = 17;
-const cleanHour     = 8;
-const topicMorgen   = 'muell/leerung/morgen';
-const topicNaechste = 'muell/leerung/naechste';
-const topicKalender = 'muell/leerung/kalender';
+const icsFileDirectory = '/data';
+const icsFilePattern   = /allestrassennufringen\..*\.ics/;
+const reportHour       = 17;
+const cleanHour        = 8;
+const topicMorgen      = 'muell/leerung/morgen';
+const topicNaechste    = 'muell/leerung/naechste';
 
 // ###########################################################################
 // Globals
@@ -74,8 +78,26 @@ const stopProcess = async function() {
 };
 
 const checkMuell = async function() {
-  const icsData          = await fsPromises.readFile(icsFile, 'utf8');
-  const leerungen        = icsToJson(icsData);
+  let leerungen = [];
+
+  const files = await fsPromises.readdir(icsFileDirectory);
+
+  for(const file of files) {
+    if(icsFilePattern.test(file)) {
+      // logger.trace(`Reading ${file}`);
+
+      const icsData       = await fsPromises.readFile(path.join(icsFileDirectory, file), 'utf8');
+      let   fileLeerungen = icsToJson(icsData);
+
+      fileLeerungen = _.map(fileLeerungen, leerung => ({
+        ...leerung,
+        summary:    leerung.summary.replace(' 120l/240l', ''),
+      }));
+
+      leerungen = [...leerungen, ...fileLeerungen];
+    }
+  }
+
   const now              = dayjs.tz();
   const nowString        = now.format('YYYY-MM-DD HH:mm:ss');
   const tomorrow         = now.clone().date(now.date() + 1).hour(0).minute(0).second(0).millisecond(0);
@@ -98,10 +120,26 @@ const checkMuell = async function() {
   await mqttClient.publishAsync(topicNaechste, JSON.stringify(leerungenZukunftProSorte), {retain: true});
 
   if(leerungenZukunft.length < 10) {
-    await mqttClient.publishAsync(topicKalender, JSON.stringify({TODO: 'Bitte Kalender aktualisieren!'}));
+    try {
+      await sendMail({
+        to:      'stefan@heine7.de',
+        subject: 'Müll-Kalender aktualisieren',
+        html:    notifyMessage,
+      });
+    } catch(err) {
+      logger.error(`Failed to send error mail: ${err.message}`);
+
+      await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+        sound:   'none',
+        html:    1,
+        message: 'Bitte Kalender aktualisieren',
+        title:   'Müll-Kalender aktualisieren',
+      }));
+    }
   }
 };
 
+process.on('SIGHUP', () => checkMuell());
 process.on('SIGTERM', () => stopProcess());
 
 (async() => {
