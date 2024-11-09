@@ -79,25 +79,21 @@ export const getWeather = async function({openWeatherLocation, suncalcLocation})
     check.assert.equal(result.status, 200, `Unexpected status=${result.status}`);
 
     const {data} = result;
-//    const {current, hourly} = data;
-//    const next2Hours  = hourly.slice(0, 2);
-//    const next10Hours = hourly.slice(0, 10);
-//    const forecast2MaxClouds  = _.max(_.map(next2Hours, 'clouds'));
-//    const forecast2MaxTemp    = _.max(_.map(next2Hours, 'temp'));
-//    const forecast10MaxWind   = _.max(_.map(next10Hours, 'wind_speed'));
-//    const forecast10MinTemp   = _.min(_.map(next10Hours, 'temp'));
-//
-//    const wetter = {
-//      clouds:             current.clouds,
-//      main:               current.weather[0].main,
-//      description:        current.weather[0].description,
-//      forecast2MaxClouds,
-//      forecast2MaxTemp,
-//      forecast10MaxWind,
-//      forecast10MinTemp,
-//    };
+    const {hourly} = data;
+    const next2Hours  = hourly.slice(0, 2);
+    const next10Hours = hourly.slice(0, 10);
+    const forecast2MaxClouds  = _.max(_.map(next2Hours, 'clouds'));
+    const forecast2MaxTemp    = _.max(_.map(next2Hours, 'temp'));
+    const forecast10MaxWind   = _.max(_.map(next10Hours, 'wind_speed'));
+    const forecast10MinTemp   = _.min(_.map(next10Hours, 'temp'));
 
-    return data;
+    return {
+      ...data,
+      forecast2MaxClouds,
+      forecast2MaxTemp,
+      forecast10MaxWind,
+      forecast10MinTemp,
+    };
   } catch(err) {
     logger.error(`Weather: Failed to get '${err.message}'`);
   }
