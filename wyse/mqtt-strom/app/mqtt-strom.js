@@ -394,6 +394,11 @@ process.on('SIGTERM', () => stopProcess());
                   return;
                 }
 
+                if(!_.inRange(now.format('M'), 3, 10)) {
+                  // Not in October - Februar
+                  return;
+                }
+
                 if((aktuellerUeberschuss > 5500 &&
                   (batteryLevel > 50 || solcastHighPvHours >= 2) &&
                   (batteryLevel > 70 || solcastHighPvHours >= 1)
@@ -432,8 +437,9 @@ process.on('SIGTERM', () => stopProcess());
                   (batteryLevel < 50 && solcastHighPvHours < 2) ||
                   (batteryLevel < 70 && solcastHighPvHours < 1)
                 ) {
-                  logger.info('Geringe Einspeisung. Beende Speicherheizung mit Heizstab.',
-                    {zaehlerLeistung, batteryLeistung, batteryLevel, heizstabLeistung, aktuellerUeberschuss, solcastHighPvHours});
+                  logger.info('Geringe Einspeisung. Beende Speicherheizung mit Heizstab.', {
+                    zaehlerLeistung, batteryLeistung, batteryLevel, heizstabLeistung,
+                    aktuellerUeberschuss, solcastHighPvHours});
 
                   await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'OFF');
                 }
