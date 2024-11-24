@@ -394,6 +394,27 @@ volumes:
       device: /mnt/qnap/linux/data/vmail
       o: bind
 
+  vwsfriend:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/vwsfriend
+      o: bind
+
+  vwsfriend-postgresdb:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/vwsfriend-postgresdb
+      o: bind
+
+  vwsfriend-grafana:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/vwsfriend-grafrana
+      o: bind
+
   wasser:
     driver: local
     driver_opts:
@@ -422,9 +443,10 @@ volumes:
 ##      device: /mnt/qnap/linux/data/www_auth
 ##      o: bind
 
-# networks:
-#   bridge:
-#     driver: bridge
+networks:
+  bridge:
+    # driver: bridge
+  backend:
 
 services:
   apache2:
@@ -457,6 +479,7 @@ services:
   certbot:
     restart: always
     build: certbot
+    stop_signal: SIGKILL
     hostname: wyse-certbot
     volumes:
       - ./certbot/renew.sh:/renew.sh:ro
@@ -1085,6 +1108,85 @@ services:
       - vaultwarden:/data
       - ./vaultwarden-backup/backup.sh:/backup.sh
       - ./vaultwarden-backup/startup.sh:/startup.sh
+
+  vwsfriend:
+    image: tillsteinbach/vwsfriend:latest
+    restart: always
+    ports:
+      - 8973:8973
+    networks:
+      backend:
+        aliases:
+          - vwsfriendbackend
+    volumes:
+      - vwsfriend:/config
+    environment:
+      - VWSFRIEND_PORT=8973
+      - WECONNECT_INTERVAL=180
+      - ADDITIONAL_PARAMETERS=--with-database --with-abrp --mqttbroker 192.168.6.5 --prefix vwsfriend --convert-times Europe/Berlin --republish-on-update
+    env_file:
+      /mnt/qnap/linux/data/vwsfriend/vwsfriend.env
+    depends_on:
+      vwsfriend-postgresdb:
+        condition: service_healthy
+    healthcheck:
+      test: (wget -qO- http://localhost:8973/healthcheck | grep "ok" -q) || exit 1
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  vwsfriend-postgresdb:
+    image: postgres:13
+    restart: always
+    networks:
+      backend:
+        aliases:
+          - postgresdbbackend
+    volumes:
+      - vwsfriend-postgresdb:/var/lib/postgresql/data
+    user: postgres
+    environment:
+      - TZ=UTC
+      - PGTZ=UTC
+      - POSTGRES_USER=admin
+      - POSTGRES_DB=vwsfriend
+    env_file:
+      /mnt/qnap/linux/data/vwsfriend/vwsfriend-postgresdb.env
+    command: -p 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 5432 --username=admin --dbname=vwsfriend"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  vwsfriend-grafana:
+    image: tillsteinbach/vwsfriend-grafana:latest
+    restart: always
+    ports:
+      - 8974:8974
+    networks:
+      bridge:
+      backend:
+        aliases:
+          - grafanabackend
+    volumes:
+      - vwsfriend-grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SERVER_HTTP_PORT=8974
+      - DB_USER=admin
+      - DB_HOSTNAME=postgresdbbackend
+      - DB_PORT=5432
+      - DB_NAME=vwsfriend
+      - VWSFRIEND_HOSTNAME=vwsfriendbackend
+      - VWSFRIEND_PORT=8973
+    env_file:
+      /mnt/qnap/linux/data/vwsfriend/vwsfriend-grafana.env
+    healthcheck:
+      test: ["CMD-SHELL", "(wget -qO- http://localhost:8974/api/health | grep '\"database\": \"ok\"' -q) || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 
   watchdog:
     restart: always
