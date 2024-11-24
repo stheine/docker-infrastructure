@@ -34,6 +34,7 @@ const stopProcess = async function() {
 
   logger.info(`Shutdown -------------------------------------------------`);
 
+  // eslint-disable-next-line no-process-exit
   process.exit(0);
 };
 
@@ -75,7 +76,7 @@ process.on('SIGTERM', () => stopProcess());
 
       try {
         message = JSON.parse(messageRaw);
-      } catch {
+      } catch{
         // ignore
         // logger.debug('JSON.parse', {messageRaw, errMessage: err.message});
       }
@@ -94,5 +95,5 @@ process.on('SIGTERM', () => stopProcess());
     }
   });
 
-  mqttClient.subscribeAsync('mqtt-notify/notify')
+  mqttClient.subscribeAsync('mqtt-notify/notify');
 })();
