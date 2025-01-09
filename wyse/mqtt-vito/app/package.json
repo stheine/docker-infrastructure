@@ -10,11 +10,11 @@
   "author": "stheine@arcor.de",
   "license": "ISC",
   "dependencies": {
-    "@stheine/helpers": "1.0.3",
+    "@stheine/helpers": "1.1.2",
     "dayjs": "1.11.13",
     "fs-extra": "11.2.0",
     "lodash": "4.17.21",
-    "mqtt": "5.10.1",
+    "mqtt": "5.10.3",
     "ms": "2.1.3"
   }
 }

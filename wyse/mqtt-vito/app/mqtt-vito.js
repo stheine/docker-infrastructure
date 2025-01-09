@@ -196,7 +196,7 @@ process.on('SIGTERM', () => stopProcess());
               continue;
             }
 
-            let {pv_estimate90: estimate} = forecast;
+            let {pv_estimate: estimate} = forecast;
 
             estimate = _.round(estimate * 1000); // kW to watt
 
@@ -451,10 +451,10 @@ process.on('SIGTERM', () => stopProcess());
               const notifyUrlTitle = 'Pellets Nachschub';
 
               await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-                sound:   'none',
-                html:    1,
-                message: notifyMessage,
-                title:   notifyTitle,
+                sound:     'none',
+                html:      1,
+                message:   notifyMessage,
+                title:     notifyTitle,
                 url:       notifyUrl,
                 url_title: notifyUrlTitle,
               }));
@@ -592,4 +592,6 @@ process.on('SIGTERM', () => stopProcess());
   healthInterval = setInterval(async() => {
     await mqttClient.publishAsync(`mqtt-vito/health/STATE`, 'OK');
   }, ms('1min'));
+
+  await mqttClient.publishAsync(`mqtt-vito/health/STATE`, 'OK');
 })();
