@@ -287,6 +287,8 @@ const getQueue = async function() {
   // volumio.on('pushQueue', data => {
   //   logger.info('pushQueue', data);
   // });
+
+  await mqttClient.publishAsync(`mqtt-volumio/health/STATE`, 'OK');
 })();
 
 
