@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import https from 'node:https';
+import https  from 'node:https';
 
-import axios from 'axios';
-import check from 'check-types-2';
-import cron  from 'croner';
+import _      from 'lodash';
+import axios  from 'axios';
+import check  from 'check-types-2';
+import {Cron} from 'croner';
 import {
   logger,
   sendMail,
@@ -137,12 +138,14 @@ const sendComics = async function() {
 
   // #########################################################################
   // Schedule
-  //    ┌──────────────────────────────────── second (optional)
-  //    │ ┌────────────────────────────────── minute
-  //    │ │             ┌──────────────────── hour
-  //    │ │             │           ┌──────── day of month
-  //    │ │             │           │ ┌────── month
-  //    │ │             │           │ │ ┌──── day of week (0 is Sunday)
-  //    S M             H           D M W
-  cron(`0 ${cronMinute} ${cronHour} * * *`, {timezone: 'Europe/Berlin'}, sendComics);
+  //                    ┌──────────────────────────────────── second (optional)
+  //                    │ ┌────────────────────────────────── minute
+  //                    │ │             ┌──────────────────── hour
+  //                    │ │             │           ┌──────── day of month
+  //                    │ │             │           │ ┌────── month
+  //                    │ │             │           │ │ ┌──── day of week (0 is Sunday)
+  //                    S M             H           D M W
+  const job = new Cron(`0 ${cronMinute} ${cronHour} * * *`, {timezone: 'Europe/Berlin'}, sendComics);
+
+  _.noop('Cron job started', job);
 })();
