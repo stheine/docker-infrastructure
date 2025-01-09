@@ -96,4 +96,6 @@ process.on('SIGTERM', () => stopProcess());
   });
 
   mqttClient.subscribeAsync('mqtt-notify/notify');
+
+  await mqttClient.publishAsync(`mqtt-notify/health/STATE`, 'OK');
 })();
