@@ -156,4 +156,6 @@ const triggerNotify = async function(raum) {
   mqttClient.subscribeAsync('Zigbee/FensterSensor Kinderbad');
   mqttClient.subscribeAsync('Zigbee/FensterSensor Badezimmer');
   mqttClient.subscribeAsync('Zigbee/FensterSensor Sonoff 1');
+
+  await mqttClient.publishAsync(`mqtt-fenster/health/STATE`, 'OK');
 })();
