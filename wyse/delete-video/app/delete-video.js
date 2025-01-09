@@ -3,7 +3,8 @@
 import fsPromises from 'node:fs/promises';
 import path       from 'node:path';
 
-import cron       from 'croner';
+import _          from 'lodash';
+import {Cron}     from 'croner';
 import {logger}   from '@stheine/helpers';
 import ms         from 'ms';
 
@@ -59,5 +60,7 @@ process.on('SIGTERM', () => stopProcess());
   //    │ │  │ │ ┌────── month
   //    │ │  │ │ │ ┌──── day of week (0 is Sunday)
   //    S M  H D M W
-  cron(`0 0 18 * * *`, {timezone: 'Europe/Berlin'}, deleteVideo);
+  const job = new Cron(`0 0 18 * * *`, {timezone: 'Europe/Berlin'}, deleteVideo);
+
+  _.noop('Cron job started', job);
 })();
