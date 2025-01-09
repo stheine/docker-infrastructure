@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 /* eslint-disable camelcase */
+/* eslint-disable max-len */
 /* eslint-disable unicorn/no-useless-spread */
 
 import fsPromises from 'node:fs/promises';
@@ -394,6 +395,91 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
+        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW': {
+          // logger.info(topic, message);
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              chargePowerKw: message,
+            },
+          };
+          break;
+        }
+
+        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km': {
+          // logger.info(topic, message);
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              cruisingRangeKm: message,
+            },
+          };
+          break;
+        }
+
+        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct': {
+          // logger.info(topic, message);
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              batterySoc: message,
+            },
+          };
+          break;
+        }
+
+        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K': {
+          // logger.info(topic, message);
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              tempBatteryMaxK: message,
+            },
+          };
+          break;
+        }
+
+        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K': {
+          // logger.info(topic, message);
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              tempBatteryMinK: message,
+            },
+          };
+          break;
+        }
+
+        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer': {
+          // logger.info(topic, message);
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              odometer: message,
+            },
+          };
+          break;
+        }
+
+
         case 'Wind/tele/SENSOR': {
           // logger.info(topic, message);
           const file = '/var/jalousie/jalousie.rrd';
@@ -490,8 +576,16 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribeAsync('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
   await mqttClient.subscribeAsync('Zigbee/LuftSensor Büro');
+  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW');
+  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km');
+  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct');
+  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K');
+  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K');
+  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer');
 
   healthInterval = setInterval(async() => {
     await mqttClient.publishAsync(`mqtt2rrd/health/STATE`, 'OK');
   }, ms('1min'));
+
+  await mqttClient.publishAsync(`mqtt2rrd/health/STATE`, 'OK');
 })();
