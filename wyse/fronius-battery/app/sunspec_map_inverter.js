@@ -252,7 +252,7 @@ const sunspecMap = [{
   start:  40151,
   end:    40151,
   type:   'uint16',
-  expect: 7680,
+  expect: 10240,
   scale:  'WHRtg_SF',
 }, {
   name:   'WHRtg_SF',
@@ -588,6 +588,15 @@ const sunspecMap = [{
   start:  40369,
   end:    40369,
   type:   'uint16',
+}, {
+  name:   'ChaGriSet',
+  start:  40371,
+  end:    40371,
+  type:   'enum16',
+  enumMap: {
+    0: 'PV',
+    1: 'GRID',
+  },
 }, {
   name:   'WChaMax_SF',
   start:  40372,

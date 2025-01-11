@@ -15,6 +15,10 @@ import sunspec       from './sunspec_map_inverter.js';
       if(!spec.name) {
         continue;
       }
+      if(!['InOutWRte_RvrtTms', 'StorCtl_Mod', 'ChaGriSet', 'InWRte', 'OutWRte', 'WChaMax',
+        'WChaGra', 'WDisCharGra', 'WHRtg', 'ChaSt', 'InOutWRte_RvrtTms'].includes(spec.name)) {
+        continue;
+      }
       if(spec.type === 'sunssf') {
         continue;
       }

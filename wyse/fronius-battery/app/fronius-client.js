@@ -264,7 +264,19 @@ class FroniusClient {
     check.assert.array(values, 'values not an array');
     check.assert.equal(values.length, len, `values.length mismatch (is: ${values.length}, expect: ${len})`);
 
-    await this.client.writeRegisters(addr, values);
+    let writeValues;
+
+    switch(spec.type) {
+      case 'int16':
+        writeValues = _.map(values, value => value < 0 ? 65536 + value : value);
+        break;
+
+      default:
+        writeValues = values;
+        break;
+    }
+
+    await this.client.writeRegisters(addr, writeValues);
 
     const value = await this.readRegister(name);
 
