@@ -1,0 +1,23 @@
+{
+  "name": "auto",
+  "version": "0.0.0",
+  "main": "auto.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@stheine/helpers": "1.2.1",
+    "async-lock": "1.4.1",
+    "check-types-2": "11.8.1",
+    "dayjs": "1.11.13",
+    "execa": "9.5.2",
+    "fs-extra": "11.2.0",
+    "lodash": "4.17.21",
+    "mqtt": "5.10.3",
+    "ms": "2.1.3"
+  }
+}
