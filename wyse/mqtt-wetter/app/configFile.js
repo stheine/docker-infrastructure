@@ -28,6 +28,6 @@ export default {
       throw new Error('No active config file detected');
     }
 
-    await fsExtra.writeJson(activeConfigFile, config);
+    await fsExtra.writeJson(activeConfigFile, config, {spaces: 2});
   },
 };

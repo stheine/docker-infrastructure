@@ -46,12 +46,18 @@ export const getMaxSun = async function({suncalcLocation}) {
 };
 
 export const getSunTimes = async function({suncalcLocation}) {
-  const date = new Date();
+  const today    = new Date();
+  const tomorrow = new Date(new Date().setDate(today.getDate() + 1));
 
   // Calculate sunrise & sunset
-  const sunTimes = suncalc.getTimes(date, suncalcLocation.latitude, suncalcLocation.longitude);
+  const sunTimesToday    = suncalc.getTimes(today,    suncalcLocation.latitude, suncalcLocation.longitude);
+  const sunTimesTomorrow = suncalc.getTimes(tomorrow, suncalcLocation.latitude, suncalcLocation.longitude);
 
-  return sunTimes;
+  return {
+    ...sunTimesToday,
+    sunriseTomorrow: sunTimesTomorrow.sunrise,
+    sunsetTomorrow:  sunTimesTomorrow.sunset,
+  };
 };
 
 // https://openweathermap.org/api/one-call-api

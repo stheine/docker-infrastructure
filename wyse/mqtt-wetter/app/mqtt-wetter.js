@@ -4,6 +4,7 @@ import os         from 'node:os';
 import _          from 'lodash';
 import axios      from 'axios';
 import check      from 'check-types-2';
+import {Cron}     from 'croner';
 import {logger}   from '@stheine/helpers';
 import mqtt       from 'mqtt';
 import ms         from 'ms';
@@ -224,126 +225,132 @@ const handleWeatherDWD = async function() {
 };
 
 const handleWeather = async function() {
-  const {eveningStartsHour, morningEndsHour, openWeatherLocation, suncalcLocation} = config;
+  try {
+    const {eveningStartsHour, morningEndsHour, openWeatherLocation, suncalcLocation} = config;
 
-  // Timestamp calculation, local time to UTC
-  const date = new Date();
+    // Timestamp calculation, local time to UTC
+    const date = new Date();
 
-  date.setHours(eveningStartsHour);
+    date.setHours(eveningStartsHour);
 
-  const eveningStartsUTCHour = date.getUTCHours();
+    const eveningStartsUTCHour = date.getUTCHours();
 
-  date.setHours(morningEndsHour);
+    date.setHours(morningEndsHour);
 
-  const morningEndsUTCHour = date.getUTCHours();
+    const morningEndsUTCHour = date.getUTCHours();
 
-//  logger.debug('Timestamps', {
-//    local: {eveningStartsHour, morningEndsHour},
-//    utc: {eveningStartsUTCHour, morningEndsUTCHour},
-//  });
+  //  logger.debug('Timestamps', {
+  //    local: {eveningStartsHour, morningEndsHour},
+  //    utc: {eveningStartsUTCHour, morningEndsUTCHour},
+  //  });
 
-  // Get weather data
-  const weather = await getWeather({openWeatherLocation, suncalcLocation});
+    // Get weather data
+    const weather = await getWeather({openWeatherLocation, suncalcLocation});
 
-  // hourly ---------
-  //   clouds: 0
-  //   dew_point: -0.53
-  //   dt: 1676397600
-  //   feels_like: 3.4
-  //   humidity: 75
-  //   pop: 0
-  //   pressure: 1033
-  //   temp: 3.4
-  //   uvi: 0
-  //   visibility: 10000
-  //   weather: Array [ {
-  //     description: "Klarer Himmel"
-  //     icon: "01n"
-  //     id: 800
-  //     main: "Clear"
-  //   } ]
-  //   wind_deg: 158
-  //   wind_gust: 1.05
-  //   wind_speed: 1.01
+    check.assert.nonEmptyArray(weather?.hourly, `weather format unexpected: ${JSON.stringify(weather, null, 2)}`);
 
-  // Aggregate weather forecast data
-  const nextEvening = new Date();
-  const nextMorning = new Date();
+    // hourly ---------
+    //   clouds: 0
+    //   dew_point: -0.53
+    //   dt: 1676397600
+    //   feels_like: 3.4
+    //   humidity: 75
+    //   pop: 0
+    //   pressure: 1033
+    //   temp: 3.4
+    //   uvi: 0
+    //   visibility: 10000
+    //   weather: Array [ {
+    //     description: "Klarer Himmel"
+    //     icon: "01n"
+    //     id: 800
+    //     main: "Clear"
+    //   } ]
+    //   wind_deg: 158
+    //   wind_gust: 1.05
+    //   wind_speed: 1.01
 
-  if(nextEvening.getUTCHours() > eveningStartsUTCHour) {
-    // after evening starts, before midnight. next evening is tomorrow.
-    nextEvening.setUTCDate(nextEvening.getUTCDate() + 1);
+    // Aggregate weather forecast data
+    const nextEvening = new Date();
+    const nextMorning = new Date();
+
+    if(nextEvening.getUTCHours() > eveningStartsUTCHour) {
+      // after evening starts, before midnight. next evening is tomorrow.
+      nextEvening.setUTCDate(nextEvening.getUTCDate() + 1);
+    }
+    nextEvening.setUTCHours(eveningStartsUTCHour);
+    nextEvening.setUTCMinutes(0);
+
+    if(nextMorning.getUTCHours() > morningEndsUTCHour) {
+      // after morning ends. next morning is tomorrow.
+      nextMorning.setUTCDate(nextMorning.getUTCDate() + 1);
+    }
+    nextMorning.setUTCHours(morningEndsUTCHour);
+    nextMorning.setUTCMinutes(0);
+
+  //  logger.debug({nextMorning, nextEvening});
+
+    let dayHourly;
+    let nightHourly;
+
+    if(nextEvening < nextMorning) {
+      // Day. rest of today and coming night.
+      dayHourly   = weather.hourly.filter(set => set.dt * 1000 < nextEvening);
+      nightHourly = weather.hourly.filter(set => set.dt * 1000 >= nextEvening && set.dt * 1000 < nextMorning);
+    } else {
+      // nextEvening > nextMorning
+      // Night. rest of night and coming day.
+
+  // TODO ????
+  //    const tomorrowEvening = new Date(nextEvening);
+  //
+  //    if(tomorrowEvening.getUTCHours() > morningEndsUTCHour) {
+  //      // night. evening. coming day is tomorrow.
+  //      tomorrowEvening.setUTCDate(tomorrowEvening.getUTCDate() + 1);
+  //    }
+  //    tomorrowEvening.setUTCHours(eveningStartsUTCHour);
+  //    tomorrowEvening.setUTCMinutes(0);
+  //    dayHourly   = weather.hourly.filter(set => set.dt * 1000 >= nextMorning && set.dt * 1000 < tomorrowEvening);
+
+      dayHourly   = weather.hourly.filter(set => set.dt * 1000 >= nextMorning && set.dt * 1000 < nextEvening);
+      nightHourly = weather.hourly.filter(set => set.dt * 1000 < nextMorning);
+    }
+
+    const dayMaxTemp   = Math.max(...dayHourly.map(set => set.temp));
+    const dayMinTemp   = Math.min(...dayHourly.map(set => set.temp));
+    const dayMaxWind   = Math.max(...dayHourly.map(set => set.wind_speed));
+    const nightMaxTemp = Math.max(...nightHourly.map(set => set.temp));
+    const nightMinTemp = Math.min(...nightHourly.map(set => set.temp));
+    const nightMaxWind = Math.max(...nightHourly.map(set => set.wind_speed));
+
+    // console.log(Night.map(set => new Date(set.dt * 1000).toISOString()));
+    // console.log({DayMaxWind, DayMinTemp, DayMaxTemp, NightMaxWind, NightMinTemp, NightMaxTemp});
+
+  //  logger.debug('Day', {
+  //    first: new Date(dayHourly.at(0).dt  * 1000).toISOString(),
+  //    last:  new Date(dayHourly.at(-1).dt * 1000).toISOString(),
+  //    temp:  _.map(dayHourly, 'temp'),
+  //  });
+  //  logger.debug('Night', {
+  //    first: new Date(nightHourly.at(0).dt  * 1000).toISOString(),
+  //    last:  new Date(nightHourly.at(-1).dt * 1000).toISOString(),
+  //    temp:  _.map(nightHourly, 'temp'),
+  //  });
+
+    await mqttClient.publishAsync('wetter/openweather/INFO', JSON.stringify({
+      ...weather,
+      dayMaxWind,
+      dayMinTemp,
+      dayMaxTemp,
+      eveningStartsHour,
+      morningEndsHour,
+      nightMaxWind,
+      nightMinTemp,
+      nightMaxTemp,
+    }), {retain: true});
+  } catch(err) {
+    logger.warn('Failed to get weather data', err.message);
   }
-  nextEvening.setUTCHours(eveningStartsUTCHour);
-  nextEvening.setUTCMinutes(0);
-
-  if(nextMorning.getUTCHours() > morningEndsUTCHour) {
-    // after morning ends. next morning is tomorrow.
-    nextMorning.setUTCDate(nextMorning.getUTCDate() + 1);
-  }
-  nextMorning.setUTCHours(morningEndsUTCHour);
-  nextMorning.setUTCMinutes(0);
-
-//  logger.debug({nextMorning, nextEvening});
-
-  let dayHourly;
-  let nightHourly;
-
-  if(nextEvening < nextMorning) {
-    // Day. rest of today and coming night.
-    dayHourly   = weather.hourly.filter(set => set.dt * 1000 < nextEvening);
-    nightHourly = weather.hourly.filter(set => set.dt * 1000 >= nextEvening && set.dt * 1000 < nextMorning);
-  } else {
-    // nextEvening > nextMorning
-    // Night. rest of night and coming day.
-
-// TODO ????
-//    const tomorrowEvening = new Date(nextEvening);
-//
-//    if(tomorrowEvening.getUTCHours() > morningEndsUTCHour) {
-//      // night. evening. coming day is tomorrow.
-//      tomorrowEvening.setUTCDate(tomorrowEvening.getUTCDate() + 1);
-//    }
-//    tomorrowEvening.setUTCHours(eveningStartsUTCHour);
-//    tomorrowEvening.setUTCMinutes(0);
-//    dayHourly   = weather.hourly.filter(set => set.dt * 1000 >= nextMorning && set.dt * 1000 < tomorrowEvening);
-
-    dayHourly   = weather.hourly.filter(set => set.dt * 1000 >= nextMorning && set.dt * 1000 < nextEvening);
-    nightHourly = weather.hourly.filter(set => set.dt * 1000 < nextMorning);
-  }
-
-  const dayMaxTemp   = Math.max(...dayHourly.map(set => set.temp));
-  const dayMinTemp   = Math.min(...dayHourly.map(set => set.temp));
-  const dayMaxWind   = Math.max(...dayHourly.map(set => set.wind_speed));
-  const nightMaxTemp = Math.max(...nightHourly.map(set => set.temp));
-  const nightMinTemp = Math.min(...nightHourly.map(set => set.temp));
-  const nightMaxWind = Math.max(...nightHourly.map(set => set.wind_speed));
-
-  // console.log(Night.map(set => new Date(set.dt * 1000).toISOString()));
-  // console.log({DayMaxWind, DayMinTemp, DayMaxTemp, NightMaxWind, NightMinTemp, NightMaxTemp});
-
-//  logger.debug('Day', {
-//    first: new Date(dayHourly.at(0).dt  * 1000).toISOString(),
-//    last:  new Date(dayHourly.at(-1).dt * 1000).toISOString(),
-//    temp:  _.map(dayHourly, 'temp'),
-//  });
-//  logger.debug('Night', {
-//    first: new Date(nightHourly.at(0).dt  * 1000).toISOString(),
-//    last:  new Date(nightHourly.at(-1).dt * 1000).toISOString(),
-//    temp:  _.map(nightHourly, 'temp'),
-//  });
-
-  await mqttClient.publishAsync('wetter/openweather/INFO', JSON.stringify({
-    ...weather,
-    dayMaxWind,
-    dayMinTemp,
-    dayMaxTemp,
-    eveningStartsHour,
-    morningEndsHour,
-    nightMaxWind,
-    nightMinTemp,
-    nightMaxTemp,
-  }), {retain: true});
 };
 
 const handleMaxSun = async function() {
@@ -382,14 +389,29 @@ const handleSunTimes = async function() {
   mqttClient.on('error',      err => logger.info('mqtt.error', err));
   mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
 
-  healthInterval = setInterval(async() => {
-    await mqttClient.publishAsync(`mqtt-wetter/health/STATE`, 'OK');
-  }, ms('1min'));
+  // #########################################################################
+  let job;
 
-  setInterval(handleMaxSun, ms('4 hours'));
+  // Schedule
+  //    ┌────────────── second (optional)
+  //    │ ┌──────────── minute
+  //    │ │ ┌────────── hour
+  //    │ │ │ ┌──────── day of month
+  //    │ │ │ │ ┌────── month
+  //    │ │ │ │ │ ┌──── day of week (0 is Sunday)
+  //    S M H D M W
+  job = new Cron(`0 0 0 * * *`, {timezone: 'Europe/Berlin'}, async() => {
+    await handleMaxSun();
+    await handleSunTimes();
+  });
+  job = new Cron(`0 0 0 * * *`, {timezone: 'UTC'}, async() => {
+    await handleMaxSun();
+    await handleSunTimes();
+  });
+
+  _.noop('Cron job started', job);
+
   await handleMaxSun(); // on startup
-
-  setInterval(handleSunTimes, ms('4 hours'));
   await handleSunTimes(); // on startup
 
   setInterval(handleWeather, ms('1 hour'));
@@ -397,4 +419,9 @@ const handleSunTimes = async function() {
 
   setInterval(handleWeatherDWD, ms('1 hour'));
   await handleWeatherDWD(); // on startup
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publishAsync(`mqtt-wetter/health/STATE`, 'OK');
+  }, ms('1min'));
+  await mqttClient.publishAsync(`mqtt-wetter/health/STATE`, 'OK'); // on startup
 })();
