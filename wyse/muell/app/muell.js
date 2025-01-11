@@ -7,7 +7,7 @@ import os               from 'node:os';
 import path             from 'node:path';
 
 import _                from 'lodash';
-import cron             from 'croner';
+import {Cron}           from 'croner';
 import dayjs            from 'dayjs';
 import icsToJsonDefault from 'ics-to-json-extended';
 import mqtt             from 'mqtt';
@@ -152,15 +152,13 @@ process.on('SIGTERM', () => stopProcess());
 
   mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
-  healthInterval = setInterval(async() => {
-    await mqttClient.publishAsync(`muell/health/STATE`, 'OK');
-  }, ms('1min'));
-
   // #########################################################################
   // Run on startup
   await checkMuell();
 
   // #########################################################################
+  let job;
+
   // Schedule
   //    ┌────────────────────────── second (optional)
   //    │ ┌──────────────────────── minute
@@ -169,10 +167,17 @@ process.on('SIGTERM', () => stopProcess());
   //    │ │             │ │ ┌────── month
   //    │ │             │ │ │ ┌──── day of week (0 is Sunday)
   //    S M             H D M W
-  cron(`0 0 ${reportHour} * * *`, {timezone: 'Europe/Berlin'}, checkMuell);
+  job = new Cron(`0 0 ${reportHour} * * *`, {timezone: 'Europe/Berlin'}, checkMuell);
 
   // Clean
-  cron(`0 0  ${cleanHour} * * *`, {timezone: 'Europe/Berlin'}, async() => {
+  job = new Cron(`0 0  ${cleanHour} * * *`, {timezone: 'Europe/Berlin'}, async() => {
     await mqttClient.publishAsync(topicMorgen, null, {retain: true});
   });
+
+  _.noop('Cron job started', job);
+
+  healthInterval = setInterval(async() => {
+    await mqttClient.publishAsync(`muell/health/STATE`, 'OK');
+  }, ms('1min'));
+  await mqttClient.publishAsync(`muell/health/STATE`, 'OK');
 })();
