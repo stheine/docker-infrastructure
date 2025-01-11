@@ -4,6 +4,7 @@
 #  1883 mosquitto-websockets   mqtt
 ###  2342 photoprism             http://192.168.6.5:2342/
 #  5233 ladder                 http://192.168.6.5:5233/
+#  6286 octoprint              http://192.168.6.5:6286/
 #  6398 nextcloud              http://192.168.6.5:6398/
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
@@ -29,6 +30,13 @@
 
 
 volumes:
+  auto:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/auto
+      o: bind
+
   backup-rclone:
     driver: local
     driver_opts:
@@ -240,6 +248,13 @@ volumes:
       device: /mnt/qnap/linux/data/nextcloud-aio
       o: bind
 
+  octoprint:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/octoprint
+      o: bind
+
   paperless-consume:
     driver: local
     driver_opts:
@@ -433,6 +448,7 @@ services:
     build: apache2
     hostname: wyse-apache2
     volumes:
+      - auto:/var/auto
       - fritz:/var/fritz
       - fronius:/var/fronius
       - jalousie:/var/jalousie
@@ -444,6 +460,16 @@ services:
       - ./apache2/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
     # healthcheck:
     #   test: /usr/bin/wget --quiet --output-file=/dev/null http://localhost/favicon.png
+
+  auto:
+    restart: always
+    build: auto
+    stop_signal: SIGKILL # Solange dort nodemon laeuft
+    hostname: wyse-auto
+    volumes:
+      - ./auto/app:/app
+      - auto:/var/auto
+      - /var/run/docker.sock:/var/run/docker.sock
 
   backup:
     restart: always
@@ -741,6 +767,7 @@ services:
     hostname: wyse-mqtt2rrd
     volumes:
       - ./mqtt2rrd/app:/app
+      - auto:/var/auto
       - fritz:/var/fritz
       - fronius:/var/fronius
       - jalousie:/var/jalousie
@@ -849,6 +876,21 @@ services:
     restart: always
     build: noop
     hostname: wyse-noop
+
+  octoprint:
+    image: octoprint/octoprint
+    restart: unless-stopped
+    ports:
+      - 6286:80
+    devices:
+    # use `python -m serial.tools.miniterm` to see what the name is of the printer, this requires pyserial
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    volumes:
+     - octoprint:/octoprint
+    # uncomment the lines below to ensure camera streaming is enabled when
+    # you add a video device
+    #environment:
+    #  - ENABLE_MJPG_STREAMER=true
 
   paperless:
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
@@ -1069,7 +1111,7 @@ services:
       - vwsfriend:/config
     environment:
       - VWSFRIEND_PORT=8973
-      - WECONNECT_INTERVAL=180
+      - WECONNECT_INTERVAL=300
       - ADDITIONAL_PARAMETERS=--with-database --with-abrp --mqttbroker 192.168.6.5 --prefix vwsfriend --convert-times Europe/Berlin --republish-on-update
     env_file:
       /mnt/qnap/linux/data/vwsfriend/vwsfriend.env
