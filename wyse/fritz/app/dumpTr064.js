@@ -3,9 +3,9 @@
 /* eslint-disable new-cap */
 /* eslint-disable no-console */
 
-import Fritzbox     from 'tr-064-async';
+import Fritzbox     from 'fritzbox';
 
-import tr064Options from '/share/linux/data/fritz/tr064Options.js';
+import tr064Options from '/home/stheine/data/fritz/tr064Options.js';
 
 (async() => {
   try {
