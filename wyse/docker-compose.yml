@@ -882,11 +882,13 @@ services:
     restart: unless-stopped
     ports:
       - 6286:80
-    devices:
-    # use `python -m serial.tools.miniterm` to see what the name is of the printer, this requires pyserial
-      - /dev/ttyUSB0:/dev/ttyUSB0
+    privileged: true
+#    devices:
+#    # use `python -m serial.tools.miniterm` to see what the name is of the printer, this requires pyserial
+#      - /dev/ttyUSB0:/dev/ttyUSB0
     volumes:
      - octoprint:/octoprint
+     - /dev:/dev
     # uncomment the lines below to ensure camera streaming is enabled when
     # you add a video device
     #environment:
