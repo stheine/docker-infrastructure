@@ -18,6 +18,7 @@ import fsExtra               from 'fs-extra';
 import {logger}              from '@stheine/helpers';
 import mqtt                  from 'mqtt';
 import ms                    from 'ms';
+import Ringbuffer            from '@stheine/ringbufferjs';
 import utc                   from 'dayjs/plugin/utc.js';
 
 import configFile            from './configFile.js';
@@ -52,7 +53,7 @@ let   atHome;
 let   chargeEndTimeout;
 let   chargeStartTimeout;
 let   lastChargeUpdate;
-let   lastPvProductionKw    = [];
+const lastPvProductionKw = new Ringbuffer(60); // Fronius/solar/tele/SENSOR every 5s => 60 => 5min
 let   disconnectedHandler;
 let   hausBatterySocPct;
 let   maxSunTime;
@@ -67,7 +68,6 @@ let   vwCruisingRange;
 let   vwIsActive;
 let   vwIsOnline;
 let   vwPlugConnectionState;
-let   vwPlugLockState;
 let   vwParkingLatitude;
 let   vwParkingLongitude;
 let   vwTargetSoc;
@@ -118,7 +118,6 @@ const logState = function(where) {
     `  vwIsOnline:                ${vwIsOnline}\n` +
     `  vwChargePowerKw:           ${vwChargePowerKw} kW\n` +
     `  vwPlugConnectionState:     ${vwPlugConnectionState}\n` +
-    // `  vwPlugLockState:        ${vwPlugLockState}\n` +
     // `  vwParkingLatitude:      ${vwParkingLatitude}\n` +
     // `  vwParkingLongitude:     ${vwParkingLongitude}\n` +
     `  vwCruisingRange:           ${vwCruisingRange} km\n` +
@@ -132,6 +131,7 @@ const logState = function(where) {
 };
 
 process.on('SIGHUP', async() => {
+  logger.debug('lastPvProductionKw', _.map(lastPvProductionKw.dump(), kw => _.round(kw, 1)));
   logState('SIGHUP');
 });
 
@@ -222,13 +222,7 @@ const startCharging = async function() {
 
     logger.error('startCharging finished', {wallboxState});
 
-    if(success) {
-      await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-        sound:   'none',
-        title:   '🚗 Auto',
-        message: `Ladestart bei ${vwBatterySocPct}%`,
-      }));
-    } else {
+    if(!success) {
       return 1;
     }
   });
@@ -239,7 +233,10 @@ const setChargeCurrent = async function(milliAmpere) {
     return;
   }
 
-  logger.debug(`Ladestrom ${milliAmpere} mA, ${_.round(milliAmpere * 3 * 230 / 1000 / 1000, 1)} kW`);
+  const ladestromMa    = milliAmpere;
+  const ladeleistungKw = _.round(milliAmpere * 3 * 230 / 1000 / 1000, 1);
+
+  logger.debug(`Ladestrom ${ladestromMa} mA, ${ladeleistungKw} kW`);
 
   // Ladestrom:  Wallbox/evse/external_current <mA>
   //  6000 mA  =>  4,1 kW   =>  4   kW
@@ -255,6 +252,8 @@ const setChargeCurrent = async function(milliAmpere) {
   // 16000 mA  => 11,0 kW   => 10   kW
   await mqttClient.publishAsync('Wallbox/evse/external_current_update', JSON.stringify(milliAmpere));
 
+  updateStatus({ladestromMa, ladeleistungKw});
+
   // await delay(ms('5s'));
 
   // await forceUpdate();
@@ -262,7 +261,7 @@ const setChargeCurrent = async function(milliAmpere) {
 
 const stopCharging = async function() {
   if(wallboxState !== 'Lädt') {
-    logger.info('Lädt nicht');
+    logger.info(`Lädt nicht (${wallboxState})`);
 
     return;
   }
@@ -274,6 +273,7 @@ const stopCharging = async function() {
   }
 
   await lock.acquire('changeCharging', async() => {
+    await mqttClient.publishAsync('Wallbox/evse/start_charging', JSON.stringify(null));
     await mqttClient.publishAsync(`${vwPrefix}/controls/charging_writetopic`, 'stop');
 
     await delay(ms('2s'));
@@ -284,7 +284,7 @@ const stopCharging = async function() {
     let success = false;
 
     do {
-      logger.debug(`Trigger read for stop (is ${wallboxState})`);
+      logger.debug(`Trigger read for stop (${wallboxState})`);
 
       await delay(ms(forceUpdateDelay));
 
@@ -300,32 +300,21 @@ const stopCharging = async function() {
       }
     } while(retries);
 
-    logger.error('stopCharging finished', {wallboxState});
+    logger.error(`stopCharging finished (${wallboxState})`);
 
-    if(success) {
-      await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-        sound:   'none',
-        title:   '🚗 Auto',
-        message: `Ladeende bei ${vwBatterySocPct}%`,
-      }));
-    } else {
+    if(!success) {
       return 1;
     }
   });
 };
 
-// Handle plug in
-const handlePlugIn = async function() {
-  // logger.debug('handlePlugIn', {vwPlugConnectionState, vwPlugLockState, vwParkingLatitude, vwParkingLongitude});
+// Handle location
+const handleLocation = async function() {
+  // logger.debug('handleLocation', {vwParkingLatitude, vwParkingLongitude});
 
   let newAtHome;
 
-  if(!vwPlugConnectionState ||
-    !vwPlugLockState ||
-    !vwParkingLatitude ||
-    !vwParkingLongitude ||
-    !wallboxState
-  ) {
+  if(!vwParkingLatitude || !vwParkingLongitude) {
     return;
   }
 
@@ -343,12 +332,16 @@ const handlePlugIn = async function() {
 
     await updateStatus({atHome});
 
-    logState('handlePlugIn');
+    logState('handleLocation');
   }
 };
 
 const getChargeTime = function() {
   check.assert.nonEmptyArray(strompreise, 'strompreise fehlen');
+
+  if(wallboxState === 'Lädt') {
+    return {};
+  }
 
   if(vwBatterySocPct >= vwTargetSoc) {
     return {};
@@ -394,7 +387,7 @@ const getChargeTime = function() {
   logger.debug({
     kwhToCharge,
     hoursToCharge,
-    nightData,
+    nightData:       _.map(nightData, data => `${data.startTime} ${data.cent}c (${data.level})`),
     minCost:         _.round(minCost),
     chargeStartTime: chargeStartTime.toISOString(),
     chargeEndTime:   chargeEndTime.toISOString(),
@@ -412,13 +405,13 @@ const handleNightChargingSchedule = async function() {
   }
 
   if(chargeStartTimeout && chargeEndTimeout) {
-    logger.debug(`handleNightChargingSchedule, already scheduled`);
+    // logger.debug(`handleNightChargingSchedule, already scheduled`);
 
     return;
   }
 
   if(vwBatterySocPct >= vwTargetSoc) {
-    logger.debug(`handleNightChargingSchedule, already charged`);
+    // logger.debug(`handleNightChargingSchedule, already charged`);
 
     return;
   }
@@ -426,20 +419,23 @@ const handleNightChargingSchedule = async function() {
   const nowUtc = dayjs.utc();
 
   if(nowUtc.hour() < 18) {
-    logger.debug(`handleNightChargingSchedule, too early`);
+    // logger.debug(`handleNightChargingSchedule, too early`);
 
     return;
   }
 
   const lastPreisStartDate = dayjs.utc(strompreise.at(-1).startTime);
-  const diff               = lastPreisStartDate.diff(nowUtc, 'day', true);
+  const diffHours          = lastPreisStartDate.diff(nowUtc, 'hour', true);
 
-  check.assert.greater(diff, 1, `Letzter Preis fuer ${strompreise.at(-1).startTime}`);
+  check.assert.greater(diffHours, 20, `Letzter Preis fuer ${strompreise.at(-1).startTime}`);
 
   const {chargeStartTime, chargeEndTime} = getChargeTime();
 
   if(chargeStartTime && chargeEndTime) {
-    logger.debug('handleNightChargingSchedule, plan for', {chargeStartTime, chargeEndTime});
+    logger.debug('handleNightChargingSchedule, plan for', {
+      chargeStartTime: chargeStartTime.toISOString(),
+      chargeEndTime:   chargeEndTime.toISOString(),
+    });
 
     chargeStartTimeout = setTimeout(async() => {
       chargeStartTimeout = undefined;
@@ -465,6 +461,73 @@ const handleNightChargingSchedule = async function() {
 
       await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
     }, chargeEndTime - nowUtc);
+  }
+};
+
+const checkPVUeberschussLaden = async function() {
+  if(vwBatterySocPct >= vwTargetSoc) {
+    return;
+  }
+
+  const now = dayjs.utc();
+
+  if(!lock.isBusy('changeCharging')) {
+    const averagePvProductionKw = lastPvProductionKw.avg() || pvProductionKw;
+
+    // logger.debug({
+    //   averagePvProductionKw: _.round(averagePvProductionKw, 1),
+    //   pvProductionKw:        _.round(pvProductionKw, 1),
+    // });
+
+    if(chargeMode === 'Überschuss') {
+      if(wallboxState === 'Lädt') {
+        if(hausBatterySocPct < 90 && averagePvProductionKw < 1.5 ||
+          hausBatterySocPct < 80 && averagePvProductionKw < 2.5 && pvProductionKw <= 4 ||
+          hausBatterySocPct < 70 && now > maxSunTime && averagePvProductionKw < 6
+        ) {
+          logger.debug('PV Überschuss, Laden Ende', {
+            averagePvProductionKw: _.round(averagePvProductionKw, 1),
+            pvProductionKw:        _.round(pvProductionKw, 1),
+            hausBatterySocPct:     _.round(hausBatterySocPct, 1),
+            maxSunTime:            maxSunTime.local().format('HH:mm'),
+          });
+
+          await stopCharging();
+        } else {
+          let chargeBatteryKw = 0;
+
+          if(hausBatterySocPct < 80) {
+            chargeBatteryKw = 1;
+          } else if(hausBatterySocPct < 90) {
+            chargeBatteryKw = 0.5;
+          }
+
+          const currentMa = _.max([
+            6000,
+            _.round((averagePvProductionKw - 0.3 - chargeBatteryKw) * 1000 / 3 / 230 * 1000),
+          ]);
+
+          // logger.debug(`calc current=${currentMa}`);
+
+          await setChargeCurrent(currentMa);
+        }
+      } else if(['Warte auf Ladefreigabe', 'Ladebereit', 'Fehler'].includes(wallboxState) &&
+        averagePvProductionKw > 4 &&
+        (
+          hausBatterySocPct > 80 ||
+          hausBatterySocPct > 40 && now < maxSunTime ||
+          averagePvProductionKw > 6
+        )
+      ) {
+        logger.debug('PV Überschuss, Laden Start', {
+          averagePvProductionKw: _.round(averagePvProductionKw, 1),
+          hausBatterySocPct:     _.round(hausBatterySocPct, 1),
+          maxSunTime:            maxSunTime.local().format('HH:mm'),
+        });
+
+        await startCharging();
+      }
+    }
   }
 };
 
@@ -511,18 +574,30 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                 break;
 
               case 'Nachts': {
+                if(wallboxState === 'Lädt') {
+                  await stopCharging();
+                }
+
                 await handleNightChargingSchedule();
                 break;
               }
 
               case 'Sofort':
-                await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
+                if(wallboxState !== 'Lädt') {
+                  if(vwBatterySocPct < 70) {
+                    await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
+                  }
 
-                await startCharging();
-                await setChargeCurrent(16000);
+                  await startCharging();
+                  await setChargeCurrent(16000);
+                }
                 break;
 
               case 'Überschuss':
+                // if(wallboxState === 'Lädt') {
+                //   await stopCharging();
+                // }
+
                 await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
 
                 // Handled in 'Fronius/solar/tele/SENSOR'
@@ -575,69 +650,18 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
     switch(topic) {
       case 'Fronius/solar/tele/SENSOR': {
+        const now = dayjs.utc();
+
         hausBatterySocPct = message.battery.stateOfCharge * 100;
         pvProductionKw    = message.solar.powerOutgoing / 1000;
 
-        if(vwBatterySocPct >= vwTargetSoc) {
-          return;
-        }
-
-        const now = dayjs.utc();
+        lastPvProductionKw.enq(pvProductionKw);
 
         if(!lastChargeUpdate) {
-          lastPvProductionKw.push(pvProductionKw);
           lastChargeUpdate = now;
-        } else if((now - lastChargeUpdate) < ms('2m')) {
-          lastPvProductionKw.push(pvProductionKw);
-        } else {
-          if(!lock.isBusy('changeCharging')) {
-            const averagePvProductionKw = _.mean(lastPvProductionKw);
+        } else if((now - lastChargeUpdate) > ms('2m')) {
+          await checkPVUeberschussLaden();
 
-            // logger.debug({
-            //   averagePvProductionKw: _.round(averagePvProductionKw, 1),
-            //   pvProductionKw:        _.round(pvProductionKw, 1),
-            // });
-
-            if(chargeMode === 'Überschuss') {
-              if(wallboxState === 'Lädt') {
-                if((averagePvProductionKw < 2 && pvProductionKw <= 4) ||
-                  hausBatterySocPct < 60 && now > maxSunTime
-                  // TODO kann ich den Rest der Hausbatterie berechnen und
-                  // gegen die totalPv pruefen, so dass die Batterie noch voll werden kann?
-                ) {
-                  logger.debug('PV Überschuss beendet Laden', {
-                    averagePvProductionKw: _.round(averagePvProductionKw, 1),
-                    pvProductionKw:        _.round(pvProductionKw, 1),
-                    hausBatterySocPct:     _.round(hausBatterySocPct, 1),
-                    maxSunTime:            maxSunTime.local().format('HH:mm'),
-                  });
-
-                  await stopCharging();
-                } else {
-                  const currentMa = _.max([6000, _.round((averagePvProductionKw - 0.3) * 1000 / 3 / 230 * 1000)]);
-
-                  // logger.debug(`calc current=${currentMa}`);
-
-                  await setChargeCurrent(currentMa);
-                }
-              } else if(averagePvProductionKw > 4 &&
-                (
-                  hausBatterySocPct > 80 ||
-                  hausBatterySocPct > 40 && now < maxSunTime
-                )
-              ) {
-                logger.debug('PV Überschuss beginnt Laden', {
-                  averagePvProductionKw: _.round(averagePvProductionKw, 1),
-                  hausBatterySocPct:     _.round(hausBatterySocPct, 1),
-                  maxSunTime:            maxSunTime.local().format('HH:mm'),
-                });
-
-                await startCharging();
-              }
-            }
-          }
-
-          lastPvProductionKw = [];
           lastChargeUpdate = now;
         }
         break;
@@ -752,14 +776,6 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
       case `${vwPrefix}/domains/charging/plugStatus/plugConnectionState`:
         vwPlugConnectionState = message;
-
-        await handlePlugIn();
-        break;
-
-      case `${vwPrefix}/domains/charging/plugStatus/plugLockState`:
-        vwPlugLockState = message;
-
-        await handlePlugIn();
         break;
 
       case `${vwPrefix}/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K`:
@@ -777,13 +793,13 @@ mqttClient.on('message', async(topic, messageBuffer) => {
       case `${vwPrefix}/parking/parkingPosition/latitude`:
         vwParkingLatitude = Number(message);
 
-        await handlePlugIn();
+        await handleLocation();
         break;
 
       case `${vwPrefix}/parking/parkingPosition/longitude`:
         vwParkingLongitude = Number(message);
 
-        await handlePlugIn();
+        await handleLocation();
         break;
 
       case 'Wallbox/evse/auto_start_charging':
@@ -814,20 +830,42 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         }
         break;
 
-      case 'Wallbox/evse/state':
+      case 'Wallbox/evse/state': {
+        let newWallboxState;
+
         switch(message.charger_state) {
-          case 0:  wallboxState = 'Nicht verbunden'; break;
-          case 1:  wallboxState = 'Warte auf Ladefreigabe'; break;
-          case 2:  wallboxState = 'Ladebereit'; break;
-          case 3:  wallboxState = 'Lädt'; break;
-          case 4:  wallboxState = 'Fehler'; break;
-          default: wallboxState = message.charger_state; break;
+          case 0:  newWallboxState = 'Nicht verbunden'; break;
+          case 1:  newWallboxState = 'Warte auf Ladefreigabe'; break;
+          case 2:  newWallboxState = 'Ladebereit'; break;
+          case 3:  newWallboxState = 'Lädt'; break;
+          case 4:  newWallboxState = 'Fehler'; break;
+          default: newWallboxState = message.charger_state; break;
         }
 
+        if(wallboxState && wallboxState !== 'Lädt' && newWallboxState === 'Lädt') {
+          await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+            priority: -1,
+            sound:    'none',
+            title:    '🚗 Auto',
+            message:  `Ladestart bei ${vwBatterySocPct}%`,
+          }));
+        } else if(wallboxState === 'Lädt' && newWallboxState !== 'Lädt') {
+          await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+            priority: -1,
+            sound:    'none',
+            title:    '🚗 Auto',
+            message:  `Ladeende bei ${vwBatterySocPct}%`,
+          }));
+        }
+
+        wallboxState = newWallboxState;
+
         await updateStatus({wallboxState});
+        await checkPVUeberschussLaden();
 
         // logState('Wallbox/evse/state');
         break;
+      }
 
       case 'Wallbox/power_manager/external_control':
         // logger.debug(topic, message);
@@ -865,7 +903,6 @@ await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/chargingStatus/cha
 await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/chargingStatus/chargingState`);
 await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/chargingSettings/targetSOC_pct`);
 await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/plugStatus/plugConnectionState`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/plugStatus/plugLockState`);
 await mqttClient.subscribeAsync(`${vwPrefix}/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K`);
 await mqttClient.subscribeAsync(`${vwPrefix}/domains/readiness/readinessStatus/connectionState/isActive`);
 await mqttClient.subscribeAsync(`${vwPrefix}/domains/readiness/readinessStatus/connectionState/isOnline`);

@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@stheine/helpers": "1.2.1",
+    "@stheine/ringbufferjs": "0.1.1",
     "async-lock": "1.4.1",
     "check-types-2": "11.8.1",
     "dayjs": "1.11.13",
