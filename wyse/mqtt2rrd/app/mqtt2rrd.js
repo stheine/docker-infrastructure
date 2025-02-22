@@ -397,85 +397,97 @@ process.on('SIGTERM', () => stopProcess());
 
         case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW': {
           // logger.info(topic, message);
-          const file = '/var/auto/auto.rrd';
+          if(message) {
+            const file = '/var/auto/auto.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              chargePowerKw: message,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                chargePowerKw: message,
+              },
+            };
+          }
           break;
         }
 
         case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km': {
           // logger.info(topic, message);
-          const file = '/var/auto/auto.rrd';
+          if(message) {
+            const file = '/var/auto/auto.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              cruisingRangeKm: message,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                cruisingRangeKm: message,
+              },
+            };
+          }
           break;
         }
 
         case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct': {
           // logger.info(topic, message);
-          const file = '/var/auto/auto.rrd';
+          if(message) {
+            const file = '/var/auto/auto.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              batterySoc: message,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                batterySoc: message,
+              },
+            };
+          }
           break;
         }
 
         case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K': {
           // logger.info(topic, message);
-          const file = '/var/auto/auto.rrd';
+          if(message) {
+            const file = '/var/auto/auto.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              tempBatteryMaxK: message,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                tempBatteryMaxK: message,
+              },
+            };
+          }
           break;
         }
 
         case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K': {
           // logger.info(topic, message);
-          const file = '/var/auto/auto.rrd';
+          if(message) {
+            const file = '/var/auto/auto.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              tempBatteryMinK: message,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                tempBatteryMinK: message,
+              },
+            };
+          }
           break;
         }
 
         case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer': {
           // logger.info(topic, message);
-          const file = '/var/auto/auto.rrd';
+          if(message) {
+            const file = '/var/auto/auto.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              odometer: message,
-            },
-          };
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                odometer: message,
+              },
+            };
+          }
           break;
         }
 
