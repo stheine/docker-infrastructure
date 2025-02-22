@@ -69,10 +69,9 @@ process.on('SIGTERM', () => stopProcess());
 let now                           = dayjs();
 let maxSun                        = 0;
 let lastTimestamp                 = null;
-// let wallboxLaedt                  = false;
-// let wallboxStrom                  = null;
-// let lastWallboxErrorMailTimestamp = null;
-// let lastWallboxStateMailTimestamp = null;
+let vwBatterySocPct               = null;
+let vwTargetSocPct                = null;
+let wallboxState                  = null;
 let aktuellerUeberschuss          = null;
 let batteryLeistung               = null;
 let batteryLevel                  = null;
@@ -233,6 +232,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
     }
 
     switch(topic) {
+      case 'auto/tele/STATUS':
+        ({wallboxState} = message);
+        break;
+
       case 'maxSun/INFO':
         maxSun = dayjs.utc(message);
         break;
@@ -394,7 +397,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
-      case 'tasmota/spuelmaschine/stat/POWER':
+      case 'tasmota/spuelmaschine/stat/POWER': {
         switch(messageRaw) {
           case 'OFF':
             if(!spuelmaschineInterval) {
@@ -447,8 +450,9 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             break;
         }
         break;
+      }
 
-      case 'tasmota/heizstab/stat/POWER':
+      case 'tasmota/heizstab/stat/POWER': {
         switch(messageRaw) {
           case 'OFF':
             heizstabLeistung     = 0;
@@ -466,10 +470,9 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                 return;
               }
 
-              if(!_.inRange(now.format('M'), 3, 10)) {
-                // Not in October - Februar
-                return;
-              }
+//              if([1, 12].includes(now.format('M'))) { // Not in January & December
+//                return;
+//              }
 
               if((aktuellerUeberschuss > 5500 &&
                 (batteryLevel > 50 || solcastHighPvHours >= 2) &&
@@ -507,11 +510,14 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
               if(aktuellerUeberschuss < 4500 ||
                 (batteryLevel < 50 && solcastHighPvHours < 2) ||
-                (batteryLevel < 70 && solcastHighPvHours < 1)
+                (batteryLevel < 70 && solcastHighPvHours < 1) ||
+                (['Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
+                  vwBatterySocPct < vwTargetSocPct
+                )
               ) {
                 logger.info('Geringe Einspeisung. Beende Speicherheizung mit Heizstab.', {
                   zaehlerLeistung, batteryLeistung, batteryLevel, heizstabLeistung,
-                  aktuellerUeberschuss, solcastHighPvHours});
+                  aktuellerUeberschuss, solcastHighPvHours, wallboxState, vwBatterySocPct, vwTargetSocPct});
 
                 await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'OFF');
               }
@@ -523,13 +529,15 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             break;
         }
         break;
+      }
 
-      case 'tasmota/heizstab/tele/SENSOR':
+      case 'tasmota/heizstab/tele/SENSOR': {
         heizstabLeistung     = message.ENERGY.Power;
         aktuellerUeberschuss = -zaehlerLeistung + batteryLeistung + heizstabLeistung;
         break;
+      }
 
-      case 'tasmota/waschmaschine/stat/POWER':
+      case 'tasmota/waschmaschine/stat/POWER': {
         switch(messageRaw) {
           case 'OFF':
             if(!waschmaschineInterval) {
@@ -582,85 +590,27 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             break;
         }
         break;
+      }
 
-      case 'vito/tele/SENSOR':
+      case 'vito/tele/SENSOR': {
         vitoBetriebsart = Number(message.hk1Betriebsart);
         break;
+      }
 
-//      case 'Wallbox/evse/state': {
-//        // iec61851_state: 0,
-//        // vehicle_state: 0, // 1 Verbunden, 2 Lädt
-//        // charge_release: 1, // 0 Automatisch, 1 Manuell, 2 Deaktiviert
-//        // allowed_charging_current: 16000,
-//        // error_state: 0,
-//        const {error_state, vehicle_state} = message;
-//
-//        if(error_state) {
-//          logger.error('Wallbox error_state', message);
-//          if((now - lastWallboxErrorMailTimestamp) / 1000 / 3600 > 1) {
-//            await sendMail({
-//              to:      'stefan@heine7.de',
-//              subject: `Wallbox Fehler`,
-//              html:    `<b>Wallbox Fehler</b><br><pre>${JSON.stringify(message, null, 2)}</pre>`,
-//            });
-//            lastWallboxErrorMailTimestamp = now;
-//          }
-//        }
-//        switch(vehicle_state) {
-//          case undefined:
-//          case 0:
-//            // Nicht verbunden
-//            break;
-//
-//          case 1:
-//            // Verbunden
-//            if((now - lastWallboxStateMailTimestamp) / 1000 / 3600 > 1) {
-//              await sendMail({
-//                to:      'stefan@heine7.de',
-//                subject: `Wallbox Verbunden`,
-//                html:    `<b>Wallbox Verbunden</b><br><pre>${JSON.stringify(message, null, 2)}</pre>`,
-//              });
-//              lastWallboxStateMailTimestamp = now;
-//            }
-//            break;
-//
-//          case 2:
-//            // Lädt
-//            if((now - lastWallboxStateMailTimestamp) / 1000 / 3600 > 1) {
-//              await sendMail({
-//                to:      'stefan@heine7.de',
-//                subject: `Wallbox Lädt`,
-//                html:    `<b>Wallbox Lädt</b><br><pre>${JSON.stringify(message, null, 2)}</pre>`,
-//              });
-//              lastWallboxStateMailTimestamp = now;
-//            }
-//            break;
-//
-//          case 3:
-//            // Fehler
-//            logger.error('Wallbox vehicle_state Fehler', message);
-//            break;
-//
-//          default:
-//            logger.error(`Unhandled vehicle_state '${vehicle_state}'`, message);
-//            break;
-//        }
-//        if(vehicle_state === 2) {
-//          wallboxLaedt = true;
-//
-//          if(_.isNull(wallboxStrom)) {
-//            wallboxStrom = 0;
-//          }
-//        } else {
-//          wallboxLaedt = false;
-//          wallboxStrom = null;
-//        }
-//        break;
-//      }
+      case `vwsfriend/vehicles/${config.VWId}/domains/charging/batteryStatus/currentSOC_pct`: {
+        vwBatterySocPct = messageRaw;
+        break;
+      }
 
-      default:
+      case `vwsfriend/vehicles/${config.VWId}/domains/charging/chargingSettings/targetSOC_pct`: {
+        vwTargetSocPct = messageRaw;
+        break;
+      }
+
+      default: {
         logger.error(`Unhandled topic '${topic}'`, messageRaw);
         break;
+      }
     }
   } catch(err) {
     logger.error(`Failed to parse mqtt message for '${topic}': ${messageBuffer.toString()}`, err.message);
@@ -687,6 +637,7 @@ await mqttClient.subscribeAsync('tasmota/spuelmaschine/stat/POWER');
 await mqttClient.subscribeAsync('tasmota/waschmaschine/stat/POWER');
 await mqttClient.subscribeAsync('vito/tele/SENSOR');
 // await mqttClient.subscribeAsync('Wallbox/evse/state');
+await mqttClient.subscribeAsync('auto/tele/STATUS');
 
 while(_.isNull(vitoBetriebsart)) {
   await delay(ms('100ms'));
