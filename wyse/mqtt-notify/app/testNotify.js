@@ -10,9 +10,11 @@ import notify     from './notify.js';
 
   await notify({config,
     data: {
-      message: 'this is a message',
-      title:   'title',
-      ttl:     60,
+      priority: -1,
+      message:  'this is a message',
+      sound:    'none',
+      title:    'title',
+      ttl:      60,
     }});
 
   logger.info('OK');

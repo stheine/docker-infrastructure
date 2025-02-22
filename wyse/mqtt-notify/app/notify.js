@@ -37,4 +37,4 @@ export default async function notify({config, data: notifyData}) {
       await delay(ms('10s'));
     }
   } while(retry);
-};
+}
