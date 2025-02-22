@@ -33,6 +33,7 @@ dayjs.extend(utc);
 // Globals
 
 let   config;
+let   dcPower;
 const dcPowers              = new Ringbuffer(10);
 const einspeisungen         = new Ringbuffer(60);
 let   froniusBatteryStatus;
@@ -50,7 +51,7 @@ let   healthInterval;
 let   heizstabLeistung      = null;
 let   inverter;
 let   lastLog;
-let   lastRate;
+let   lastRate1d;
 let   maxSun                = 0;
 let   momentanLeistung      = 0;
 let   mqttClient;
@@ -133,7 +134,7 @@ process.on('SIGTERM', () => stopProcess());
 // ###########################################################################
 // Solcast, weather forecast
 
-const wattToRate = function({watt}) {
+const wattToRate = function(watt) {
   if(!capacityWh) {
     return 0;
   }
@@ -157,14 +158,16 @@ const getBatteryChargePct = function({log}) {
   let   demandOvernightWh = 0;
   let   note;
   let   rate;
-  const now          = dayjs.utc();
-  const maxSunTime   = now.clone()
+  const nowUtc            = dayjs.utc();
+  const nowCent           = _.find(strompreise, data =>
+    dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
+  const maxSunTime        = nowUtc.clone()
     .hour(new Date(maxSun).getUTCHours())
     .minute(new Date(maxSun).getUTCMinutes())
     .second(0);
-  const today22Time = now.clone().hour(22).minute(0).second(0);
-  const tomorrow6Time = now.clone().hour(24 + 6).minute(0).second(0);
-  const tomorrowNoonTime = now.clone().hour(36).minute(0).second(0);
+  const today22Time = nowUtc.clone().hour(22).minute(0).second(0);
+  const tomorrow6Time = nowUtc.clone().hour(24 + 6).minute(0).second(0);
+  const tomorrowNoonTime = nowUtc.clone().hour(36).minute(0).second(0);
 
   const {
     highPvHours,
@@ -217,8 +220,12 @@ const getBatteryChargePct = function({log}) {
   ) {
     note = `Charge maximum (Auto).`;
     rate = 1;
-  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
-    _.inRange(now.format('M'), 4, 11) &&
+  } else if(nowCent - froniusBatteryStatus.batteryCent < config.useGridDiffCent) {
+    note = `Small diff between batteryCent (${froniusBatteryStatus.batteryCent}) ` +
+      `and nowCent (${nowCent}). Use grid power.`;
+    rate = 1;
+  } else if(!['Sat', 'Sun'].includes(nowUtc.format('ddd')) &&
+    _.inRange(nowUtc.format('M'), 4, 11) &&
     chargeStatePct > config.springChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
     demandOvernightWh < capacityWh * config.springChargeGoal / 100 &&
@@ -226,8 +233,8 @@ const getBatteryChargePct = function({log}) {
   ) {
     note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
-  } else if(!['Sat', 'Sun'].includes(now.format('ddd')) &&
-    _.inRange(now.format('M'), 5, 9) &&
+  } else if(!['Sat', 'Sun'].includes(nowUtc.format('ddd')) &&
+    _.inRange(nowUtc.format('M'), 5, 9) &&
     chargeStatePct > config.summerChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
     demandOvernightWh < capacityWh * config.summerChargeGoal / 100 &&
@@ -260,7 +267,7 @@ const getBatteryChargePct = function({log}) {
         toChargeWh / (limitPvHours || 1),                                  // Remaining by limitPvHours
       ]));
     } else if(totalPvWh > 3 * toChargeWh) {
-      if(now < maxSunTime) {
+      if(nowUtc < maxSunTime) {
         note = `PV (${maxDcPower}W) over the limit and sufficient for today. Before max sun.`;
         rate = wattToRate(_.max([capacityWh * 0.1, toChargeWh / highPvHours]));
       } else {
@@ -284,7 +291,7 @@ const getBatteryChargePct = function({log}) {
     note = `Short limit expected and max sun. Wait to reach limit.`;
     rate = 0;
   } else if(highPvWh && highPvHours > toChargeWh / 2000) {
-    if(now < maxSunTime) {
+    if(nowUtc < maxSunTime) {
       note = `High PV for enough hours to charge. Before max sun.`;
       rate = wattToRate(_.max([capacityWh * 0.1, toChargeWh / highPvHours]));
     } else {
@@ -299,10 +306,12 @@ const getBatteryChargePct = function({log}) {
     rate = 1; // Charge-rate 100%.
   }
 
+  const rate1d = _.round(rate, 1);
+
   if(log ||
     !lastLog ||
-    (toChargeWh > 30 && maxDcPower > 10 && now - lastLog > ms('28 minutes')) ||
-    rate !== lastRate
+    (toChargeWh > 30 && maxDcPower > 10 && nowUtc - lastLog > ms('28 minutes')) ||
+    rate1d !== lastRate1d
   ) {
     logger.debug('getBatteryChargePct', {
       totalPv:          `${_.round(totalPvWh) / 1000}kWh`,
@@ -316,8 +325,10 @@ const getBatteryChargePct = function({log}) {
       maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
       momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
       vwChargePowerKw:  `${vwChargePowerKw}kW`,
-      vwBatterySocPct:  `${vwBatterySocPct}%`,
+      vwBatterySocPct:  `${vwBatterySocPct}% (${vwTargetSocPct}%)`,
+      autoAtHome:       `${autoStatus.atHome} (${autoStatus.wallboxState})`,
       heizstabLeistung: `${_.round(heizstabLeistung / 1000, 1)}kW`,
+      preis:            `now: ${nowCent}c, battery: ${froniusBatteryStatus.batteryCent}c`,
       chargeState:      `${chargeStatePct}%`,
       toCharge:         `${_.round(toChargeWh / 1000, 1)}kWh`,
       demandOvernight:  `${_.round(demandOvernightWh / 1000, 1)}kWh`,
@@ -325,8 +336,8 @@ const getBatteryChargePct = function({log}) {
       note,
     });
 
-    lastLog  = now;
-    lastRate = rate;
+    lastLog    = nowUtc;
+    lastRate1d = rate1d;
   }
 
   return rate * 100;
@@ -468,7 +479,6 @@ const setBatteryPvCharge = async function(chargePct) {
 const handleRate = async function(log = false) {
   try {
     // Get charge rate
-    let dcPower;
     let chargePct;
 
     try {
@@ -482,9 +492,17 @@ const handleRate = async function(log = false) {
       throw new Error(`Failed getting battery state: ${err.message}`);
     }
 
+    const nowUtc      = dayjs.utc();
+    const nowCent     = _.find(strompreise, data =>
+      dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
+
     if(froniusBatteryStatus.gridCharge) {
       // Do nothing. Battery charging handled in handler.
     } else if(autoStatus.chargeMode === 'Nachts' && autoStatus.wallboxState === 'Lädt') {
+      await preventBatteryUnload();
+    } else if(autoStatus.wallboxState !== 'Lädt' &&
+      nowCent - froniusBatteryStatus.batteryCent < config.useGridDiffCent
+    ) {
       await preventBatteryUnload();
     } else {
       try {
@@ -697,6 +715,11 @@ mqttClient.on('message', async(topic, messageBuffer) => {
       case 'strom/tele/SENSOR':
         ({momentanLeistung} = message);
 
+        if(froniusBatteryStatus.batteryCent && dcPower > 500) {
+          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${froniusBatteryStatus.batteryCent}c)`);
+
+          await updateFroniusBatteryStatus({batteryCent: 0});
+        }
         break;
 
       case 'sunTimes/INFO':
@@ -735,16 +758,16 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         heizstabLeistung = message.ENERGY.Power;
         break;
 
-      case `vwsfriend/vehicles/${config.VWId}/domains/charging/batteryStatus/currentSOC_pct`:
-        vwBatterySocPct = messageRaw;
+      case `vwsfriend/vehicles/${config.vwId}/domains/charging/batteryStatus/currentSOC_pct`:
+        vwBatterySocPct = Number(messageRaw);
         break;
 
-      case `vwsfriend/vehicles/${config.VWId}/domains/charging/chargingSettings/targetSOC_pct`:
-        vwTargetSocPct = messageRaw;
+      case `vwsfriend/vehicles/${config.vwId}/domains/charging/chargingSettings/targetSOC_pct`:
+        vwTargetSocPct = Number(messageRaw);
         break;
 
-      case `vwsfriend/vehicles/${config.VWId}/domains/charging/chargingStatus/chargePower_kW`:
-        vwChargePowerKw = messageRaw;
+      case `vwsfriend/vehicles/${config.vwId}/domains/charging/chargingStatus/chargePower_kW`:
+        vwChargePowerKw = Number(messageRaw);
         break;
 
       default:
@@ -766,9 +789,9 @@ await mqttClient.subscribeAsync('sunTimes/INFO');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
 await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
 await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/batteryStatus/currentSOC_pct`);
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/chargingSettings/targetSOC_pct`);
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/chargingStatus/chargePower_kW`);
+await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.vwId}/domains/charging/batteryStatus/currentSOC_pct`);
+await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.vwId}/domains/charging/chargingSettings/targetSOC_pct`);
+await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.vwId}/domains/charging/chargingStatus/chargePower_kW`);
 
 healthInterval = setInterval(async() => {
   await mqttClient.publishAsync(`fronius-battery/health/STATE`, 'OK');
@@ -892,7 +915,9 @@ const handleBatteryGridChargingHandler = async function() {
 
   check.assert.nonEmptyObject(solcastAnalysis);
 
-  const now         = dayjs.utc();
+  const nowUtc      = dayjs.utc();
+  const nowCent     = _.find(strompreise, data =>
+    dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
   const sunriseDate = dayjs(sunTimes.sunrise);
   const sunsetDate  = dayjs(sunTimes.sunset);
   const {
@@ -903,10 +928,12 @@ const handleBatteryGridChargingHandler = async function() {
   check.assert.nonEmptyArray(hourlyForecasts);
   check.assert.number(totalPvWh || 0);
 
+  let foundGood        = false;
   let toChargeWhFixed;
   let toChargeWhNeed;
+  let useGrid          = false;
 
-  if(totalPvWh < 7000) {
+  if(totalPvWh < 5000) {
     // Niedriger PV Ertrag vorhergesagt, dann voll laden
     toChargeWhFixed = _.round(capacityWh * (100 - chargeStatePct) / 100);
 
@@ -915,7 +942,7 @@ const handleBatteryGridChargingHandler = async function() {
   } else if(totalPvWh < 10000) {
     // Wenig PV Ertrag vorhergesagt, dann auf Hälfte laden
     // TODO anteilig?
-    toChargeWhFixed = _.max([0, _.round(capacityWh * (100 - chargeStatePct) / 100 / 2)]);
+    toChargeWhFixed = _.max([0, _.round(capacityWh * (50 - chargeStatePct) / 100)]);
 
     logger.debug(`handleBatteryGridChargingHandler, low forecast (${_.round(totalPvWh)}Wh), ` +
       `charge ${toChargeWhFixed}Wh`);
@@ -937,52 +964,75 @@ const handleBatteryGridChargingHandler = async function() {
 
       return true;
     });
-    const maxCentsDuringDaytime = _.max(_.map(dayData, 'cent'));
+    const minCentsDuringDaytime = _.min(_.map(dayData, 'cent'));
 
-    if(maxCentsDuringDaytime > 15) {
+    if(totalPvWh < 10000 && minCentsDuringDaytime - nowCent > 5) {
       // Teurer Preis am Tag, voll laden
       toChargeWhFixed = _.round(capacityWh * (100 - chargeStatePct) / 100);
 
-      logger.debug(`handleBatteryGridChargingHandler, expensive daylight price (${maxCentsDuringDaytime}ct), ` +
-        `charge ${toChargeWhFixed}Wh`);
+      logger.debug(`handleBatteryGridChargingHandler, expensive daylight price ` +
+        `(${minCentsDuringDaytime}ct, now ${nowCent}c), charge ${toChargeWhFixed}Wh`);
     }
   }
 
   {
     // logger.debug('handleBatteryGridChargingHandler', {
-    //   now,
+    //   nowUtc,
     //   sunsetDate,
     //   hourlyForecasts,
     // });
 
-    let currentWh = _.round(capacityWh * chargeStatePct / 100);
-    let chargeWh  = 0;
-    let foundGood = false;
+    let batteryMax = false;
+    let currentWh  = _.round(capacityWh * chargeStatePct / 100);
+    let chargeWh   = 0;
     let timeH;
 
     currentWh -= 1000; // 1000 Mindestreserve der Batterie;
 
-    for(timeH of _.range(now.local().hour(), _.first(hourlyForecasts).timeH)) {
+    let   startH   = nowUtc.local().hour();
+    const startPvH = _.first(hourlyForecasts).timeH;
+
+    if(startH > startPvH) {
+      startH -= 24;
+    }
+
+    for(timeH of _.range(startH, startPvH)) {
+      const timeHDate = dayjs(_.first(hourlyForecasts.startDate)).hour(timeH);
+      let   thisHourWh = 0;
+
       if(timeH === 7) {
-        currentWh -= 1000; // Kaffe und Tee am Morgen
+        thisHourWh += 1000; // Kaffe und Tee am Morgen
       }
 
       if(timeH < 7) {
-        currentWh -= 300;
+        thisHourWh += 300;
       } else {
-        currentWh -= 500;
+        thisHourWh += 500;
       }
 
-      if(currentWh < 0) {
-        chargeWh -= currentWh;
-        currentWh = 0;
-      }
+      if(thisHourWh > currentWh) {
+        const cent = _.find(strompreise, data =>
+          dayjs(data.startTime).format('YYYY-MM-DD HH') === timeHDate.format('YYYY-MM-DD HH')).cent;
 
-      logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh`);
+        if(cent - nowCent < config.useGridDiffCent) {
+          // Rather use grid power directly, than consume battery power
+          logger.debug(`Forecast: ${timeH}:00 => Use grid for ${cent}c => batteryCent=${nowCent}c`);
+
+          useGrid = true;
+        } else {
+          chargeWh   += thisHourWh;
+          logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh charge ${chargeWh}Wh`);
+        }
+      } else {
+        currentWh -= thisHourWh;
+
+        logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh`);
+      }
     }
 
     for(const forecast of hourlyForecasts) {
       const {estimateWh, startDate} = forecast;
+      let   thisHourWh = 0;
 
       if(dayjs(startDate) > sunsetDate) {
         break;
@@ -991,57 +1041,76 @@ const handleBatteryGridChargingHandler = async function() {
       timeH      = forecast.timeH;
       currentWh += estimateWh;
 
+      if(currentWh > capacityWh) {
+        batteryMax = true;
+        currentWh  = capacityWh;
+      }
+
       if(timeH === 7) {
-        currentWh -= 1000; // Kaffe und Tee am Morgen
+        thisHourWh += 1000; // Kaffe und Tee am Morgen
       } else if(timeH === 13) {
-        currentWh -= 1500; // Mittagessen
+        thisHourWh += 1500; // Mittagessen
       } else if(timeH === 19) {
-        currentWh -= 1500; // Abendessen und Beleuchtung
+        thisHourWh += 1500; // Abendessen und Beleuchtung
       }
 
       if(timeH < 7) {
-        currentWh -= 300;
+        thisHourWh += 300;
       } else {
-        currentWh -= 500;
+        thisHourWh += 500;
       }
 
-      if(currentWh < 0) {
-        chargeWh -= currentWh;
-        currentWh = 0;
+      if(thisHourWh > currentWh) {
+        if(!batteryMax) {
+          chargeWh += thisHourWh;
+        }
+      } else {
+        currentWh -= thisHourWh;
       }
 
       if(estimateWh < 1500) {
-        logger.debug(`Forecast: ${timeH}:00 ${estimateWh}Wh => ${currentWh}Wh`);
+        logger.debug(`Forecast: ${timeH}:00 ${estimateWh}Wh => ${currentWh}Wh` +
+          `${chargeWh ? ` charge ${chargeWh}Wh` : ''}`);
       } else {
-        logger.debug(`Forecast: ${timeH}:00 ${estimateWh}Wh => ${currentWh}Wh - good estimate`);
+        logger.debug(`Forecast: ${timeH}:00 ${estimateWh}Wh => ${currentWh}Wh - good estimate` +
+          `${chargeWh ? ` charge ${chargeWh}Wh` : ''}`);
         foundGood = true;
       }
     }
 
     for(timeH of _.range(timeH + 1, 24)) {
+      let thisHourWh = 0;
+
       if(timeH === 19) {
-        currentWh -= 1500; // Abendessen und Beleuchtung
+        thisHourWh += 1500; // Abendessen und Beleuchtung
       }
 
       if(timeH > 23) {
-        currentWh -= 300;
+        thisHourWh += 300;
       } else {
-        currentWh -= 500;
+        thisHourWh += 500;
       }
 
-      if(currentWh < 0) {
-        chargeWh -= currentWh;
-        currentWh = 0;
+      if(thisHourWh > currentWh) {
+        chargeWh   += thisHourWh;
+      } else {
+        currentWh -= thisHourWh;
       }
 
-      logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh`);
+      logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh` +
+        `${chargeWh ? ` charge ${chargeWh}Wh` : ''}`);
     }
 
     logger.debug('handleBatteryGridChargingHandler, calculate need', {
       currentWh, foundGood, chargeWh,
     });
 
-    if(foundGood) {
+    if(!chargeWh) {
+      toChargeWhNeed = 0;
+
+      logger.debug(`handleBatteryGridChargingHandler, forecast (${_.round(totalPvWh)}), ` +
+        `current: ${chargeStatePct}%, need: ${_.round(chargeWh)}Wh, no need to charge`);
+    } else if(foundGood) {
       toChargeWhNeed = _.round(chargeWh);
 
       logger.debug(`handleBatteryGridChargingHandler, forecast (${_.round(totalPvWh)}), ` +
@@ -1083,11 +1152,23 @@ const handleBatteryGridChargingHandler = async function() {
         clearInterval(gridChargingDoneInterval);
         gridChargingDoneInterval = undefined;
 
-        logger.info(`Finished grid charge for ${toChargeWh}Wh (${chargeStatePct}%)`);
+        logger.info(`Finished grid charge for ${toChargeWh}Wh (${chargeStatePct}%, batteryCent: ${nowCent}c)`);
+
+        await updateFroniusBatteryStatus({batteryCent: nowCent});
       }
     }, ms('1 minute'));
+  } else if(useGrid) {
+    logger.debug(`No need to charge, ${chargeStatePct}%, but use Grid (${nowCent}c)`);
+
+    await updateFroniusBatteryStatus({batteryCent: nowCent});
+  } else if(!foundGood) {
+    logger.debug(`No need to charge, ${chargeStatePct}%, but low estimate (${nowCent}c)`);
+
+    await updateFroniusBatteryStatus({batteryCent: nowCent});
   } else {
-    logger.debug(`No need to charge (toChargeWh=${toChargeWh}Wh), ${chargeStatePct}%`);
+    logger.debug(`No need to charge, use Battery`);
+
+    await updateFroniusBatteryStatus({batteryCent: 0});
   }
 
   await updateFroniusBatteryStatus({batteryGridChargeDate: dayjs.utc().format('YYYY-MM-DD')});
@@ -1100,7 +1181,7 @@ const handleBatteryGridChargingHandler = async function() {
 };
 
 const handleBatteryGridChargingSchedule = async function() {
-  const now         = dayjs.utc();
+  const nowUtc         = dayjs.utc();
   const sunriseDate = dayjs(sunTimes.sunrise);
   const sunsetDate  = dayjs(sunTimes.sunset);
   const today6Date  = dayjs().hour(6).minute(0).second(0);
@@ -1108,7 +1189,7 @@ const handleBatteryGridChargingSchedule = async function() {
   if(gridChargingHandlerTimeout) {
     // The handler is already scheduled
 
-    if(now.date() === sunriseDate.date() && now > sunriseDate && now > today6Date) {
+    if(nowUtc.date() === sunriseDate.date() && nowUtc > sunriseDate && nowUtc > today6Date) {
       // During daytime, or after sunset
       clearTimeout(gridChargingHandlerTimeout);
       gridChargingHandlerTimeout = undefined;
@@ -1125,15 +1206,15 @@ const handleBatteryGridChargingSchedule = async function() {
     batteryGridChargeDate: froniusBatteryStatus.batteryGridChargeDate,
   });
 
-  // check.assert.equal(now.date(), sunriseDate.date(), 'Sunrise date mismatch');
-  // check.assert.equal(now.date(), sunsetDate.date(), 'Sunset date mismatch');
-  if(now.date() !== sunriseDate.date()) {
-    logger.debug('Sunrise date mismatch', {now, sunTimes});
+  // check.assert.equal(nowUtc.date(), sunriseDate.date(), 'Sunrise date mismatch');
+  // check.assert.equal(nowUtc.date(), sunsetDate.date(), 'Sunset date mismatch');
+  if(nowUtc.date() !== sunriseDate.date()) {
+    logger.debug('Sunrise date mismatch', {nowUtc, sunTimes});
 
     return;
   }
-  if(now.date() !== sunsetDate.date()) {
-    logger.debug('Sunset date mismatch', {now, sunTimes});
+  if(nowUtc.date() !== sunsetDate.date()) {
+    logger.debug('Sunset date mismatch', {nowUtc, sunTimes});
 
     return;
   }
@@ -1141,7 +1222,7 @@ const handleBatteryGridChargingSchedule = async function() {
   const nightData = _.filter(strompreise, data => {
     const startTimeDate = dayjs(data.startTime);
 
-    if(startTimeDate < now) {
+    if(startTimeDate < nowUtc) {
       return false;
     }
 
@@ -1153,8 +1234,8 @@ const handleBatteryGridChargingSchedule = async function() {
   });
 
   if(!nightData.length) {
-    if(now.hour() >= 16) {
-      logger.debug('Failed to find nightData', {strompreise, sunTimes, now});
+    if(nowUtc.hour() >= 16) {
+      logger.debug('Failed to find nightData', {strompreise, sunTimes, nowUtc});
     }
 
     return;
@@ -1169,25 +1250,25 @@ const handleBatteryGridChargingSchedule = async function() {
 
   let key      = 0;
   let minKey;
-  let minCost;
+  let minCent;
 
   do {
-    const cost = nightData[key].cent;
+    const cent = nightData[key].cent;
 
-    if(minCost === undefined || cost < minCost) {
+    if(minCent === undefined || cent < minCent) {
       minKey  = key;
-      minCost = cost;
+      minCent = cent;
     }
 
     key++;
   } while(key < nightData.length);
 
-  logger.debug('handleBatteryGridChargingSchedule', {minKey, minCost, nightData: nightData[minKey]});
+  logger.debug('handleBatteryGridChargingSchedule', {minKey, minCent, nightData: nightData[minKey]});
 
-  const minCostStartTime = dayjs(nightData[minKey].startTime);
+  const minCentStartTime = dayjs(nightData[minKey].startTime);
 
   gridChargingHandlerTimeout = setTimeout(() => handleBatteryGridChargingHandler(),
-    minCostStartTime - now + ms('1 minute'));
+    minCentStartTime - nowUtc + ms('1 minute'));
 };
 
 await handleBatteryGridChargingSchedule();
@@ -1301,8 +1382,6 @@ process.on('SIGHUP', async() => {
     config = await fsExtra.readJson('/var/fronius/config.json');
 
     check.assert.object(config);
-
-    logger.error(`Read springChargeGoal=${config.springChargeGoal}% summerChargeGoal=${config.summerChargeGoal}%`);
 
     await handleRate(true);
   } catch(err) {
