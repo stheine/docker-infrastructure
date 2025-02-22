@@ -16,6 +16,7 @@ import ms       from 'ms';
 let   healthInterval;
 const hostname   = os.hostname();
 let   mqttClient;
+let   pushState;
 let   volumio;
 
 // ###########################################################################
@@ -185,6 +186,11 @@ const getQueue = async function() {
         case 'prev':
         case 'stop':
         case 'toggle':
+          mqttClient.publishAsync('volumio/stat/pushState', JSON.stringify({
+            ...pushState,
+            status: '...',
+          }), {retain: true});
+
           volumio.emit(cmnd);
           break;
 
@@ -268,6 +274,8 @@ const getQueue = async function() {
 
   volumio.on('pushState', data => {
     mqttClient.publishAsync('volumio/stat/pushState', JSON.stringify(data), {retain: true});
+
+    pushState = data;
 
     // logger.info('pushState', data);
   });
