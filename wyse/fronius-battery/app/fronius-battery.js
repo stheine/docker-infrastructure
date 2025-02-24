@@ -345,7 +345,6 @@ const getBatteryChargePct = function({log}) {
 
 let handleRateErrorCount = 0;
 
-// eslint-disable-next-line no-unused-vars
 const resetBattery = async function() {
   // Allow charge and discharge control
   try {
@@ -366,6 +365,8 @@ const resetBattery = async function() {
   } catch(err) {
     throw new Error(`Failed writing grid allow: ${err.message}`);
   }
+
+  logger.info('resetBattery');
 };
 
 const preventBatteryUnload = async function() {
@@ -394,6 +395,8 @@ const preventBatteryUnload = async function() {
   } catch(err) {
     throw new Error(`Failed writing battery discharge rate: ${err.message}`);
   }
+
+  logger.info('preventBatteryUnload');
 };
 
 const setBatteryGridCharge = async function(chargePct = 100) {
@@ -498,6 +501,8 @@ const handleRate = async function(log = false) {
 
     if(froniusBatteryStatus.gridCharge) {
       // Do nothing. Battery charging handled in handler.
+    } else if(froniusBatteryStatus.preventBatteryUnload) {
+      // Do nothing. Don't load or unload battery.
     } else if(autoStatus.chargeMode === 'Nachts' && autoStatus.wallboxState === 'Lädt') {
       await preventBatteryUnload();
     } else if(autoStatus.wallboxState !== 'Lädt' &&
@@ -694,6 +699,14 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               clearInterval(gridChargingDoneInterval);
               gridChargingDoneInterval = undefined;
             }
+          }
+        } else if(Object.hasOwn(message, 'preventBatteryUnload')) {
+          if(message.preventBatteryUnload) {
+            updateFroniusBatteryStatus({preventBatteryUnload: true});
+            await preventBatteryUnload();
+          } else {
+            updateFroniusBatteryStatus({preventBatteryUnload: false});
+            await resetBattery();
           }
         } else {
           logger.error(`Unhandled cmnd '${topic}'`, message);
