@@ -36,7 +36,7 @@ let   config;
 let   dcPower;
 const dcPowers              = new Ringbuffer(10);
 const einspeisungen         = new Ringbuffer(60);
-let   froniusBatteryStatus;
+let   status;
 let   froniusInterval;
 const hostname              = os.hostname();
 const lock                  = new AsyncLock();
@@ -68,16 +68,16 @@ let   vwTargetSocPct;
 dcPowers.enq(0);
 einspeisungen.enq(0);
 
-const updateFroniusBatteryStatus = async function(set) {
+const updateStatus = async function(set) {
   await lock.acquire('fronius-battery.json', async() => {
-    froniusBatteryStatus = {...froniusBatteryStatus, ...set};
+    status = {...status, ...set};
 
-    await mqttClient.publishAsync('Fronius/solar/tele/STATUS', JSON.stringify(froniusBatteryStatus),
+    await mqttClient.publishAsync('Fronius/solar/tele/STATUS', JSON.stringify(status),
       {retain: true});
 
     await fsPromises.copyFile('/var/fronius/fronius-battery.json',
       '/var/fronius/fronius-battery.json.bak');
-    await fsExtra.writeJson('/var/fronius/fronius-battery.json', froniusBatteryStatus,
+    await fsExtra.writeJson('/var/fronius/fronius-battery.json', status,
       {spaces: 2});
   });
 };
@@ -86,8 +86,8 @@ const updateFroniusBatteryStatus = async function(set) {
 // Process handling
 
 const stopProcess = async function() {
-  if(froniusBatteryStatus.gridCharge) {
-    await updateFroniusBatteryStatus({gridCharge: false});
+  if(status.gridCharge) {
+    await updateStatus({gridCharge: false});
   }
 
   if(healthInterval) {
@@ -208,7 +208,7 @@ const getBatteryChargePct = function({log}) {
   // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
   // In April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
-  if(froniusBatteryStatus.chargeMax) {
+  if(status.chargeMax) {
     note = `Charge maximum.`;
     rate = 1;
   } else if(chargeStatePct < 20) {
@@ -220,8 +220,8 @@ const getBatteryChargePct = function({log}) {
   ) {
     note = `Charge maximum (Auto).`;
     rate = 1;
-  } else if(nowCent - froniusBatteryStatus.batteryCent < config.useGridDiffCent) {
-    note = `Small diff between batteryCent (${froniusBatteryStatus.batteryCent}) ` +
+  } else if(nowCent - status.batteryCent < config.useGridDiffCent) {
+    note = `Small diff between batteryCent (${status.batteryCent}) ` +
       `and nowCent (${nowCent}). Use grid power.`;
     rate = 1;
   } else if(!['Sat', 'Sun'].includes(nowUtc.format('ddd')) &&
@@ -229,7 +229,7 @@ const getBatteryChargePct = function({log}) {
     chargeStatePct > config.springChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
     demandOvernightWh < capacityWh * config.springChargeGoal / 100 &&
-    !froniusBatteryStatus.chargeTo
+    !status.chargeTo
   ) {
     note = `April to October, limit to ${config.springChargeGoal}%.`;
     rate = 0;
@@ -238,7 +238,7 @@ const getBatteryChargePct = function({log}) {
     chargeStatePct > config.summerChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
     demandOvernightWh < capacityWh * config.summerChargeGoal / 100 &&
-    !froniusBatteryStatus.chargeTo
+    !status.chargeTo
   ) {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
@@ -328,7 +328,7 @@ const getBatteryChargePct = function({log}) {
       vwBatterySocPct:  `${vwBatterySocPct}% (${vwTargetSocPct}%)`,
       autoAtHome:       `${autoStatus.atHome} (${autoStatus.wallboxState})`,
       heizstabLeistung: `${_.round(heizstabLeistung / 1000, 1)}kW`,
-      preis:            `now: ${nowCent}c, battery: ${froniusBatteryStatus.batteryCent}c`,
+      preis:            `now: ${nowCent}c, battery: ${status.batteryCent}c`,
       chargeState:      `${chargeStatePct}%`,
       toCharge:         `${_.round(toChargeWh / 1000, 1)}kWh`,
       demandOvernight:  `${_.round(demandOvernightWh / 1000, 1)}kWh`,
@@ -499,14 +499,14 @@ const handleRate = async function(log = false) {
     const nowCent     = _.find(strompreise, data =>
       dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
 
-    if(froniusBatteryStatus.gridCharge) {
+    if(status.gridCharge) {
       // Do nothing. Battery charging handled in handler.
-    } else if(froniusBatteryStatus.preventBatteryUnload) {
+    } else if(status.preventBatteryUnload) {
       // Do nothing. Don't load or unload battery.
     } else if(autoStatus.chargeMode === 'Nachts' && autoStatus.wallboxState === 'Lädt') {
       await preventBatteryUnload();
     } else if(autoStatus.wallboxState !== 'Lädt' &&
-      nowCent - froniusBatteryStatus.batteryCent < config.useGridDiffCent
+      nowCent - status.batteryCent < config.useGridDiffCent
     ) {
       await preventBatteryUnload();
     } else {
@@ -566,11 +566,11 @@ try {
 }
 
 try {
-  const savedFroniusBatteryStatus = await fsExtra.readJson('/var/fronius/fronius-battery.json');
+  const savedStatus = await fsExtra.readJson('/var/fronius/fronius-battery.json');
 
-  check.assert.nonEmptyObject(savedFroniusBatteryStatus);
+  check.assert.nonEmptyObject(savedStatus);
 
-  await updateFroniusBatteryStatus(savedFroniusBatteryStatus);
+  await updateStatus(savedStatus);
 } catch(err) {
   logger.error('Failed to read JSON in /var/fronius/fronius-battery.json', err.message);
 
@@ -652,25 +652,25 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           if(message.chargeMax) {
             logger.info(`Charge maximum.`);
 
-            await updateFroniusBatteryStatus({chargeMax: message.chargeMax});
+            await updateStatus({chargeMax: message.chargeMax});
           } else {
             logger.info(`Charge maximum. Reset.`);
 
-            await updateFroniusBatteryStatus({chargeMax: null});
+            await updateStatus({chargeMax: null});
           }
         } else if(Object.hasOwn(message, 'chargeTo')) {
           if(message.chargeTo) {
             logger.info(`Charge exception. Charge ${message.chargeTo}% today.`);
 
-            await updateFroniusBatteryStatus({chargeTo: message.chargeTo});
+            await updateStatus({chargeTo: message.chargeTo});
           } else {
             logger.info(`Charge exception. Reset to normal charge today.`);
 
-            await updateFroniusBatteryStatus({chargeTo: null});
+            await updateStatus({chargeTo: null});
           }
         } else if(Object.hasOwn(message, 'gridChargePct')) {
           if(message.gridChargePct) {
-            await updateFroniusBatteryStatus({gridCharge: true});
+            await updateStatus({gridCharge: true});
             await setBatteryGridCharge(message.gridChargePct);
 
             logger.info(`Starting grid charge with ${message.gridChargePct}%`);
@@ -682,7 +682,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             gridChargingDoneInterval = setInterval(async() => {
               if(chargeStatePct >= 100) {
-                await updateFroniusBatteryStatus({gridCharge: false});
+                await updateStatus({gridCharge: false});
 
                 clearInterval(gridChargingDoneInterval);
                 gridChargingDoneInterval = undefined;
@@ -691,7 +691,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               }
             }, ms('1 minute'));
           } else {
-            await updateFroniusBatteryStatus({gridCharge: false});
+            await updateStatus({gridCharge: false});
 
             logger.info(`Stoping grid charge (${chargeStatePct}%)`);
 
@@ -702,10 +702,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           }
         } else if(Object.hasOwn(message, 'preventBatteryUnload')) {
           if(message.preventBatteryUnload) {
-            updateFroniusBatteryStatus({preventBatteryUnload: true});
+            updateStatus({preventBatteryUnload: true});
             await preventBatteryUnload();
           } else {
-            updateFroniusBatteryStatus({preventBatteryUnload: false});
+            updateStatus({preventBatteryUnload: false});
             await resetBattery();
           }
         } else {
@@ -728,10 +728,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
       case 'strom/tele/SENSOR':
         ({momentanLeistung} = message);
 
-        if(froniusBatteryStatus.batteryCent && dcPower > 500) {
-          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${froniusBatteryStatus.batteryCent}c)`);
+        if(status.batteryCent && dcPower > 500) {
+          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${status.batteryCent}c)`);
 
-          await updateFroniusBatteryStatus({batteryCent: 0});
+          await updateStatus({batteryCent: 0});
         }
         break;
 
@@ -862,19 +862,19 @@ froniusInterval = setInterval(async() => {
       });
 
       const {resultsSmartMeter, resultsMppt, resultsInverter} = results;
-      const newFroniusBatteryStatus = {};
+      const newStatus = {};
 
       if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
-        newFroniusBatteryStatus.solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
+        newStatus.solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
       }
       if(resultsMppt['3_DCWH']) {
-        newFroniusBatteryStatus.storageChargeWh = resultsMppt['3_DCWH'];
+        newStatus.storageChargeWh = resultsMppt['3_DCWH'];
       }
       if(resultsMppt['4_DCWH']) {
-        newFroniusBatteryStatus.storageDisChargeWh = resultsMppt['4_DCWH'];
+        newStatus.storageDisChargeWh = resultsMppt['4_DCWH'];
       }
 
-      await updateFroniusBatteryStatus(newFroniusBatteryStatus);
+      await updateStatus(newStatus);
 
       await mqttClient.publishAsync('Fronius/solar/tele/SENSOR', JSON.stringify({
         time: Date.now(),
@@ -882,7 +882,7 @@ froniusInterval = setInterval(async() => {
           powerIncoming: resultsMppt['3_DCW'],
           powerOutgoing: resultsMppt['4_DCW'],
           stateOfCharge: resultsMppt.ChaState / 100,
-          ...newFroniusBatteryStatus,
+          ...newStatus,
         },
         meter: {
           powerIncoming: resultsSmartMeter.W > 0 ?  resultsSmartMeter.W : 0,
@@ -920,7 +920,7 @@ froniusInterval = setInterval(async() => {
 // #########################################################################
 // Handle battery grid charging
 const handleBatteryGridChargingHandler = async function() {
-  if(froniusBatteryStatus.gridCharge) {
+  if(status.gridCharge) {
     return;
   }
 
@@ -1146,7 +1146,7 @@ const handleBatteryGridChargingHandler = async function() {
       gridChargePct = 100;
     }
 
-    await updateFroniusBatteryStatus({gridCharge: true});
+    await updateStatus({gridCharge: true});
     await setBatteryGridCharge(gridChargePct);
 
     logger.info(`Starting grid charge for ${toChargeWh}Wh (${chargeStatePct}% -> ${targetChargeStatePct}%)`);
@@ -1160,34 +1160,34 @@ const handleBatteryGridChargingHandler = async function() {
       await setBatteryGridCharge(gridChargePct);
 
       if(chargeStatePct >= targetChargeStatePct) {
-        await updateFroniusBatteryStatus({gridCharge: false});
+        await updateStatus({gridCharge: false});
 
         clearInterval(gridChargingDoneInterval);
         gridChargingDoneInterval = undefined;
 
         logger.info(`Finished grid charge for ${toChargeWh}Wh (${chargeStatePct}%, batteryCent: ${nowCent}c)`);
 
-        await updateFroniusBatteryStatus({batteryCent: nowCent});
+        await updateStatus({batteryCent: nowCent});
       }
     }, ms('1 minute'));
   } else if(useGrid) {
     logger.debug(`No need to charge, ${chargeStatePct}%, but use Grid (${nowCent}c)`);
 
-    await updateFroniusBatteryStatus({batteryCent: nowCent});
+    await updateStatus({batteryCent: nowCent});
   } else if(!foundGood) {
     logger.debug(`No need to charge, ${chargeStatePct}%, but low estimate (${nowCent}c)`);
 
-    await updateFroniusBatteryStatus({batteryCent: nowCent});
+    await updateStatus({batteryCent: nowCent});
   } else {
     logger.debug(`No need to charge, use Battery`);
 
-    await updateFroniusBatteryStatus({batteryCent: 0});
+    await updateStatus({batteryCent: 0});
   }
 
-  await updateFroniusBatteryStatus({batteryGridChargeDate: dayjs.utc().format('YYYY-MM-DD')});
+  await updateStatus({batteryGridChargeDate: dayjs.utc().format('YYYY-MM-DD')});
 
   logger.debug('handleBatteryGridChargingHandler finished', {
-    batteryGridChargeDate: froniusBatteryStatus.batteryGridChargeDate,
+    batteryGridChargeDate: status.batteryGridChargeDate,
   });
 
   gridChargingHandlerTimeout = undefined;
@@ -1210,13 +1210,13 @@ const handleBatteryGridChargingSchedule = async function() {
 
     return;
   }
-  if(froniusBatteryStatus.batteryGridChargeDate === dayjs.utc().format('YYYY-MM-DD')) {
+  if(status.batteryGridChargeDate === dayjs.utc().format('YYYY-MM-DD')) {
     // The grid charge already happened today
     return;
   }
 
   logger.debug('handleBatteryGridChargingSchedule start', {
-    batteryGridChargeDate: froniusBatteryStatus.batteryGridChargeDate,
+    batteryGridChargeDate: status.batteryGridChargeDate,
   });
 
   // check.assert.equal(nowUtc.date(), sunriseDate.date(), 'Sunrise date mismatch');
@@ -1373,15 +1373,15 @@ setInterval(async() => {
   const schedule = '0 0   0  * * *'; // Midnight
 
   const job = new Cron(schedule, {timezone: 'Europe/Berlin'}, async() => {
-    if(froniusBatteryStatus.chargeMax) {
+    if(status.chargeMax) {
       logger.info(`Reset charge maximum.`);
 
-      await updateFroniusBatteryStatus({chargeMax: null});
+      await updateStatus({chargeMax: null});
     }
-    if(froniusBatteryStatus.chargeTo) {
+    if(status.chargeTo) {
       logger.info(`Reset charge exception. Normal charge today.`);
 
-      await updateFroniusBatteryStatus({chargeTo: null});
+      await updateStatus({chargeTo: null});
     }
   });
 
