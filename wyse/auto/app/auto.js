@@ -483,7 +483,7 @@ const checkPVUeberschussLaden = async function() {
       if(wallboxState === 'Lädt') {
         if(hausBatterySocPct < 90 && averagePvProductionKw < 1.5 ||
           hausBatterySocPct < 80 && averagePvProductionKw < 2.5 && pvProductionKw <= 4 ||
-          hausBatterySocPct < 70 && now > maxSunTime && averagePvProductionKw < 6
+          hausBatterySocPct < 70 && averagePvProductionKw < 4 && now > maxSunTime
         ) {
           logger.debug('PV Überschuss, Laden Ende', {
             averagePvProductionKw: _.round(averagePvProductionKw, 1),
