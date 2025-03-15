@@ -397,13 +397,13 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
-      case 'tasmota/spuelmaschine/stat/POWER': {
+      case 'tasmota/spuelmaschine/stat/POWER1': {
         switch(messageRaw) {
           case 'OFF':
             if(!spuelmaschineInterval) {
               logger.info('Spülmaschine OFF. Start waiting for Einspeisung.');
 
-              await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/LedPower2`, '1');
+              await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/Power2`, 'ON');
 
               spuelmaschineInterval = setInterval(async() => {
                 if(zaehlerLeistung === null || batteryLeistung === null || batteryLevel === null) {
@@ -427,7 +427,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                 }
 
                 if(triggerOn) {
-                  await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/POWER`, 'ON');
+                  await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/Power1`, 'ON');
                 }
               }, ms('5 minutes'));
             }
@@ -437,7 +437,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             if(spuelmaschineInterval) {
               logger.info('Spülmaschine ON. Finish waiting.');
 
-              await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/LedPower2`, '0');
+              await mqttClient.publishAsync(`tasmota/spuelmaschine/cmnd/Power2`, 'OFF');
 
               clearInterval(spuelmaschineInterval);
 
@@ -476,7 +476,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
               if((aktuellerUeberschuss > 5500 &&
                 (batteryLevel > 50 || solcastHighPvHours >= 2) &&
-                (batteryLevel > 70 || solcastHighPvHours >= 1)
+                (batteryLevel > 70 || solcastHighPvHours >= 1) &&
+                !(['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
+                  vwBatterySocPct < vwTargetSocPct
+                )
               ) ||
                 zaehlerLeistung < -5500
               ) {
@@ -511,7 +514,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               if(aktuellerUeberschuss < 4500 ||
                 (batteryLevel < 50 && solcastHighPvHours < 2) ||
                 (batteryLevel < 70 && solcastHighPvHours < 1) ||
-                (['Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
+                (['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
                   vwBatterySocPct < vwTargetSocPct
                 )
               ) {
@@ -619,10 +622,11 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
 await mqttClient.publishAsync('tasmota/espstrom/cmnd/TelePeriod', '10'); // MQTT Status every 10 seconds
 
-await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedState', '0');
-await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedMask', '0');
-await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/SetOption31', '1');
-await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedPower1', '0'); // Blue/Link off
+await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedState', '7');
+await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedMask', '1');
+await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/PowerOnState', '1');
+await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/SetOption31', '0');
+// await mqttClient.publishAsync('tasmota/spuelmaschine/cmnd/LedPower1', '1'); // Blue/Link off // TODO 0
 
 await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedState', '0');
 await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedMask', '0');
@@ -633,7 +637,7 @@ await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
 await mqttClient.subscribeAsync('solcast/forecasts');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
-await mqttClient.subscribeAsync('tasmota/spuelmaschine/stat/POWER');
+await mqttClient.subscribeAsync('tasmota/spuelmaschine/stat/POWER1');
 await mqttClient.subscribeAsync('tasmota/waschmaschine/stat/POWER');
 await mqttClient.subscribeAsync('vito/tele/SENSOR');
 // await mqttClient.subscribeAsync('Wallbox/evse/state');
