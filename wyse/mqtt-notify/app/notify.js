@@ -24,7 +24,7 @@ export default async function notify({config, data: notifyData}) {
     const {status, statusText, data} = response;
 
     if(status === 200) {
-      logger.debug('notify success', {status, statusText, data});
+      // logger.debug('notify success', {status, statusText, data});
 
       retry = false;
     } else if(status >= 400 && status < 500) {
