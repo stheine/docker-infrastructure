@@ -1,0 +1,31 @@
+volumes:
+  control:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap_linux/data/control
+      o: bind
+
+services:
+  control-io:
+    restart: always
+    build: control-io
+    hostname: pi-control-io
+    cap_add:
+      - SYS_RAWIO
+    privileged: true
+    devices:
+      - /dev/mem:/dev/mem
+    volumes:
+      - ./control-io/app:/app
+      - control:/var/control
+
+  portainer_agent:
+    restart: always
+    image: portainer/agent
+    hostname: qnap-portainer-agent
+    ports:
+      - 8009:9001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
