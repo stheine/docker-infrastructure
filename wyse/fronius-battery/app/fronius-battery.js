@@ -51,7 +51,8 @@ let   healthInterval;
 let   heizstabLeistung      = null;
 let   inverter;
 let   lastLog;
-let   lastRate1d;
+let   lastChargePct1d;
+let   lastNote;
 let   maxSun                = 0;
 let   momentanLeistung      = 0;
 let   mqttClient;
@@ -144,12 +145,12 @@ const wattToRate = function(watt) {
   return rate;
 };
 
-const getBatteryChargePct = function({log}) {
+const getBatteryChargePct = function() {
   if(!capacityWh) {
-    return 0;
+    return {chargePct: 0, note: 'Missing capacityWh'};
   }
   if(_.isEmpty(solcastAnalysis)) {
-    return 0;
+    return {chargePct: 0, note: 'Missing solcastAnalysis'};
   }
 
   const maxDcPower        = _.max(dcPowers.dump());
@@ -159,8 +160,6 @@ const getBatteryChargePct = function({log}) {
   let   note;
   let   rate;
   const nowUtc            = dayjs.utc();
-  const nowCent           = _.find(strompreise, data =>
-    dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
   const maxSunTime        = nowUtc.clone()
     .hour(new Date(maxSun).getUTCHours())
     .minute(new Date(maxSun).getUTCMinutes())
@@ -204,27 +203,10 @@ const getBatteryChargePct = function({log}) {
     }
   }
 
-  // Charge to at least 20%
   // On the weekend (Saturday, Sunday) (try to) charge to 100% (to allow the BMS to calibrate the SoC)
   // In April/ September/ October charge to springChargeGoal (95%)
   // In May/ June/ July/ August charge to summerChargeGoal (80%)
-  if(status.chargeMax) {
-    note = `Charge maximum.`;
-    rate = 1;
-  } else if(chargeStatePct < 20) {
-    note = `Charge to min of 20% (is ${chargeStatePct}%) with max.`;
-    rate = 1;
-  } else if(autoStatus.atHome &&
-    ['Ladebereit', 'Warte auf Ladefreigabe'].includes(autoStatus.wallboxState) &&
-    vwBatterySocPct < vwTargetSocPct
-  ) {
-    note = `Charge maximum (Auto).`;
-    rate = 1;
-  } else if(nowCent - status.batteryCent < config.useGridDiffCent) {
-    note = `Small diff between batteryCent (${status.batteryCent}) ` +
-      `and nowCent (${nowCent}). Use grid power.`;
-    rate = 1;
-  } else if(!['Sat', 'Sun'].includes(nowUtc.format('ddd')) &&
+  if(!['Sat', 'Sun'].includes(nowUtc.format('ddd')) &&
     _.inRange(nowUtc.format('M'), 4, 11) &&
     chargeStatePct > config.springChargeGoal &&
     tomorrowPvWh > 3 * capacityWh &&
@@ -306,41 +288,7 @@ const getBatteryChargePct = function({log}) {
     rate = 1; // Charge-rate 100%.
   }
 
-  const rate1d = _.round(rate, 1);
-
-  if(log ||
-    !lastLog ||
-    (toChargeWh > 30 && maxDcPower > 10 && nowUtc - lastLog > ms('28 minutes')) ||
-    rate1d !== lastRate1d
-  ) {
-    logger.debug('getBatteryChargePct', {
-      totalPv:          `${_.round(totalPvWh) / 1000}kWh`,
-      highPv:           `${_.round(highPvWh) / 1000}kWh`,
-      highPvHours,
-      limitPv:          `${_.round(limitPvWh) / 1000}kWh`,
-      limitPvHours,
-      tomorrowPv:       `${_.round(tomorrowPvWh) / 1000}kWh`,
-      maxSun,
-      maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
-      maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
-      momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
-      vwChargePowerKw:  `${vwChargePowerKw}kW`,
-      vwBatterySocPct:  `${vwBatterySocPct}% (${vwTargetSocPct}%)`,
-      autoAtHome:       `${autoStatus.atHome} (${autoStatus.wallboxState})`,
-      heizstabLeistung: `${_.round(heizstabLeistung / 1000, 1)}kW`,
-      preis:            `now: ${nowCent}c, battery: ${status.batteryCent}c`,
-      chargeState:      `${chargeStatePct}%`,
-      toCharge:         `${_.round(toChargeWh / 1000, 1)}kWh`,
-      demandOvernight:  `${_.round(demandOvernightWh / 1000, 1)}kWh`,
-      rate:             `${_.round(capacityWh * rate)}W (${_.round(rate, 2)}C)`,
-      note,
-    });
-
-    lastLog    = nowUtc;
-    lastRate1d = rate1d;
-  }
-
-  return rate * 100;
+  return {chargePct: rate * 100, note};
 };
 
 let handleRateErrorCount = 0;
@@ -366,7 +314,7 @@ const resetBattery = async function() {
     throw new Error(`Failed writing grid allow: ${err.message}`);
   }
 
-  logger.info('resetBattery');
+  // logger.info('resetBattery');
 };
 
 const preventBatteryUnload = async function() {
@@ -389,14 +337,14 @@ const preventBatteryUnload = async function() {
     throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
   }
 
-  // Prevent discarge
+  // Prevent discharge
   try {
     await inverter.writeRegister('OutWRte', [0]);
   } catch(err) {
     throw new Error(`Failed writing battery discharge rate: ${err.message}`);
   }
 
-  logger.info('preventBatteryUnload');
+  // logger.info('preventBatteryUnload');
 };
 
 const setBatteryGridCharge = async function(chargePct = 100) {
@@ -482,7 +430,8 @@ const setBatteryPvCharge = async function(chargePct) {
 const handleRate = async function(log = false) {
   try {
     // Get charge rate
-    let chargePct;
+    let chargePct = null;
+    let note;
 
     try {
       const results = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW']);
@@ -498,30 +447,105 @@ const handleRate = async function(log = false) {
     const nowUtc      = dayjs.utc();
     const nowCent     = _.find(strompreise, data =>
       dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
+    const toChargeWh        = _.round(capacityWh * (100 - chargeStatePct) / 100);
+    const maxDcPower        = _.max(dcPowers.dump());
+    const maxEinspeisung    = _.max(einspeisungen.dump());
+    const {
+      highPvHours,
+      highPvWh,
+      limitPvHours,
+      limitPvWh,
+      tomorrowPvWh,
+      totalPvWh,
+    } = solcastAnalysis;
 
     if(status.gridCharge) {
       // Do nothing. Battery charging handled in handler.
+      note = 'Grid charge';
     } else if(status.preventBatteryUnload) {
       // Do nothing. Don't load or unload battery.
+      note = 'Prevent battery unload (status)';
     } else if(autoStatus.chargeMode === 'Nachts' && autoStatus.wallboxState === 'Lädt') {
       await preventBatteryUnload();
+      note = 'Prevent battery unload (Auto lädt)';
     } else if(autoStatus.wallboxState !== 'Lädt' &&
+      status.batteryCent !== null &&
       nowCent - status.batteryCent < config.useGridDiffCent
     ) {
       await preventBatteryUnload();
+      note = `Prevent battery unload ` +
+        `(now: ${nowCent}ct, battery: ${status.batteryCent === null ? '-' : `${status.batteryCent}ct`})`;
+    } else if(autoStatus.atHome &&
+      ['Ladebereit', 'Warte auf Ladefreigabe'].includes(autoStatus.wallboxState) &&
+      vwBatterySocPct < vwTargetSocPct &&
+      (vwTargetSocPct - vwBatterySocPct) * config.vwBatteryCapacityKwh / 100 > limitPvWh / 1000
+    ) {
+      note = `Charge maximum (Auto).`;
+      chargePct = 100;
+    } else if(status.chargeMax) {
+      note = `Charge maximum.`;
+      chargePct = 100;
+    } else if(chargeStatePct < 20) {
+      note = `Charge to min of 20% (is ${chargeStatePct}%) with max.`;
+      chargePct = 100;
+    } else if(status.batteryCent !== null &&
+      nowCent - status.batteryCent < config.useGridDiffCent
+    ) {
+      note = `Small diff between batteryCent (${status.batteryCent}) ` +
+        `and nowCent (${nowCent}). Use grid power.`;
+      chargePct = 100;
     } else {
       try {
-        chargePct = getBatteryChargePct({log});
+        ({chargePct, note} = getBatteryChargePct());
         // logger.debug('handleRate', {chargeStatePct, chargePct});
-
-        await setBatteryPvCharge(chargePct);
-
-        Reflect.deleteProperty(notified, 'handleRate');
-
-        handleRateErrorCount = 0;
       } catch(err) {
         throw new Error(`Failed getting battery chargePct: ${err.message}`);
       }
+    }
+
+    if(chargePct !== null) {
+      await setBatteryPvCharge(chargePct);
+
+      Reflect.deleteProperty(notified, 'handleRate');
+
+      handleRateErrorCount = 0;
+    }
+
+    const chargePct1d = _.round(chargePct / 10) * 10;
+
+    if(log ||
+      !lastLog ||
+      (toChargeWh > 30 && maxDcPower > 10 && nowUtc - lastLog > ms('28 minutes')) ||
+      chargePct1d !== lastChargePct1d ||
+      note !== lastNote
+    ) {
+      logger.debug('getBatteryChargePct', {
+        totalPv:          `${_.round(totalPvWh) / 1000}kWh`,
+        highPv:           `${_.round(highPvWh) / 1000}kWh`,
+        highPvHours,
+        limitPv:          `${_.round(limitPvWh) / 1000}kWh`,
+        limitPvHours,
+        tomorrowPv:       `${_.round(tomorrowPvWh) / 1000}kWh`,
+        maxSun,
+        maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
+        maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
+        momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
+        vwChargePowerKw:  `${vwChargePowerKw}kW`,
+        vwBatterySocPct:  `${vwBatterySocPct}% (${vwTargetSocPct}%)`,
+        autoAtHome:       `${autoStatus.atHome} (${autoStatus.wallboxState})`,
+        heizstabLeistung: `${_.round(heizstabLeistung / 1000, 1)}kW`,
+        preis:            `now: ${nowCent}ct, ` +
+          `battery: ${status.batteryCent === null ? '-' : `${status.batteryCent}ct`}`,
+        chargeState:      `${chargeStatePct}%`,
+        toCharge:         `${_.round(toChargeWh / 1000, 1)}kWh`,
+        // demandOvernight:  `${_.round(demandOvernightWh / 1000, 1)}kWh`,
+        chargePct:        `${_.round(capacityWh * chargePct / 100)}W (${_.round(chargePct)}%C)`,
+        note,
+      });
+
+      lastLog         = nowUtc;
+      lastChargePct1d = chargePct1d;
+      lastNote        = note;
     }
   } catch(err) {
     logger.error(`Failed to handle battery charge: ${err.message}`);
@@ -670,26 +694,32 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           }
         } else if(Object.hasOwn(message, 'gridChargePct')) {
           if(message.gridChargePct) {
-            await updateStatus({gridCharge: true});
-            await setBatteryGridCharge(message.gridChargePct);
+            try {
+              await updateStatus({gridCharge: true});
+              await setBatteryGridCharge(message.gridChargePct);
 
-            logger.info(`Starting grid charge with ${message.gridChargePct}%`);
+              logger.info(`Starting grid charge with ${message.gridChargePct}%`);
 
-            if(gridChargingDoneInterval) {
-              clearInterval(gridChargingDoneInterval);
-              gridChargingDoneInterval = undefined;
-            }
-
-            gridChargingDoneInterval = setInterval(async() => {
-              if(chargeStatePct >= 100) {
-                await updateStatus({gridCharge: false});
-
+              if(gridChargingDoneInterval) {
                 clearInterval(gridChargingDoneInterval);
                 gridChargingDoneInterval = undefined;
-
-                logger.info(`Finished grid charge (${chargeStatePct}%)`);
               }
-            }, ms('1 minute'));
+
+              gridChargingDoneInterval = setInterval(async() => {
+                if(chargeStatePct >= 100) {
+                  await updateStatus({gridCharge: false});
+
+                  clearInterval(gridChargingDoneInterval);
+                  gridChargingDoneInterval = undefined;
+
+                  logger.info(`Finished grid charge (${chargeStatePct}%)`);
+                }
+              }, ms('1 minute'));
+            } catch(err) {
+              logger.error(`Error during grid charge: ${err.message}`);
+
+              await updateStatus({gridCharge: false});
+            }
           } else {
             await updateStatus({gridCharge: false});
 
@@ -728,10 +758,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
       case 'strom/tele/SENSOR':
         ({momentanLeistung} = message);
 
-        if(status.batteryCent && dcPower > 500) {
-          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${status.batteryCent}c)`);
+        if(status.batteryCent !== null && status.batteryCent && dcPower > 500) {
+          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${status.batteryCent}ct)`);
 
-          await updateStatus({batteryCent: 0});
+          await updateStatus({batteryCent: null});
         }
         break;
 
@@ -984,7 +1014,7 @@ const handleBatteryGridChargingHandler = async function() {
       toChargeWhFixed = _.round(capacityWh * (100 - chargeStatePct) / 100);
 
       logger.debug(`handleBatteryGridChargingHandler, expensive daylight price ` +
-        `(${minCentsDuringDaytime}ct, now ${nowCent}c), charge ${toChargeWhFixed}Wh`);
+        `(${minCentsDuringDaytime}ct, now ${nowCent}ct), charge ${toChargeWhFixed}Wh`);
     }
   }
 
@@ -1029,7 +1059,7 @@ const handleBatteryGridChargingHandler = async function() {
 
         if(cent - nowCent < config.useGridDiffCent) {
           // Rather use grid power directly, than consume battery power
-          logger.debug(`Forecast: ${timeH}:00 => Use grid for ${cent}c => batteryCent=${nowCent}c`);
+          logger.debug(`Forecast: ${timeH}:00 => Use grid for ${cent}ct => batteryCent=${nowCent}ct`);
 
           useGrid = true;
         } else {
@@ -1127,12 +1157,12 @@ const handleBatteryGridChargingHandler = async function() {
       toChargeWhNeed = _.round(chargeWh);
 
       logger.debug(`handleBatteryGridChargingHandler, forecast (${_.round(totalPvWh)}), ` +
-        `current: ${chargeStatePct}%, need: ${_.round(chargeWh)}Wh, charge ${toChargeWhNeed}Wh`);
+        `current: ${chargeStatePct}%, need: ${_.round(chargeWh)}Wh, charge: ${toChargeWhNeed}Wh`);
     } else {
       toChargeWhNeed = _.round(capacityWh * (100 - chargeStatePct) / 100);
 
       logger.debug(`handleBatteryGridChargingHandler, no good estimate hour (${_.round(totalPvWh)}Wh), ` +
-        `current: ${chargeStatePct}%, need: ${_.round(chargeWh)}Wh, charge ${toChargeWhNeed}Wh`);
+        `current: ${chargeStatePct}%, need: ${_.round(chargeWh)}Wh, charge: ${toChargeWhNeed}Wh`);
     }
   }
 
@@ -1146,10 +1176,11 @@ const handleBatteryGridChargingHandler = async function() {
       gridChargePct = 100;
     }
 
+    logger.info(`Starting grid charge for ${toChargeWh}Wh ` +
+      `(${chargeStatePct}% -> ${targetChargeStatePct}%, ${gridChargePct}%)`);
+
     await updateStatus({gridCharge: true});
     await setBatteryGridCharge(gridChargePct);
-
-    logger.info(`Starting grid charge for ${toChargeWh}Wh (${chargeStatePct}% -> ${targetChargeStatePct}%)`);
 
     if(gridChargingDoneInterval) {
       clearInterval(gridChargingDoneInterval);
@@ -1165,23 +1196,23 @@ const handleBatteryGridChargingHandler = async function() {
         clearInterval(gridChargingDoneInterval);
         gridChargingDoneInterval = undefined;
 
-        logger.info(`Finished grid charge for ${toChargeWh}Wh (${chargeStatePct}%, batteryCent: ${nowCent}c)`);
+        logger.info(`Finished grid charge for ${toChargeWh}Wh (${chargeStatePct}%, batteryCent: ${nowCent}ct)`);
 
         await updateStatus({batteryCent: nowCent});
       }
     }, ms('1 minute'));
   } else if(useGrid) {
-    logger.debug(`No need to charge, ${chargeStatePct}%, but use Grid (${nowCent}c)`);
+    logger.debug(`No need to charge, ${chargeStatePct}%, but use Grid (${nowCent}ct)`);
 
     await updateStatus({batteryCent: nowCent});
   } else if(!foundGood) {
-    logger.debug(`No need to charge, ${chargeStatePct}%, but low estimate (${nowCent}c)`);
+    logger.debug(`No need to charge, ${chargeStatePct}%, but low estimate (${nowCent}ct)`);
 
     await updateStatus({batteryCent: nowCent});
   } else {
     logger.debug(`No need to charge, use Battery`);
 
-    await updateStatus({batteryCent: 0});
+    await updateStatus({batteryCent: null});
   }
 
   await updateStatus({batteryGridChargeDate: dayjs.utc().format('YYYY-MM-DD')});
