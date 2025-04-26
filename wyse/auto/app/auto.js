@@ -14,7 +14,7 @@ import AsyncLock             from 'async-lock';
 import check                 from 'check-types-2';
 import dayjs                 from 'dayjs';
 import {execa}               from 'execa';
-import fsExtra               from 'fs-extra';
+// import fsExtra               from 'fs-extra';
 import {logger}              from '@stheine/helpers';
 import mqtt                  from 'mqtt';
 import ms                    from 'ms';
@@ -46,18 +46,20 @@ const lock            = new AsyncLock();
 let   mqttClient;
 const hostname        = os.hostname();
 const clientId        = `${hostname}-${Math.random().toString(16).slice(2, 8)}`;
-const packageJson     = await fsExtra.readJson('./package.json');
+// const packageJson     = await fsExtra.readJson('./package.json');
 
 const vwPrefix        = `vwsfriend/vehicles/${vwId}`;
 let   chargeEndTimeout;
 let   chargeStartTimeout;
 let   lastChargeUpdate;
+let   lastLadeleistungKw;
 const lastPvProductionKw = new Ringbuffer(60); // Fronius/solar/tele/SENSOR every 5s => 60 => 5min
 let   disconnectedHandler;
 let   hausBatterySocPct;
 let   maxSunTime;
 let   missingUpdateHandler;
 let   pvProductionKw;
+let   revertChargeModeTimeout;
 let   strompreise;
 let   vwBatterySocPct;
 let   vwBatteryTemperatureC;
@@ -174,7 +176,9 @@ const startCharging = async function() {
     return;
   }
 
-  if(vwBatterySocPct >= vwTargetSoc) {
+  if((vwTargetSocPending && vwBatterySocPct >= vwTargetSocPending) ||
+    (!vwTargetSocPending && vwBatterySocPct >= vwTargetSoc)
+  ) {
     logger.info('Ladeziel bereits erreicht');
 
     return;
@@ -234,7 +238,11 @@ const setChargeCurrent = async function(milliAmpere) {
   const ladestromMa    = milliAmpere;
   const ladeleistungKw = _.round(milliAmpere * 3 * 230 / 1000 / 1000, 1);
 
-  logger.debug(`Ladestrom ${ladestromMa} mA, ${ladeleistungKw} kW`);
+  if(lastLadeleistungKw !== ladeleistungKw) {
+    logger.debug(`Ladestrom ${ladestromMa} mA, ${ladeleistungKw} kW`);
+
+    lastLadeleistungKw = ladeleistungKw;
+  }
 
   // Ladestrom:  Wallbox/evse/external_current <mA>
   //  6000 mA  =>  4,1 kW   =>  4   kW
@@ -258,6 +266,8 @@ const setChargeCurrent = async function(milliAmpere) {
 };
 
 const stopCharging = async function() {
+  lastLadeleistungKw = null;
+
   if(!['Ladebereit', 'Lädt'].includes(wallboxState)) {
     logger.info(`Lädt nicht (${wallboxState})`);
 
@@ -312,8 +322,8 @@ const triggerSofort = async function() {
       await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
     }
 
-    await startCharging();
     await setChargeCurrent(16000);
+    await startCharging();
   }
 };
 
@@ -343,7 +353,7 @@ const handleLocation = async function() {
 
     logState('handleLocation');
 
-    if(atHome && chargeMode === 'Sofort') {
+    if(atHome && ['Sofort', 'Sofort+'].includes(chargeMode)) {
       await triggerSofort();
     }
   }
@@ -541,6 +551,7 @@ const checkPVUeberschussLaden = async function() {
           maxSunTime:            maxSunTime.local().format('HH:mm'),
         });
 
+        await setChargeCurrent(6000);
         await startCharging();
       }
     }
@@ -568,7 +579,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
       switch(cmnd) {
         case 'setChargeMode': {
-          if(['Aus', 'Nachts', 'Sofort', 'Überschuss', 'Überschuss+'].includes(message)) {
+          if(['Aus', 'Nachts', 'Sofort', 'Sofort+', 'Überschuss', 'Überschuss+'].includes(message)) {
             chargeMode = message;
 
             await updateStatus({chargeMode});
@@ -582,6 +593,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             if(chargeStartTimeout) {
               clearTimeout(chargeStartTimeout);
               chargeStartTimeout = undefined;
+            }
+            if(revertChargeModeTimeout) {
+              clearTimeout(revertChargeModeTimeout);
+              revertChargeModeTimeout = undefined;
             }
 
             switch(chargeMode) {
@@ -599,7 +614,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               }
 
               case 'Sofort':
+              case 'Sofort+':
                 await triggerSofort();
+
+                revertChargeModeTimeout = setTimeout(() => {
+                  chargeMode = 'Überschuss';
+                }, ms('12h'));
                 break;
 
               case 'Überschuss':
@@ -894,10 +914,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
   }
 });
 
-// eslint-disable-next-line no-console
-console.log('\u001B]2;auto\u0007'); // windowTitle
+// // eslint-disable-next-line no-console
+// console.log('\u001B]2;auto\u0007'); // windowTitle
 logger.info(`-------------------- Startup --------------------`);
-logger.info(`${packageJson.name} ${packageJson.version}`);
+// logger.info(`${packageJson.name} ${packageJson.version}`);
 
 // Subscribe
 await mqttClient.subscribeAsync('auto/cmnd/#');
