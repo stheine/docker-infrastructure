@@ -39,6 +39,7 @@ cd /etc/letsencrypt/live/heine7.de/
   -d homer.heine7.de \
   -d immich.heine7.de \
   -d ladder.heine7.de \
+  -d paperless.heine7.de \
   -d wiki.heine7.de
 # (E)xpand
 exit
