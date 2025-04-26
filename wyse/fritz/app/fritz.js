@@ -2,21 +2,18 @@
 
 /* eslint-disable new-cap */
 
-import os           from 'node:os';
+import os            from 'node:os';
 
-import _            from 'lodash';
-import check        from 'check-types-2';
-import {execa}      from 'execa';
-import Fritzbox     from 'fritzbox';
-import {logger}     from '@stheine/helpers';
-import mqtt         from 'mqtt';
-import ms           from 'ms';
-import {
-  CallMonitor,
-  EventKind,
-} from 'fritz-callmonitor';
+import _             from 'lodash';
+import {CallMonitor} from 'fritz-callmonitor';
+import check         from 'check-types-2';
+import {execa}       from 'execa';
+import Fritzbox      from 'fritzbox';
+import {logger}      from '@stheine/helpers';
+import mqtt          from 'mqtt';
+import ms            from 'ms';
 
-import tr064Options from '/var/fritz/tr064Options.js';
+import tr064Options  from '/var/fritz/tr064Options.js';
 import {
   refresh,
   resolve,
@@ -77,14 +74,14 @@ mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostna
 callMonitor = new CallMonitor('fritz.box', 1012);
 
 callMonitor.on('phone', async data => {
-//    logger.info('Incoming callMonitor event, raw', data);
+  // logger.info('Incoming callMonitor event, raw', data);
 
   let payload;
   let topic;
 
   // Gets called on every phone event
   switch(data.kind) {
-    case EventKind.Call: { // 0
+    case 'call': {
       const {callee, caller, connectionId, extension} = data;
       const calleeName = resolve({logger, phonebook, number: callee});
 
@@ -101,7 +98,7 @@ callMonitor.on('phone', async data => {
       break;
     }
 
-    case EventKind.Ring: { // 1
+    case 'ring': {
       const {callee, caller, connectionId} = data;
       const callerName = resolve({logger, phonebook, number: caller});
 
@@ -124,7 +121,7 @@ callMonitor.on('phone', async data => {
       break;
     }
 
-    case EventKind.PickUp: { // 2
+    case 'pickUp': {
       const {phoneNumber: callee, connectionId, extension} = data;
       const calleeName = resolve({logger, phonebook, number: callee});
 
@@ -140,7 +137,7 @@ callMonitor.on('phone', async data => {
       break;
     }
 
-    case EventKind.HangUp: { // 4
+    case 'hangUp': {
       const {callDuration, connectionId} = data;
 
       logger.info(`hangUp ${callDuration}s`);
