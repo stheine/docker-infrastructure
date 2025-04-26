@@ -267,7 +267,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/linux/data/nextcloud-aio
+      device: /mnt/qnap/linux/data/nextcloud-config
       o: bind
 
   octoprint:
@@ -941,6 +941,7 @@ services:
     environment:
       - APACHE_PORT=11000
       - APACHE_IP_BINDING=0.0.0.0
+      - NEXTCLOUD_DATADIR=/mnt/qnap/linux/data/nextcloud-data
 
   nginx:
     restart: always
@@ -957,9 +958,11 @@ services:
     depends_on:
       - apache2
       - homer
+      - immich
       - ladder
       - mediawiki
       - nextcloud-aio-mastercontainer
+      - paperless
       - vaultwarden
 
   noop:
@@ -991,7 +994,7 @@ services:
       - paperless-broker
       - paperless-database
     ports:
-      - 7273:8000
+      - 7273:7273
     volumes:
       - paperless-consume:/usr/src/paperless/consume
       - paperless-data:/usr/src/paperless/data
