@@ -106,6 +106,9 @@ process.on('SIGHUP', () => {
     maxSun:              maxSun.format('YYYY-MM-DD HH:mm:ss UTC'),
     nowUtc:              nowUtc.format('YYYY-MM-DD HH:mm:ss UTC'),
     afterMaxSun:         nowUtc > maxSun,
+    wallboxState,
+    vwBatterySocPct,
+    vwTargetSocPct,
   });
 });
 
@@ -234,6 +237,17 @@ mqttClient.on('message', async(topic, messageBuffer) => {
     switch(topic) {
       case 'auto/tele/STATUS':
         ({wallboxState} = message);
+
+        if(wallboxState === 'Lädt' &&
+          heizstabLeistung &&
+          heizstabInterval
+        ) {
+          logger.info('Auto Ladestart. Beende Speicherheizung mit Heizstab.', {
+            zaehlerLeistung, batteryLeistung, batteryLevel, heizstabLeistung,
+            aktuellerUeberschuss, solcastHighPvHours, wallboxState, vwBatterySocPct, vwTargetSocPct});
+
+          await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'OFF');
+        }
         break;
 
       case 'maxSun/INFO':
@@ -474,15 +488,17 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 //                return;
 //              }
 
-              if((aktuellerUeberschuss > 5500 &&
-                (batteryLevel > 50 || solcastHighPvHours >= 2) &&
-                (batteryLevel > 70 || solcastHighPvHours >= 1) &&
-                !(['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
-                  vwBatterySocPct < vwTargetSocPct
+              if(!(['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
+                vwBatterySocPct < vwTargetSocPct
+              ) && (
+                (
+                  aktuellerUeberschuss > 5500 &&
+                  (batteryLevel > 50 || solcastHighPvHours >= 2) &&
+                  (batteryLevel > 70 || solcastHighPvHours >= 1)
+                ) || (
+                  zaehlerLeistung < -5500
                 )
-              ) ||
-                zaehlerLeistung < -5500
-              ) {
+              )) {
                 logger.debug('Ausreichend Einspeisung. Erlaube Speicherheizung mit Heizstab.', {
                   zaehlerLeistung, batteryLeistung, batteryLevel, heizstabLeistung, aktuellerUeberschuss,
                   solcastHighPvHours, vitoBetriebsart});
@@ -642,6 +658,8 @@ await mqttClient.subscribeAsync('tasmota/waschmaschine/stat/POWER');
 await mqttClient.subscribeAsync('vito/tele/SENSOR');
 // await mqttClient.subscribeAsync('Wallbox/evse/state');
 await mqttClient.subscribeAsync('auto/tele/STATUS');
+await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/batteryStatus/currentSOC_pct`);
+await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/chargingSettings/targetSOC_pct`);
 
 while(_.isNull(vitoBetriebsart)) {
   await delay(ms('100ms'));
