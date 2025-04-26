@@ -465,7 +465,7 @@ const handleRate = async function(log = false) {
     } else if(status.preventBatteryUnload) {
       // Do nothing. Don't load or unload battery.
       note = 'Prevent battery unload (status)';
-    } else if(autoStatus.chargeMode === 'Nachts' && autoStatus.wallboxState === 'Lädt') {
+    } else if(['Nachts', 'Sofort'].includes(autoStatus.chargeMode) && autoStatus.wallboxState === 'Lädt') {
       await preventBatteryUnload();
       note = 'Prevent battery unload (Auto lädt)';
     } else if(autoStatus.wallboxState !== 'Lädt' &&
