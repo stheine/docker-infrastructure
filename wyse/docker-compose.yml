@@ -1,5 +1,7 @@
 # Ports
 #    25 postfix                smtp
+#    80 nginx (http)           http://192.168.6.5/           Freigabe in FritzBox
+#   443 nginx (https)          https://192.168.6.5/          Freigabe in FritzBox
 #   993 dovecot                imap                          Freigabe in FritzBox
 #  1883 mosquitto-websockets   mqtt
 #  2283 immich                 http://192.168.6.5:2283/
@@ -17,8 +19,6 @@
 # 26687 control-ui             http://192.168.6.5:26687/
 # 31038 watchdog               http://192.168.6.5:31038/
 # 57699 proxy                  http://192.168.6.5:57699/
-# 59080 nginx (http)           http://192.168.6.5:59080/     Freigabe in FritzBox
-# 59443 nginx (https)          https://192.168.6.5:59443/    Freigabe in FritzBox
 # 59154 gerbera-musik          http://192.168.6.5:59154/
 # 59155 gerbera-kinder-filme   http://192.168.6.5:59155/
 ### 59156 gerbera-kinder-cds     http://192.168.6.5:59156/
@@ -938,6 +938,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - 6398:8080
+      - 11000:11000
     environment:
       - APACHE_PORT=11000
       - APACHE_IP_BINDING=0.0.0.0
@@ -949,8 +950,8 @@ services:
     hostname: wyse-nginx
     stop_signal: SIGINT
     ports:
-      - 59080:80
-      - 59443:443
+      - 80:80
+      - 443:443
     volumes:
       - letsencrypt:/etc/letsencrypt
       - letsencrypt_www:/var/letsencrypt
