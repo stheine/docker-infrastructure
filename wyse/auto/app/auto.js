@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /* eslint-disable camelcase */
+/* eslint-disable unicorn/no-lonely-if */
 /* eslint-disable no-process-exit */
 
 // TODO letzte mqttUpdate timestamp speichern und forceUpdate nur nach min-delay erlauben
-// TODO zeitstempel vom vwPlugConnectionState per mqtt senden, und im ui 30 min danach optionen anbieten
 
 import {setTimeout as delay} from 'node:timers/promises';
 import os                    from 'node:os';
@@ -18,7 +18,6 @@ import {execa}               from 'execa';
 import {logger}              from '@stheine/helpers';
 import mqtt                  from 'mqtt';
 import ms                    from 'ms';
-import Ringbuffer            from '@stheine/ringbufferjs';
 import utc                   from 'dayjs/plugin/utc.js';
 
 import configFile            from './configFile.js';
@@ -48,12 +47,12 @@ const hostname        = os.hostname();
 const clientId        = `${hostname}-${Math.random().toString(16).slice(2, 8)}`;
 // const packageJson     = await fsExtra.readJson('./package.json');
 
-const vwPrefix        = `vwsfriend/vehicles/${vwId}`;
 let   chargeEndTimeout;
 let   chargeStartTimeout;
 let   lastChargeUpdate;
 let   lastLadeleistungKw;
-const lastPvProductionKw = new Ringbuffer(60); // Fronius/solar/tele/SENSOR every 5s => 60 => 5min
+let   lastPvProductionKw;
+let   lastPvProductionKwAvg;
 let   disconnectedHandler;
 let   hausBatterySocPct;
 let   maxSunTime;
@@ -62,21 +61,14 @@ let   pvProductionKw;
 let   revertChargeModeTimeout;
 let   strompreise;
 let   vwBatterySocPct;
-let   vwBatteryTemperatureC;
-let   vwChargePowerKw;
-let   vwChargingState;
-let   vwCruisingRange;
-let   vwIsActive;
-let   vwIsOnline;
-let   vwPlugConnectionState;
+let   vwConnected;
 let   vwParkingLatitude;
 let   vwParkingLongitude;
 let   vwTargetSoc;
 let   vwTargetSocPending;
+let   vwUpdated;
+let   vwUpdateIntervalS;
 let   wallboxExternalCurrent;
-let   weconnectConnected;
-let   weconnectUpdated;
-let   weconnectUpdateIntervalS;
 
 // ###########################################################################
 // Process handling
@@ -109,29 +101,26 @@ const logState = function(where) {
   logger.debug(`${where || ''} Status:\n` +
     `  atHome:                    ${atHome}\n` +
     `  chargeMode:                ${chargeMode}\n` +
-    `  vwChargingState:           ${vwChargingState}\n` +
     `  wallboxState:              ${wallboxState}\n` +
     '  ---\n' +
     `  hausBatterySoc:            ${_.round(hausBatterySocPct, 1)} %\n` +
     `  pvProduction:              ${_.round(pvProductionKw, 1)} kW\n` +
-    `  vwIsActive:                ${vwIsActive}\n` +
-    `  vwIsOnline:                ${vwIsOnline}\n` +
-    `  vwChargePowerKw:           ${vwChargePowerKw} kW\n` +
-    `  vwPlugConnectionState:     ${vwPlugConnectionState}\n` +
     // `  vwParkingLatitude:      ${vwParkingLatitude}\n` +
     // `  vwParkingLongitude:     ${vwParkingLongitude}\n` +
-    `  vwCruisingRange:           ${vwCruisingRange} km\n` +
     `  vwTargetSoc:               ${vwTargetSoc} %` +
       `${vwTargetSocPending && vwTargetSocPending !== vwTargetSoc ? ` (pending: ${vwTargetSocPending} %)` : ''}\n` +
     `  vwBatterySoc:              ${vwBatterySocPct} %\n` +
-    `  vwBatteryTemperature:      ${vwBatteryTemperatureC} °C\n` +
     `  wallboxExternalCurrent:    ${wallboxExternalCurrent} mA\n` +
-    `  weconnectConnected:        ${weconnectConnected} ${weconnectUpdated}\n` +
+    `  vwConnected:               ${vwConnected} ${vwUpdated}\n` +
+    `${where === 'SIGHUP' ?
+      `  revertChargeModeTimeout:   active\n` :
+      ''
+    }` +
     ' ');
 };
 
 process.on('SIGHUP', async() => {
-  logger.debug('lastPvProductionKw', _.map(lastPvProductionKw.dump(), kw => _.round(kw, 1)));
+  logger.debug('lastPvProductionKw', _.map(lastPvProductionKw, kw => _.round(kw, 1)));
   logState('SIGHUP');
 });
 
@@ -146,29 +135,28 @@ const updateStatus = async function(update) {
   await mqttClient.publishAsync('auto/tele/STATUS', JSON.stringify(status), {retain: true});
 };
 
-const restartVwsFriend = async function() {
+const restartCarconnectivity = async function(service) {
   const {stdout, stderr} = await execa('/usr/local/bin/docker', [
-    'restart', 'docker-vwsfriend-1',
+    'restart', `docker-${service}-1`,
   ]);
 
   if(stderr) {
-    logger.info('Restarted vwsfriend with error', {stdout, stderr});
+    logger.info(`Restarted ${service} with error`, {stdout, stderr});
   } else {
-    logger.info('Restarted vwsfriend', stdout);
+    logger.info(`Restarted ${service}`, stdout);
   }
 };
 
 const forceUpdate = async function() {
-  await mqttClient.publishAsync('vwsfriend/mqtt/weconnectForceUpdate_writetopic', 'true');
+  // TODO carconnectivity?
+  // await mqttClient.publishAsync('force update howto??? TODO ???', 'true');
 };
 
 const startCharging = async function() {
   check.assert.assigned(wallboxState, 'Missing wallboxState');
-  // check.assert.equal(vwPlugConnectionState, 'connected', 'Not connected');
-
-  if(!atHome) {
-    return;
-  }
+  // if(!atHome) {
+  //   return;
+  // }
 
   if(wallboxState === 'Lädt') {
     logger.info('Lädt bereits');
@@ -176,13 +164,19 @@ const startCharging = async function() {
     return;
   }
 
-  if((vwTargetSocPending && vwBatterySocPct >= vwTargetSocPending) ||
-    (!vwTargetSocPending && vwBatterySocPct >= vwTargetSoc)
-  ) {
-    logger.info('Ladeziel bereits erreicht');
+  if(!['Warte auf Ladefreigabe', 'Ladebereit', 'Fehler'].includes(wallboxState)) {
+    logger.info(`Falscher wallboxState='${wallboxState}'`);
 
     return;
   }
+
+//  if((vwTargetSocPending && vwBatterySocPct >= vwTargetSocPending) ||
+//    (!vwTargetSocPending && vwBatterySocPct >= vwTargetSoc)
+//  ) {
+//    logger.info('Ladeziel bereits erreicht');
+//
+//    return;
+//  }
 
   if(lock.isBusy('changeCharging')) {
     logger.info('changeCharging locked');
@@ -196,7 +190,7 @@ const startCharging = async function() {
 
     await delay(ms('2s'));
 
-    await mqttClient.publishAsync(`${vwPrefix}/controls/charging_writetopic`, 'start');
+    await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/commands/start-stop_writetopic`, 'start');
 
     await delay(ms('2s'));
 
@@ -282,7 +276,7 @@ const stopCharging = async function() {
 
   await lock.acquire('changeCharging', async() => {
     await mqttClient.publishAsync('Wallbox/evse/stop_charging', JSON.stringify(null));
-    await mqttClient.publishAsync(`${vwPrefix}/controls/charging_writetopic`, 'stop');
+    // await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/commands/start-stop_writetopic`, 'stop');
 
     await delay(ms('2s'));
 
@@ -491,25 +485,26 @@ const checkPVUeberschussLaden = async function() {
   if(vwBatterySocPct >= vwTargetSoc) {
     return;
   }
+  if(!lastPvProductionKwAvg) {
+    return;
+  }
 
   const now = dayjs.utc();
 
   if(!lock.isBusy('changeCharging')) {
-    const averagePvProductionKw = lastPvProductionKw.avg() || pvProductionKw;
-
     // logger.debug({
-    //   averagePvProductionKw: _.round(averagePvProductionKw, 1),
+    //   lastPvProductionKwAvg: _.round(lastPvProductionKwAvg, 1),
     //   pvProductionKw:        _.round(pvProductionKw, 1),
     // });
 
     if(['Überschuss', 'Überschuss+'].includes(chargeMode)) {
       if(wallboxState === 'Lädt') {
-        if(hausBatterySocPct < 90 && averagePvProductionKw < 1.5 ||
-          hausBatterySocPct < 80 && averagePvProductionKw < 2.5 && pvProductionKw <= 4 ||
-          hausBatterySocPct < 70 && averagePvProductionKw < 4 && now > maxSunTime
+        if(hausBatterySocPct < 90 && lastPvProductionKwAvg < 1.5 ||
+          hausBatterySocPct < 80 && lastPvProductionKwAvg < 2.5 && pvProductionKw <= 4 ||
+          hausBatterySocPct < 70 && lastPvProductionKwAvg < 4 && now > maxSunTime
         ) {
           logger.debug(`PV ${chargeMode}, Laden Ende`, {
-            averagePvProductionKw: _.round(averagePvProductionKw, 1),
+            lastPvProductionKwAvg: _.round(lastPvProductionKwAvg, 1),
             pvProductionKw:        _.round(pvProductionKw, 1),
             hausBatterySocPct:     _.round(hausBatterySocPct, 1),
             maxSunTime:            maxSunTime.local().format('HH:mm'),
@@ -529,7 +524,7 @@ const checkPVUeberschussLaden = async function() {
 
           const currentMa = _.max([
             6000,
-            _.round((averagePvProductionKw - 0.3 - chargeBatteryKw) * 1000 / 3 / 230 * 1000),
+            _.round((lastPvProductionKwAvg - 0.3 - chargeBatteryKw) * 1000 / 3 / 230 * 1000),
           ]);
 
           // logger.debug(`calc current=${currentMa}`);
@@ -537,18 +532,19 @@ const checkPVUeberschussLaden = async function() {
           await setChargeCurrent(currentMa);
         }
       } else if(['Warte auf Ladefreigabe', 'Ladebereit', 'Fehler'].includes(wallboxState) &&
-        averagePvProductionKw > 4 &&
+        lastPvProductionKwAvg > 4 &&
         (
           hausBatterySocPct > 80 ||
           hausBatterySocPct > 40 && now < maxSunTime ||
-          averagePvProductionKw > 6 ||
+          lastPvProductionKwAvg > 6 ||
           chargeMode === 'Überschuss+'
         )
       ) {
         logger.debug(`PV ${chargeMode}, Laden Start`, {
-          averagePvProductionKw: _.round(averagePvProductionKw, 1),
+          lastPvProductionKwAvg: _.round(lastPvProductionKwAvg, 1),
           hausBatterySocPct:     _.round(hausBatterySocPct, 1),
           maxSunTime:            maxSunTime.local().format('HH:mm'),
+          wallboxState,
         });
 
         await setChargeCurrent(6000);
@@ -628,7 +624,11 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                 //   await stopCharging();
                 // }
 
-                await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
+                if(vwTargetSocPending && vwTargetSocPending !== 80 ||
+                  !vwTargetSocPending && vwTargetSoc !== 80
+                ) {
+                  await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
+                }
 
                 // Handled in 'Fronius/solar/tele/SENSOR'
                 break;
@@ -665,7 +665,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           if(message) {
             logger.debug(`Setze targetSoc=${message} (pending)`);
 
-            await mqttClient.publishAsync(`${vwPrefix}/domains/charging/chargingSettings/targetSOC_pct_writetopic`,
+            await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
               JSON.stringify(message));
           }
           break;
@@ -684,8 +684,6 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
         hausBatterySocPct = message.battery.stateOfCharge * 100;
         pvProductionKw    = message.solar.powerOutgoing / 1000;
-
-        lastPvProductionKw.enq(pvProductionKw);
 
         if(!lastChargeUpdate) {
           lastChargeUpdate = now;
@@ -713,42 +711,51 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         strompreise = message;
         break;
 
-      case 'vwsfriend/mqtt/weconnectConnected':
-        if(weconnectUpdateIntervalS) {
-          weconnectConnected = message === 'True';
+      case 'strom/tele/solarProduction':
+        ({lastPvProductionKw, lastPvProductionKwAvg} = message);
+        break;
 
-          if(weconnectConnected) {
+      case 'carconnectivity/connectors/volkswagen/connection_state':
+        vwConnected = message === 'True' || message === 'connected';
+
+        if(vwUpdateIntervalS) {
+          if(vwConnected) {
             if(disconnectedHandler) {
-              logger.debug('Clear disconnectedTimeout');
+              logger.debug('Clear disconnectedTimeout', {vwConnected, vwUpdated});
               clearTimeout(disconnectedHandler);
               disconnectedHandler = null;
             }
           } else if(!disconnectedHandler) {
-            logger.debug('Start disconnectedTimeout');
+            logger.debug('Start disconnectedTimeout', {vwConnected, vwUpdated});
             disconnectedHandler = setTimeout(async() => {
               disconnectedHandler = undefined;
               logger.debug('Trigger restart in disconnected handler');
-              await restartVwsFriend();
-            }, ms(`${2 * weconnectUpdateIntervalS / 60 + 1}m`));
+
+              await restartCarconnectivity('carconnectivity-mqtt');
+            }, ms(`${2 * vwUpdateIntervalS / 60 + 1}m`));
           }
         }
         break;
 
-      case 'vwsfriend/mqtt/weconnectUpdateInterval_s':
-        weconnectUpdateIntervalS = message;
-        break;
+      case 'carconnectivity/connectors/volkswagen/interval': {
+        const intervalParts = message.split(':');
 
-      case 'vwsfriend/mqtt/weconnectUpdated': {
-        if(weconnectUpdateIntervalS) {
-          weconnectUpdated = message;
+        vwUpdateIntervalS = Number(intervalParts[0]) * 3600 +
+          Number(intervalParts[1]) * 60 +
+          Number(intervalParts[2]);
+        break;
+      }
+
+      case 'carconnectivity/connectors/volkswagen/last_update':
+        if(vwUpdateIntervalS) {
+          vwUpdated = message;
 
           const now   = dayjs.utc();
-          const ageMs = now - dayjs(weconnectUpdated);
-          // const ageS  = ageMs / 1000;
+          const ageMs = now - dayjs(vwUpdated);
 
-          // logger.debug('weconnectUpdated', {weconnectUpdated, ageS});
+          // logger.debug('vwUpdated', {vwUpdated, ageS: ageMs / 1000);
 
-          if(ageMs < ms(`${2 * weconnectUpdateIntervalS / 60 + 1}m`)) {
+          if(ageMs < ms(`${2 * vwUpdateIntervalS / 60 + 1}m`)) {
             if(missingUpdateHandler) {
               clearTimeout(missingUpdateHandler);
               missingUpdateHandler = null;
@@ -756,36 +763,23 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             missingUpdateHandler = setTimeout(async() => {
               missingUpdateHandler = undefined;
-              logger.debug('Trigger missingUpdate handler');
-              await restartVwsFriend();
-            }, ms(`${2 * weconnectUpdateIntervalS + 1}m`) - ageMs);
+              logger.debug('Trigger missingUpdate handler', {vwConnected, vwUpdated});
+
+              await restartCarconnectivity('carconnectivity-mqtt');
+            }, ms(`${2 * vwUpdateIntervalS / 60 + 1}m`) - ageMs);
           } else {
-            logger.debug('Outdated update');
-            await restartVwsFriend();
+            logger.debug(`Outdated update: ${vwUpdated}`, {vwConnected, vwUpdated});
+
+            await restartCarconnectivity('carconnectivity-mqtt');
           }
         }
         break;
-      }
 
-      case `${vwPrefix}/domains/charging/batteryStatus/currentSOC_pct`:
+      case `carconnectivity/garage/${vwId}/drives/primary/level`:
         vwBatterySocPct = message;
         break;
 
-      case `${vwPrefix}/domains/charging/batteryStatus/cruisingRangeElectric_km`:
-        vwCruisingRange = message;
-        break;
-
-      case `${vwPrefix}/domains/charging/chargingStatus/chargePower_kW`:
-        vwChargePowerKw = message;
-        break;
-
-      case `${vwPrefix}/domains/charging/chargingStatus/chargingState`:
-        if(message) {
-          vwChargingState = message;
-        }
-        break;
-
-      case `${vwPrefix}/domains/charging/chargingSettings/targetSOC_pct`:
+      case `carconnectivity/garage/${vwId}/charging/settings/target_level`:
         vwTargetSoc = message;
 
         if(vwTargetSocPending) {
@@ -798,42 +792,22 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             await delay(ms('30s'));
 
-            await mqttClient.publishAsync(`${vwPrefix}/domains/charging/chargingSettings/targetSOC_pct_writetopic`,
+            await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
               JSON.stringify(vwTargetSocPending));
           }
         }
         break;
 
-      case `${vwPrefix}/domains/charging/plugStatus/plugConnectionState`:
-        vwPlugConnectionState = message;
-        break;
-
-      case `${vwPrefix}/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K`:
-        vwBatteryTemperatureC = Number(message) - 273.15;
-        break;
-
-      case `${vwPrefix}/domains/readiness/readinessStatus/connectionState/isActive`:
-        vwIsActive = message === 'True';
-        break;
-
-      case `${vwPrefix}/domains/readiness/readinessStatus/connectionState/isOnline`:
-        vwIsOnline = message === 'True';
-        break;
-
-      case `${vwPrefix}/parking/parkingPosition/latitude`:
+      case `carconnectivity/garage/${vwId}/position/latitude`:
         vwParkingLatitude = Number(message);
 
         await handleLocation();
         break;
 
-      case `${vwPrefix}/parking/parkingPosition/longitude`:
+      case `carconnectivity/garage/${vwId}/position/longitude`:
         vwParkingLongitude = Number(message);
 
         await handleLocation();
-        break;
-
-      case 'Wallbox/evse/auto_start_charging':
-        check.assert.false(message?.auto_start_charging);
         break;
 
       case 'Wallbox/evse/boost_mode':
@@ -921,24 +895,17 @@ logger.info(`-------------------- Startup --------------------`);
 
 // Subscribe
 await mqttClient.subscribeAsync('auto/cmnd/#');
+await mqttClient.subscribeAsync('carconnectivity/connectors/volkswagen/interval');         // order A
+await mqttClient.subscribeAsync('carconnectivity/connectors/volkswagen/connection_state'); // order B
+await mqttClient.subscribeAsync('carconnectivity/connectors/volkswagen/last_update');      // order C
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/drives/primary/level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/position/latitude`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/position/longitude`);
 await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('strom/tele/preise');
-await mqttClient.subscribeAsync('vwsfriend/mqtt/weconnectUpdateInterval_s');
-await mqttClient.subscribeAsync('vwsfriend/mqtt/weconnectConnected');
-await mqttClient.subscribeAsync('vwsfriend/mqtt/weconnectUpdated');
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/batteryStatus/currentSOC_pct`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/batteryStatus/cruisingRangeElectric_km`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/chargingStatus/chargePower_kW`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/chargingStatus/chargingState`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/chargingSettings/targetSOC_pct`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/charging/plugStatus/plugConnectionState`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/readiness/readinessStatus/connectionState/isActive`);
-await mqttClient.subscribeAsync(`${vwPrefix}/domains/readiness/readinessStatus/connectionState/isOnline`);
-await mqttClient.subscribeAsync(`${vwPrefix}/parking/parkingPosition/latitude`);
-await mqttClient.subscribeAsync(`${vwPrefix}/parking/parkingPosition/longitude`);
-await mqttClient.subscribeAsync('Wallbox/evse/auto_start_charging');
+await mqttClient.subscribeAsync('strom/tele/solarProduction');
 await mqttClient.subscribeAsync('Wallbox/evse/boost_mode');
 await mqttClient.subscribeAsync('Wallbox/evse/external_clear_on_disconnect');
 await mqttClient.subscribeAsync('Wallbox/evse/external_current');

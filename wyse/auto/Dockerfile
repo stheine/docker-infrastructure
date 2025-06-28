@@ -5,7 +5,7 @@ ARG DOCKER_VERSION=25-cli
 FROM docker:${DOCKER_VERSION} AS docker-cli
 
 # ##############################################################################
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/
 
 # ##############################################################################
