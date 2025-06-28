@@ -62,7 +62,6 @@ let   smartMeterInterval;
 let   solcastAnalysis;
 let   strompreise;
 let   sunTimes;
-let   vwChargePowerKw;
 let   vwBatterySocPct;
 let   vwTargetSocPct;
 
@@ -530,7 +529,6 @@ const handleRate = async function(log = false) {
         maxDcPower:       `${maxDcPower}W (${_.uniq(dcPowers.dump()).join(',')})`,
         maxEinspeisung:   `${maxEinspeisung}W (${_.uniq(einspeisungen.dump()).join(',')})`,
         momentanLeistung: `${_.round(momentanLeistung / 1000, 1)}kW`,
-        vwChargePowerKw:  `${vwChargePowerKw}kW`,
         vwBatterySocPct:  `${vwBatterySocPct}% (${vwTargetSocPct}%)`,
         autoAtHome:       `${autoStatus.atHome} (${autoStatus.wallboxState})`,
         heizstabLeistung: `${_.round(heizstabLeistung / 1000, 1)}kW`,
@@ -801,16 +799,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         heizstabLeistung = message.ENERGY.Power;
         break;
 
-      case `vwsfriend/vehicles/${config.vwId}/domains/charging/batteryStatus/currentSOC_pct`:
+      case `carconnectivity/garage/${config.vwId}/drives/primary/level`:
         vwBatterySocPct = Number(messageRaw);
         break;
 
-      case `vwsfriend/vehicles/${config.vwId}/domains/charging/chargingSettings/targetSOC_pct`:
+      case `carconnectivity/garage/${config.vwId}/charging/settings/target_level`:
         vwTargetSocPct = Number(messageRaw);
-        break;
-
-      case `vwsfriend/vehicles/${config.vwId}/domains/charging/chargingStatus/chargePower_kW`:
-        vwChargePowerKw = Number(messageRaw);
         break;
 
       default:
@@ -823,6 +817,8 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 });
 
 await mqttClient.subscribeAsync('auto/tele/STATUS');
+await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/cmnd');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/analysis');
@@ -832,9 +828,6 @@ await mqttClient.subscribeAsync('sunTimes/INFO');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
 await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
 await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.vwId}/domains/charging/batteryStatus/currentSOC_pct`);
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.vwId}/domains/charging/chargingSettings/targetSOC_pct`);
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.vwId}/domains/charging/chargingStatus/chargePower_kW`);
 
 healthInterval = setInterval(async() => {
   await mqttClient.publishAsync(`fronius-battery/health/STATE`, 'OK');
