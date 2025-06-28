@@ -764,6 +764,13 @@ services:
       -c shared_buffers=512MB
       -c wal_compression=on
 
+  internet-connected:
+    restart: always
+    build: internet-connected
+    hostname: wyse-internet-connected
+    volumes:
+      - ./internet-connected/app:/app
+
   ladder:
     restart: always
     image: ghcr.io/everywall/ladder:latest
