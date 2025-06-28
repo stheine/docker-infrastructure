@@ -182,7 +182,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/Filme
+      device: /mnt/qnap/Extern/Filme
       o: bind
 
 ##  media_fotos:
@@ -210,7 +210,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/KinderFilme
+      device: /mnt/qnap/Extern/KinderFilme
       o: bind
 
   media_musik:
