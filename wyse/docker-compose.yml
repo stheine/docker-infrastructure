@@ -340,11 +340,11 @@ volumes:
       device: /mnt/qnap/linux/data/portainer
       o: bind
 
-  postfix_creds:
+  postfix_config:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/linux/data/postfix_creds
+      device: /mnt/qnap/linux/data/postfix_config
       o: bind
 
   pushover:
@@ -1115,7 +1115,7 @@ services:
     ports:
       - "25:25"
     volumes:
-      - postfix_creds:/etc/postfix/creds
+      - postfix_config:/etc/postfix/config
 
   proxy:
     restart: always
