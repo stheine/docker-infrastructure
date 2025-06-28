@@ -290,6 +290,8 @@ speedtestInterval = setInterval(speedtest, ms('6 hours'));
 
 speedtest();
 
+process.on('SIGHUP', () => speedtest());
+
 healthInterval = setInterval(async() => {
   await mqttClient.publishAsync('fritz/health/STATE', 'OK');
 }, ms('1min'));
