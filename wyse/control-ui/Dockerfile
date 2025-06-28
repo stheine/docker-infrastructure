@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -31,8 +31,6 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 ENV TZ Europe/Berlin
-
-WORKDIR /source
 
 # ##############################################################################
 # Install and run control-ui app
