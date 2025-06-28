@@ -32,8 +32,21 @@ const tibberQuery = new TibberQuery(config);
 
 // console.log(JSON.stringify(result, null, 2));
 
-const queryPrice = '{viewer{homes{currentSubscription{priceInfo{current{total} today{total energy startsAt currency level} tomorrow{total energy startsAt currency level}}}}}}';
+// const queryPrice = '{viewer{homes{currentSubscription{priceInfo{current{total} today{total energy startsAt currency level} tomorrow{total energy startsAt currency level}}}}}}';
+// const result = await tibberQuery.query(queryPrice);
 
-const result = await tibberQuery.query(queryPrice);
+// console.log(JSON.stringify(result, null, 2));
+
+// const queryMeter = '{RootSubscription{LiveMeasurement}}';
+// const queryMeter = `subscription{liveMeasurement(homeId: "${homeId}"){timestamp power accumulatedConsumption accumulatedCost currency minPower averagePower maxPower}}`;
+
+// const result = await tibberQuery.query(queryMeter);
+
+// console.log(JSON.stringify(result, null, 2));
+
+// const query = `{viewer{homes{id}}}`;
+const query = `{viewer{homes{id consumption(resolution: HOURLY, last: 48){nodes{from to cost consumption}}}}}`;
+
+const result = await tibberQuery.query(query);
 
 console.log(JSON.stringify(result, null, 2));

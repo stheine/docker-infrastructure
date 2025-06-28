@@ -14,6 +14,7 @@ import dayjs         from 'dayjs';
 import {logger}      from '@stheine/helpers';
 import mqtt          from 'mqtt';
 import ms            from 'ms';
+import Ringbuffer    from '@stheine/ringbufferjs';
 import {TibberQuery} from 'tibber-api';
 import utc           from 'dayjs/plugin/utc.js';
 // import {
@@ -39,9 +40,10 @@ const dcLimit = 5750;
 // Globals
 
 let   healthInterval;
-const hostname        = os.hostname();
+const hostname           = os.hostname();
+const lastPvProductionKw = new Ringbuffer(60); // Fronius/solar/tele/SENSOR every 5s => 60 => 5min
 let   mqttClient;
-let   health          = 'OK';
+let   health             = 'OK';
 
 // ###########################################################################
 // Process handling
@@ -172,7 +174,7 @@ const getStrompreise = async function() {
 
     health = 'OK';
   } catch(err) {
-    logger.error(err.message);
+    logger.error('getStrompreise() failed', err.message);
 
     health = `FAIL: ${err.message}`;
   }
@@ -199,7 +201,7 @@ const getStrompreiseAwattar = async function() {
 
     health = 'OK';
   } catch(err) {
-    logger.error(err.message);
+    logger.error('getStrompreiseAwattar() failed', err.message);
 
     health = `FAIL: ${err.message}`;
   }
@@ -366,6 +368,15 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             solarDachLeistung = null;
           } else {
             solarDachLeistung = _.round(solar.powerOutgoing);
+
+            const pvProductionKw    = solar.powerOutgoing / 1000;
+
+            lastPvProductionKw.enq(pvProductionKw);
+
+            await mqttClient.publishAsync('strom/tele/solarProduction', JSON.stringify({
+              lastPvProductionKw,
+              lastPvProductionKwAvg: lastPvProductionKw.avg(),
+            }), {retain: true});
           }
         }
         break;
@@ -616,12 +627,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
-      case `vwsfriend/vehicles/${config.VWId}/domains/charging/batteryStatus/currentSOC_pct`: {
+      case `carconnectivity/garage/${config.vwId}/drives/primary/level`: {
         vwBatterySocPct = messageRaw;
         break;
       }
 
-      case `vwsfriend/vehicles/${config.VWId}/domains/charging/chargingSettings/targetSOC_pct`: {
+      case `carconnectivity/garage/${config.vwId}/charging/settings/target_level`: {
         vwTargetSocPct = messageRaw;
         break;
       }
@@ -649,17 +660,17 @@ await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedMask', '0');
 await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/SetOption31', '1');
 await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
-await mqttClient.subscribeAsync('maxSun/INFO');
+await mqttClient.subscribeAsync('auto/tele/STATUS');
+await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
+await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/forecasts');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
 await mqttClient.subscribeAsync('tasmota/spuelmaschine/stat/POWER1');
 await mqttClient.subscribeAsync('tasmota/waschmaschine/stat/POWER');
 await mqttClient.subscribeAsync('vito/tele/SENSOR');
 // await mqttClient.subscribeAsync('Wallbox/evse/state');
-await mqttClient.subscribeAsync('auto/tele/STATUS');
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/batteryStatus/currentSOC_pct`);
-await mqttClient.subscribeAsync(`vwsfriend/vehicles/${config.VWId}/domains/charging/chargingSettings/targetSOC_pct`);
 
 while(_.isNull(vitoBetriebsart)) {
   await delay(ms('100ms'));
