@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim
+FROM node:24-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
