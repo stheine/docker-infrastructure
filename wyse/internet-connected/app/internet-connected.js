@@ -67,7 +67,7 @@ const testDnsServer = function(server) {
         check.assert.equal(response.rcode, 'NOERROR');
         check.assert.nonEmptyArray(response.answers);
         check.assert.nonEmptyObject(response.answers.at(0));
-        check.assert.equal(response.answers.at(0).name, 'google.com');
+        check.assert.equal(response.answers.at(0).name.toLowerCase(), 'google.com');
         check.assert.equal(response.answers.at(0).type, 'A');
         check.assert.nonEmptyString(response.answers.at(0).data);
 
@@ -109,7 +109,7 @@ logger.info(`Startup --------------------------------------------------`);
 // #########################################################################
 // DNS
 
-dns = dnsSocket({maxRedirects: 0, retries: 0, timeout: ms('1s')});
+dns = dnsSocket({maxRedirects: 0, retries: 0, timeout: ms('2s')});
 
 // #########################################################################
 // MQTT
