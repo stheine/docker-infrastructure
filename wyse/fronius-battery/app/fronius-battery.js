@@ -132,6 +132,50 @@ const stopProcess = async function() {
 process.on('SIGTERM', () => stopProcess());
 
 // ###########################################################################
+// Fronius Firmware software version check
+
+const checkSoftwareVersion = async() => {
+  // logger.info(`--------------------- Cron SW Version ----------------------`);
+
+  try {
+    const runningVersion = await inverter.readRegister('Vr');
+    const latestVersion  = await getLatestVersion();
+    // eslint-disable-next-line max-len
+    const url = 'https://www.fronius.com/de-de/germany/download-center#!/searchconfig/%7B%22countryPath%22%3A%22%2Fsitecore%2Fcontent%2FGermany%22%2C%22language%22%3A%22de-DE%22%2C%22searchword%22%3A%22gen24%22%2C%22selectedCountry%22%3A%22Germany%22%2C%22solarenergy%22%3A%7B%22facets%22%3A%5B%7B%22id%22%3A%22Firmware%22%2C%22categoryId%22%3A%22DocumentType%22%7D%5D%7D%7D';
+
+    logger.info('Software version check', {runningVersion, latestVersion});
+
+    if(runningVersion === latestVersion) {
+      Reflect.deleteProperty(notified, 'softwareVersion');
+    } else if(!notified.softwareVersion) {
+      (async() => { // Do not await this async handler!
+        await delay(ms('5days'));
+        await sendMail({
+          to:      'technik@heine7.de',
+          subject: 'Fronius Software Version update',
+          html:    `
+            <table>
+              <tr>
+                <td>Running</td><td>${runningVersion}</td>
+              </tr>
+              <tr>
+                <td>Latest</td><td>${latestVersion}</td>
+              </tr>
+              <tr>
+                <td colspan='2'><a href='${url}'>Fronius Product Download</a></td>
+              </tr>
+            </table>`,
+        });
+      })();
+
+      notified.softwareVersion = true;
+    }
+  } catch(err) {
+    logger.error(`Failed to read software version: ${err.message}`);
+  }
+};
+
+// ###########################################################################
 // Solcast, weather forecast
 
 const wattToRate = function(watt) {
@@ -680,6 +724,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             await updateStatus({chargeMax: null});
           }
+
+          const {chargePct} = getBatteryChargePct();
+
+          if(chargePct !== null) {
+            await setBatteryPvCharge(chargePct);
+          }
         } else if(Object.hasOwn(message, 'chargeTo')) {
           if(message.chargeTo) {
             logger.info(`Charge exception. Charge ${message.chargeTo}% today.`);
@@ -689,6 +739,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             logger.info(`Charge exception. Reset to normal charge today.`);
 
             await updateStatus({chargeTo: null});
+          }
+
+          const {chargePct} = getBatteryChargePct();
+
+          if(chargePct !== null) {
+            await setBatteryPvCharge(chargePct);
           }
         } else if(Object.hasOwn(message, 'gridChargePct')) {
           if(message.gridChargePct) {
@@ -739,6 +795,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         } else {
           logger.error(`Unhandled cmnd '${topic}'`, message);
         }
+        break;
+
+      case 'Fronius/maintenance/checkSoftwareVersion':
+        await checkSoftwareVersion();
         break;
 
       case 'maxSun/INFO':
@@ -820,6 +880,7 @@ await mqttClient.subscribeAsync('auto/tele/STATUS');
 await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/cmnd');
+await mqttClient.subscribeAsync('Fronius/maintenance/checkSoftwareVersion');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/analysis');
 await mqttClient.subscribeAsync('strom/tele/preise');
@@ -1346,46 +1407,7 @@ setInterval(async() => {
   //                s min h  d m wd
   const schedule = '0 0   18 * * *'; // Once per day at 18:00
 
-  const job = new Cron(schedule, {timezone: 'Europe/Berlin'}, async() => {
-    // logger.info(`--------------------- Cron SW Version ----------------------`);
-
-    try {
-      const runningVersion = await inverter.readRegister('Vr');
-      const latestVersion  = await getLatestVersion();
-      // eslint-disable-next-line max-len
-      const url = 'https://www.fronius.com/de-de/germany/download-center#!/searchconfig/%7B%22countryPath%22%3A%22%2Fsitecore%2Fcontent%2FGermany%22%2C%22language%22%3A%22de-DE%22%2C%22searchword%22%3A%22gen24%22%2C%22selectedCountry%22%3A%22Germany%22%2C%22solarenergy%22%3A%7B%22facets%22%3A%5B%7B%22id%22%3A%22Firmware%22%2C%22categoryId%22%3A%22DocumentType%22%7D%5D%7D%7D';
-
-      logger.info('Software version check', {runningVersion, latestVersion});
-
-      if(runningVersion === latestVersion) {
-        Reflect.deleteProperty(notified, 'softwareVersion');
-      } else if(!notified.softwareVersion) {
-        (async() => { // Do not await this async handler!
-          await delay(ms('5days'));
-          await sendMail({
-            to:      'technik@heine7.de',
-            subject: 'Fronius Software Version update',
-            html:    `
-              <table>
-                <tr>
-                  <td>Running</td><td>${runningVersion}</td>
-                </tr>
-                <tr>
-                  <td>Latest</td><td>${latestVersion}</td>
-                </tr>
-                <tr>
-                  <td colspan='2'><a href='${url}'>Fronius Product Download</a></td>
-                </tr>
-              </table>`,
-          });
-        })();
-
-        notified.softwareVersion = true;
-      }
-    } catch(err) {
-      logger.error(`Failed to read software version: ${err.message}`);
-    }
-  });
+  const job = new Cron(schedule, {timezone: 'Europe/Berlin'}, checkSoftwareVersion);
 
   _.noop('Cron job started', job);
 }
