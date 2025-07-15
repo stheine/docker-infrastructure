@@ -943,7 +943,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - 6398:8080
-      - 11000:11000
+      # - 11000:11000
     environment:
       - APACHE_PORT=11000
       - APACHE_IP_BINDING=0.0.0.0
