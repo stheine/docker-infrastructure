@@ -152,6 +152,41 @@ const forceUpdate = async function() {
   // await mqttClient.publishAsync('force update howto??? TODO ???', 'true');
 };
 
+const setChargeCurrent = async function(milliAmpere) {
+  if(milliAmpere === wallboxExternalCurrent) {
+    return;
+  }
+
+  const ladestromMa    = milliAmpere;
+  const ladeleistungKw = _.round(milliAmpere * 3 * 230 / 1000 / 1000, 1);
+
+  if(lastLadeleistungKw !== ladeleistungKw) {
+    logger.debug(`Ladestrom ${ladestromMa} mA, ${ladeleistungKw} kW`);
+
+    lastLadeleistungKw = ladeleistungKw;
+  }
+
+  // Ladestrom:  Wallbox/evse/external_current <mA>
+  //  6000 mA  =>  4,1 kW   =>  4   kW
+  //  7000 mA  =>  4,8 kW   =>  4,5 kW
+  //  8000 mA  =>  5,5 kW   =>  5   kW
+  //  9000 mA  =>  6,2 kW   =>  6   kW
+  // 10000 mA  =>  6,9 kW   =>  6,5 kW
+  // 11000 mA  =>  7,6 kW   =>  7   kW
+  // 12000 mA  =>  8,3 kW   =>  7   kW
+  // 13000 mA  =>  9,0 kW   =>  8   kW
+  // 14000 mA  =>  9,7 kW   =>  8,5 kW
+  // 15000 mA  => 10,4 kW   =>  9   kW
+  // 16000 mA  => 11,0 kW   => 10   kW
+  await mqttClient.publishAsync('Wallbox/evse/external_current_update', JSON.stringify(milliAmpere));
+
+  updateStatus({ladestromMa, ladeleistungKw});
+
+  // await delay(ms('5s'));
+
+  // await forceUpdate();
+};
+
 const startCharging = async function() {
   check.assert.assigned(wallboxState, 'Missing wallboxState');
   // if(!atHome) {
@@ -185,7 +220,7 @@ const startCharging = async function() {
   }
 
   await lock.acquire('changeCharging', async() => {
-    await mqttClient.publishAsync('Wallbox/evse/external_current_update', JSON.stringify(6000));
+    await setChargeCurrent(6000);
     await mqttClient.publishAsync('Wallbox/evse/start_charging', JSON.stringify(null));
 
     await delay(ms('2s'));
@@ -222,41 +257,6 @@ const startCharging = async function() {
       return 1;
     }
   });
-};
-
-const setChargeCurrent = async function(milliAmpere) {
-  if(milliAmpere === wallboxExternalCurrent) {
-    return;
-  }
-
-  const ladestromMa    = milliAmpere;
-  const ladeleistungKw = _.round(milliAmpere * 3 * 230 / 1000 / 1000, 1);
-
-  if(lastLadeleistungKw !== ladeleistungKw) {
-    logger.debug(`Ladestrom ${ladestromMa} mA, ${ladeleistungKw} kW`);
-
-    lastLadeleistungKw = ladeleistungKw;
-  }
-
-  // Ladestrom:  Wallbox/evse/external_current <mA>
-  //  6000 mA  =>  4,1 kW   =>  4   kW
-  //  7000 mA  =>  4,8 kW   =>  4,5 kW
-  //  8000 mA  =>  5,5 kW   =>  5   kW
-  //  9000 mA  =>  6,2 kW   =>  6   kW
-  // 10000 mA  =>  6,9 kW   =>  6,5 kW
-  // 11000 mA  =>  7,6 kW   =>  7   kW
-  // 12000 mA  =>  8,3 kW   =>  7   kW
-  // 13000 mA  =>  9,0 kW   =>  8   kW
-  // 14000 mA  =>  9,7 kW   =>  8,5 kW
-  // 15000 mA  => 10,4 kW   =>  9   kW
-  // 16000 mA  => 11,0 kW   => 10   kW
-  await mqttClient.publishAsync('Wallbox/evse/external_current_update', JSON.stringify(milliAmpere));
-
-  updateStatus({ladestromMa, ladeleistungKw});
-
-  // await delay(ms('5s'));
-
-  // await forceUpdate();
 };
 
 const stopCharging = async function() {
