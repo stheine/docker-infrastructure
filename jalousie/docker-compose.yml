@@ -6,25 +6,12 @@ volumes:
       device: /mnt/qnap_linux/data/jalousie
       o: bind
 
-  pihole_etc_dnsmasq_d:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/pihole/etc_dnsmasq.d
-      o: bind
-
-  pihole_etc_lighttpd:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/pihole/etc_lighttpd
-      o: bind
-
   pihole_etc_pihole:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap_linux/data/pihole/etc_pihole
+        # device: /mnt/qnap_linux/data/pihole/etc_pihole
+      device: /var/opt/pihole
       o: bind
 
   zigbee2mqtt:
@@ -70,22 +57,20 @@ services:
     image: pihole/pihole:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    shm_size: '200mb'
+    # shm_size: '200mb'
     hostname: pi-pihole
-    dns:
-      - 192.168.6.1
+    # dns:
+    # - 192.168.6.1
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "67:67/udp"
       - "80:80/tcp"
       - "443:443/tcp"
     environment:
       TZ: 'Europe/Berlin'
+      FTLCONF_dns_listeningMode: 'all'
     volumes:
-      - pihole_etc_dnsmasq_d:/etc/dnsmasq.d
       - pihole_etc_pihole:/etc/pihole
-      - pihole_etc_lighttpd:/etc/lighttpd
 
   portainer_agent:
     restart: always
