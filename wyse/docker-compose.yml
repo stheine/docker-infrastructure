@@ -442,6 +442,8 @@ networks:
   bridge:
     # driver: bridge
   backend:
+  ip6net:
+    enable_ipv6: true
 
 services:
   apache2:
@@ -1167,6 +1169,8 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: wyse-uptime-kuma
+    networks:
+      - ip6net
     ports:
       - 16095:3001
     volumes:
