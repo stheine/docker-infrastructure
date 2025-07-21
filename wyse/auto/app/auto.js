@@ -112,10 +112,6 @@ const logState = function(where) {
     `  vwBatterySoc:              ${vwBatterySocPct} %\n` +
     `  wallboxExternalCurrent:    ${wallboxExternalCurrent} mA\n` +
     `  vwConnected:               ${vwConnected} ${vwUpdated}\n` +
-    `${where === 'SIGHUP' ?
-      `  revertChargeModeTimeout:   active\n` :
-      ''
-    }` +
     ' ');
 };
 
@@ -613,8 +609,8 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               case 'Sofort+':
                 await triggerSofort();
 
-                revertChargeModeTimeout = setTimeout(() => {
-                  chargeMode = 'Überschuss';
+                revertChargeModeTimeout = setTimeout(async() => {
+                  await mqttClient.publishAsync('auto/cmnd/setChargeMode', 'Überschuss+');
                 }, ms('12h'));
                 break;
 
