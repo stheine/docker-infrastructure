@@ -1279,10 +1279,11 @@ const handleBatteryGridChargingHandler = async function() {
 };
 
 const handleBatteryGridChargingSchedule = async function() {
-  const nowUtc         = dayjs.utc();
-  const sunriseDate = dayjs(sunTimes.sunrise);
-  const sunsetDate  = dayjs(sunTimes.sunset);
-  const today6Date  = dayjs().hour(6).minute(0).second(0);
+  const nowUtc              = dayjs.utc();
+  const sunriseDate         = dayjs(sunTimes.sunrise);
+  const sunriseTomorrowDate = dayjs(sunTimes.sunriseTomorrow);
+  const sunsetDate          = dayjs(sunTimes.sunset);
+  const today6Date          = dayjs().hour(6).minute(0).second(0);
 
   if(gridChargingHandlerTimeout) {
     // The handler is already scheduled
@@ -1324,7 +1325,7 @@ const handleBatteryGridChargingSchedule = async function() {
       return false;
     }
 
-    if(startTimeDate > sunriseDate && startTimeDate > today6Date) {
+    if(startTimeDate > sunriseTomorrowDate) {
       return false;
     }
 
@@ -1333,7 +1334,18 @@ const handleBatteryGridChargingSchedule = async function() {
 
   if(!nightData.length) {
     if(nowUtc.hour() >= 16) {
-      logger.debug('Failed to find nightData', {strompreise, sunTimes, nowUtc});
+      logger.debug('Failed to find nightData', {
+        nowUtc:      nowUtc.toISOString(),
+        strompreise: _.map(strompreise, strompreis => `${strompreis.startTime} ${strompreis.cent} ${strompreis.level}`),
+        sunriseDate: sunriseDate.toISOString(),
+        today6Date:  today6Date.toISOString(),
+      });
+      await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+        priority: -1,
+        sound:    'none',
+        title:    'Fronius-Battery',
+        message:  `Failed to find nightData`,
+      }));
     }
 
     return;
