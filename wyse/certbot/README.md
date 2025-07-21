@@ -1,10 +1,23 @@
 # certbot
 
+## First run to get initial certificates
+
+```
+docker compose run --rm certbot /bin/bash -l
+/usr/bin/certbot certonly
+2
+<Enter>
+y
+wyse.heine7.de
+/var/letsencrypt
+2 (for each certificate)
+```
+
 ## List existing certificates
 
 ```
 docker compose run --rm certbot /bin/bash -l
-/certbot/certbot-auto certificates
+/usr/bin/certbot certificates
 ```
 
 ## Expand to a new subdomain
@@ -13,18 +26,13 @@ Neuen Domainnamen erstellen:
 - Strato
 - Domain & Mail
 - Domains verwalten
-- Subdomains anzeigen
 - heine7.de -> Zahnrad
-- Subdomains/ Subdomain anlegen
-- <subdomain>.heine7.de.
-- Subdomain anlegen
-- Subdomains anzeigen
-- <subdomain> anklicken
 - DNS
-- CNAME-Record / verwalten
-- CNAME-Eintrag ändern
-- <heine7.de>
-- [x] Ich bin mir darüber im klaren...
+- TXT- und CNAME-Record / verwalten
+- Weiteren Record erstellen
+- Typ: CNAME
+- Präfix: <subdomain>.heine7.de
+- Wert: heine7.de.
 - Einstellung übernehmen
 
 In Zertifikat aufnehmen:
