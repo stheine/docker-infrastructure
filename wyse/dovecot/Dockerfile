@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN \
   apt-get update && \
   apt-get install -y \
-    apt-utils && \
+    apt && \
   apt-get install -y \
     dnsutils \
     locales \
@@ -63,7 +63,6 @@ RUN \
   useradd -m -p dovecot -s /bin/false dovecot && \
   useradd -m -p dovenull -s /bin/false dovenull
 
-COPY dovecot.conf passwd /usr/local/etc/dovecot/
 COPY ssl-parameters.dat /var/lib/dovecot/ssl-parameters.dat
 
 COPY docker_container_profile /root/.profile

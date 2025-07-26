@@ -549,6 +549,8 @@ services:
     volumes:
       - letsencrypt:/usr/local/etc/letsencrypt:nocopy
       - vmail:/home/vmail:nocopy
+      - ./dovecot/dovecot.conf:/usr/local/etc/dovecot/dovecot.conf:ro
+      - ./dovecot/passwd:/usr/local/etc/dovecot/passwd:ro
 
 #  ftpd:
 #    restart: always
