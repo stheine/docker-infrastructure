@@ -1,6 +1,6 @@
 # Based on https://github.com/peez80/docker-imapfilter
 
-FROM alpine:latest
+FROM alpine:3.22
 
 RUN \
   apk add \
@@ -11,7 +11,11 @@ RUN \
     openssl \
     openssl-dev \
     pcre2 \
-    pcre2-dev
+    pcre2-dev \
+    tzdata && \
+  cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
+  echo "Europe/Berlin" > /etc/timezone && \
+  apk del tzdata
 
 ENV TZ Europe/Berlin
 

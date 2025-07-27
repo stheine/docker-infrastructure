@@ -1,4 +1,4 @@
-FROM alpine:3.18
+FROM alpine:3.22
 
 # Set the shell environment
 COPY docker_container_profile /root/.bash_profile
@@ -9,7 +9,11 @@ RUN \
   apk --no-cache add \
     bash \
     shadow \
-    vsftpd
+    tzdata \
+    vsftpd && \
+  cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
+  echo "Europe/Berlin" > /etc/timezone && \
+  apk del tzdata
 
 ENV TZ Europe/Berlin
 
