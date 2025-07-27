@@ -1,7 +1,7 @@
 # ##############################################################################
 # Install docker cli binary only
 # https://github.com/docker/cli/issues/2281#issuecomment-577745894
-ARG DOCKER_VERSION=26-cli
+ARG DOCKER_VERSION=28-cli
 FROM docker:${DOCKER_VERSION} AS docker-cli
 
 # ##############################################################################
@@ -20,6 +20,7 @@ RUN \
     apt-utils && \
   apt-get install -y \
     locales \
+    procps \
     sudo \
     tzdata \
     unzip \

@@ -1,29 +1,15 @@
 #!/bin/bash
 
-if [ ! -f /backup/stratoHiDrive.flag ]; then
-  sshfs \
-    -o StrictHostKeyChecking=no \
-    -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,dev,suid \
-    stheine@sftp.hidrive.strato.com:/users/stheine/backup/vaultwarden-backup \
-    /backup
-
-  if [ -f /backup/stratoHiDrive.flag ]; then
-    echo "$(date +"%Y-%m-%d %H:%M:%S") mounted Strato HiDrive" | tee -a /backup/backup.out
-  else
-    echo "$(date +"%Y-%m-%d %H:%M:%S") Failed to mounted Strato HiDrive" | tee -a /backup/backup.out
-
-    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: vaultwarden-backup Strato HiDrive mount missing\n\nStrato HiDrive mount missing\n" | /usr/sbin/sendmail -t
-
-    exit 1
-  fi
-fi
+function log() {
+  echo "$(date +"%Y-%m-%d %H:%M:%S") $*" | tee -a /backup.log
+}
 
 # Create the Backup directory
 
 WEEKDAY=$(date "+%a")
 BACKUP_DIR="/backup/${WEEKDAY}"
 
-echo "$(date +"%Y-%m-%d %H:%M:%S") Backup starting into ${BACKUP_DIR}" | tee -a /backup/backup.out
+log "Backup starting into ${BACKUP_DIR}"
 
 mkdir -p ${BACKUP_DIR}
 
@@ -44,4 +30,33 @@ rm -rf ${BACKUP_DIR}/*
 
 cp -R /data ${BACKUP_DIR}
 
-echo "$(date +"%Y-%m-%d %H:%M:%S") Backup finished" | tee -a /backup/backup.out
+log "Backup finished"
+
+
+# Copy the backup to the Strato HiDrive
+
+mkdir -p /backup-strato
+
+if [ ! -f /backup-strato/stratoHiDrive.flag ]; then
+  sshfs \
+    -o StrictHostKeyChecking=no \
+    -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,dev,suid \
+    stheine@sftp.hidrive.strato.com:/users/stheine/backup/vaultwarden-backup \
+    /backup-strato
+
+  if [ -f /backup-strato/stratoHiDrive.flag ]; then
+    log "Mounted Strato HiDrive"
+  else
+    log "Failed to mounted Strato HiDrive"
+
+    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: vaultwarden-backup Strato HiDrive mount missing\n\nStrato HiDrive mount missing\n" | /usr/sbin/sendmail -t
+
+    exit 1
+  fi
+fi
+
+log "Copy backup to Strato HiDrive"
+
+rsync -a /backup /backup-strato
+
+log "Copy finished"

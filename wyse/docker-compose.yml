@@ -52,6 +52,13 @@ volumes:
       device: /mnt/qnap/linux/data/comics
       o: bind
 
+  data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data
+      o: bind
+
   fritz:
     driver: local
     driver_opts:
@@ -136,6 +143,13 @@ volumes:
       device: /mnt/qnap/linux/data/imapfilter
       o: bind
 
+  immich:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/immich
+      o: bind
+
   immich-database:
     driver: local
     driver_opts:
@@ -178,6 +192,13 @@ volumes:
       device: /mnt/qnap/linux/data/letsencrypt_www
       o: bind
 
+  media_data_docs:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/Data/Docs
+      o: bind
+
   media_filme:
     driver: local
     driver_opts:
@@ -185,12 +206,12 @@ volumes:
       device: /mnt/qnap/Extern/Filme
       o: bind
 
-##  media_fotos:
-##    driver: local
-##    driver_opts:
-##      type: none
-##      device: /mnt/qnap/Fotos
-##      o: bind
+  media_fotos:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/Fotos
+      o: bind
 
 #  media_fotos_Sony:
 #    driver: local
@@ -268,6 +289,13 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/linux/data/nextcloud-config
+      o: bind
+
+  nextcloud-backup:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/nextcloud-backup
       o: bind
 
   octoprint:
@@ -396,6 +424,13 @@ volumes:
       device: /mnt/qnap/linux/data/vaultwarden-data
       o: bind
 
+  vaultwarden-backup:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/vaultwarden-backup
+      o: bind
+
   vito:
     driver: local
     driver_opts:
@@ -482,7 +517,12 @@ services:
       - ./docker-compose.yml:/docker/docker-compose.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - backup-rclone:/root/.config/rclone
-      - paperless-export:/data/paperless-export
+      - data:/data:ro
+      - immich:/data_rsync/immich:ro
+      - media_data_docs:/data_rsync/Docs:ro
+      - media_fotos:/data_rsync/Fotos:ro
+      - nextcloud-backup:/data_rsync/nextcloud-backup:ro
+      - paperless-export:/data_rsync/paperless-export:ro
 
   carconnectivity-mqtt:
     image: tillsteinbach/carconnectivity-mqtt:latest
@@ -1202,6 +1242,7 @@ services:
     volumes:
       - sshd_certs:/var/sshd_certs:nocopy
       - vaultwarden:/data
+      - vaultwarden-backup:/backup
       - ./vaultwarden-backup/backup.sh:/backup.sh
       - ./vaultwarden-backup/startup.sh:/startup.sh
 
