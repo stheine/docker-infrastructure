@@ -80,7 +80,7 @@ const readComic = async function(comic) {
       .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
       .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="[^"]*" class="[^"]*" title="[^"]*" \/>/, '');
 
-    check.assert.match(url, /^https:.*\.gif$/, `${comic} Failed to parse img url from '${figure}'`);
+    check.assert.match(url, /^https:.*\.(?:gif|jpg)$/, `${comic} Failed to parse img url from '${figure}'`);
 
     const label = page
       .replace(/^[\S\s]*<meta property="og:title" content="/, '')
