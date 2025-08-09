@@ -66,7 +66,6 @@ process.on('SIGTERM', () => stopProcess());
   let sunnyHours              = 0;
   let tempAussen              = null;
   let tempInnen               = null;
-  let verbrauchSeitLetzterLeerung;
 
   // #########################################################################
   // Startup
@@ -414,12 +413,11 @@ process.on('SIGTERM', () => stopProcess());
 
           // #######################################################################################
           // Check Asche Verbrauch - Leerung noetig?
+          const letzteLeerungVerbrauch      = Number(status.ascheGeleert.at(-1).split(' ')[1]);
+          const verbrauchSeitLetzterLeerung = brennerVerbrauch - letzteLeerungVerbrauch;
+
           if(brennerVerbrauch !== letzterBrennerVerbrauch) {
             letzterBrennerVerbrauch = brennerVerbrauch;
-
-            const letzteLeerungVerbrauch = Number(status.ascheGeleert.at(-1).split(' ')[1]);
-
-            verbrauchSeitLetzterLeerung = brennerVerbrauch - letzteLeerungVerbrauch;
 
             // Check Asche Verbrauch - Speicher leer?
             const gesamt      = _.reduce(status.pelletsSpeicher, (summe, line) => {
