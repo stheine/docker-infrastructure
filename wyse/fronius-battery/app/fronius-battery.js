@@ -45,6 +45,7 @@ let   autoStatus            = {};
 let   chargeStatePct;
 let   capacityWh;
 let   chargeBaselineW;
+let   enableExtraLogging    = false;
 let   gridChargingDoneInterval;
 let   gridChargingHandlerTimeout;
 let   healthInterval;
@@ -684,327 +685,11 @@ try {
 }
 
 // #########################################################################
-// Register MQTT events
-
-mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
-mqttClient.on('reconnect',  ()  => logger.info('mqtt.reconnect'));
-mqttClient.on('close',      ()  => _.noop() /* logger.info('mqtt.close') */);
-mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
-mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
-mqttClient.on('error',      err => logger.info('mqtt.error', err));
-mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
-
-// #########################################################################
-// Handle Stromzähler data
-mqttClient.on('message', async(topic, messageBuffer) => {
-  const messageRaw = messageBuffer.toString();
-
-  try {
-    let message;
-
-    try {
-      message = JSON.parse(messageRaw);
-    } catch{
-      // ignore
-    }
-
-    switch(topic) {
-      case 'auto/tele/STATUS':
-        autoStatus = message;
-        break;
-
-      case 'Fronius/solar/cmnd':
-        if(Object.hasOwn(message, 'chargeMax')) {
-          if(message.chargeMax) {
-            logger.info(`Charge maximum.`);
-
-            await updateStatus({chargeMax: message.chargeMax});
-          } else {
-            logger.info(`Charge maximum. Reset.`);
-
-            await updateStatus({chargeMax: null});
-          }
-
-          const {chargePct} = getBatteryChargePct();
-
-          if(chargePct !== null) {
-            await setBatteryPvCharge(chargePct);
-          }
-        } else if(Object.hasOwn(message, 'chargeTo')) {
-          if(message.chargeTo) {
-            logger.info(`Charge exception. Charge ${message.chargeTo}% today.`);
-
-            await updateStatus({chargeTo: message.chargeTo});
-          } else {
-            logger.info(`Charge exception. Reset to normal charge today.`);
-
-            await updateStatus({chargeTo: null});
-          }
-
-          const {chargePct} = getBatteryChargePct();
-
-          if(chargePct !== null) {
-            await setBatteryPvCharge(chargePct);
-          }
-        } else if(Object.hasOwn(message, 'gridChargePct')) {
-          if(message.gridChargePct) {
-            try {
-              await updateStatus({gridCharge: true});
-              await setBatteryGridCharge(message.gridChargePct);
-
-              logger.info(`Starting grid charge with ${message.gridChargePct}%`);
-
-              if(gridChargingDoneInterval) {
-                clearInterval(gridChargingDoneInterval);
-                gridChargingDoneInterval = undefined;
-              }
-
-              gridChargingDoneInterval = setInterval(async() => {
-                if(chargeStatePct >= 100) {
-                  await updateStatus({gridCharge: false});
-
-                  clearInterval(gridChargingDoneInterval);
-                  gridChargingDoneInterval = undefined;
-
-                  logger.info(`Finished grid charge (${chargeStatePct}%)`);
-                }
-              }, ms('1 minute'));
-            } catch(err) {
-              logger.error(`Error during grid charge: ${err.message}`);
-
-              await updateStatus({gridCharge: false});
-            }
-          } else {
-            await updateStatus({gridCharge: false});
-
-            logger.info(`Stoping grid charge (${chargeStatePct}%)`);
-
-            if(gridChargingDoneInterval) {
-              clearInterval(gridChargingDoneInterval);
-              gridChargingDoneInterval = undefined;
-            }
-          }
-        } else if(Object.hasOwn(message, 'preventBatteryUnload')) {
-          if(message.preventBatteryUnload) {
-            updateStatus({preventBatteryUnload: true});
-            await preventBatteryUnload();
-          } else {
-            updateStatus({preventBatteryUnload: false});
-            await resetBattery();
-          }
-        } else {
-          logger.error(`Unhandled cmnd '${topic}'`, message);
-        }
-        break;
-
-      case 'Fronius/maintenance/checkSoftwareVersion':
-        await checkSoftwareVersion();
-        break;
-
-      case 'maxSun/INFO':
-        maxSun = message;
-        break;
-
-      case 'solcast/analysis':
-        solcastAnalysis = message;
-        break;
-
-      case 'strom/tele/preise':
-        strompreise = message;
-        break;
-
-      case 'strom/tele/SENSOR':
-        ({momentanLeistung} = message);
-
-        if(status.batteryCent !== null && status.batteryCent && dcPower > 500) {
-          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${status.batteryCent}ct)`);
-
-          await updateStatus({batteryCent: null});
-        }
-        break;
-
-      case 'sunTimes/INFO':
-        sunTimes = message;
-        break;
-
-      case 'tasmota/espstrom/tele/SENSOR': {
-        const zaehlerEinspeisung = -message.SML.Leistung;
-
-        // logger.debug({zaehlerEinspeisung});
-
-        einspeisungen.enq(zaehlerEinspeisung);
-        break;
-      }
-
-      case 'tasmota/heizstab/stat/POWER': {
-        switch(messageRaw) {
-          case 'OFF':
-            heizstabLeistung = 0;
-            break;
-
-          case 'ON':
-            if(!heizstabLeistung) {
-              heizstabLeistung = 2000;
-            }
-            break;
-
-          default:
-            logger.error(`Unhandled message '${topic}'`, messageRaw);
-            break;
-        }
-        break;
-      }
-
-      case 'tasmota/heizstab/tele/SENSOR':
-        heizstabLeistung = message.ENERGY.Power;
-        break;
-
-      case `carconnectivity/garage/${config.vwId}/drives/primary/level`:
-        vwBatterySocPct = Number(messageRaw);
-        break;
-
-      case `carconnectivity/garage/${config.vwId}/charging/settings/target_level`:
-        vwTargetSocPct = Number(messageRaw);
-        break;
-
-      default:
-        logger.error(`Unhandled topic '${topic}'`, message);
-        break;
-    }
-  } catch(err) {
-    logger.error('mqtt handler failed', {topic, messageRaw, errMessage: err.message});
-  }
-});
-
-await mqttClient.subscribeAsync('auto/tele/STATUS');
-await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
-await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
-await mqttClient.subscribeAsync('Fronius/solar/cmnd');
-await mqttClient.subscribeAsync('Fronius/maintenance/checkSoftwareVersion');
-await mqttClient.subscribeAsync('maxSun/INFO');
-await mqttClient.subscribeAsync('solcast/analysis');
-await mqttClient.subscribeAsync('strom/tele/preise');
-await mqttClient.subscribeAsync('strom/tele/SENSOR');
-await mqttClient.subscribeAsync('sunTimes/INFO');
-await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
-await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
-await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
-
-healthInterval = setInterval(async() => {
-  await mqttClient.publishAsync(`fronius-battery/health/STATE`, 'OK');
-}, ms('1min'));
-
-// #########################################################################
-// Handle Fronius data
-froniusInterval = setInterval(async() => {
-  if(lock.isBusy('froniusInterval')) {
-    return;
-  }
-
-  await lock.acquire('froniusInterval', async() => {
-    let froniusIntervalErrorCount = 0;
-
-    while(!inverter || !smartMeter) {
-      try {
-        if(!inverter) {
-          logger.info('Reconnecting Modbus Inverter');
-          inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
-          await inverter.open();
-        }
-        if(!smartMeter) {
-          logger.info('Reconnecting Modbus SmartMeter');
-          smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
-          await smartMeter.open();
-        }
-      } catch(err) {
-        if(err.message.includes('ECONNREFUSED')) {
-          froniusIntervalErrorCount++;
-
-          if(froniusIntervalErrorCount < 10) {
-            await delay(ms('1 minute'));
-          } else if(!notified.froniusInterval) {
-            await sendMail({
-              to:      'technik@heine7.de',
-              subject: 'Fronius Solar Fehler, froniusInterval()',
-              html:    err.message,
-            });
-
-            notified.froniusInterval = true;
-          }
-        } else {
-          throw err;
-        }
-      }
-    }
-
-    try {
-      const results = await promiseAllByKeys({
-        resultsSmartMeter: smartMeter.readRegisters(['W']),
-        resultsMppt:       inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW',
-          '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']),
-        resultsInverter:   inverter.readRegisters(['W', 'TmpCab']),
-      });
-
-      const {resultsSmartMeter, resultsMppt, resultsInverter} = results;
-      const newStatus = {};
-
-      if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
-        newStatus.solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
-      }
-      if(resultsMppt['3_DCWH']) {
-        newStatus.storageChargeWh = resultsMppt['3_DCWH'];
-      }
-      if(resultsMppt['4_DCWH']) {
-        newStatus.storageDisChargeWh = resultsMppt['4_DCWH'];
-      }
-
-      await updateStatus(newStatus);
-
-      await mqttClient.publishAsync('Fronius/solar/tele/SENSOR', JSON.stringify({
-        time: Date.now(),
-        battery: {
-          powerIncoming: resultsMppt['3_DCW'],
-          powerOutgoing: resultsMppt['4_DCW'],
-          stateOfCharge: resultsMppt.ChaState / 100,
-          ...newStatus,
-        },
-        meter: {
-          powerIncoming: resultsSmartMeter.W > 0 ?  resultsSmartMeter.W : 0,
-          powerOutgoing: resultsSmartMeter.W < 0 ? -resultsSmartMeter.W : 0,
-        },
-        inverter: {
-          powerIncoming: resultsInverter.W < 0 ? -resultsInverter.W : 0,
-          powerOutgoing: resultsInverter.W > 0 ?  resultsInverter.W : 0,
-          tmpCab:        _.round(resultsInverter.TmpCab),
-        },
-        solar: {
-          powerOutgoing: resultsMppt['1_DCW'] + resultsMppt['2_DCW'],
-        },
-      }), {retain: true});
-
-      Reflect.deleteProperty(notified, 'froniusInterval');
-
-      froniusIntervalErrorCount = 0;
-    } catch(err) {
-      logger.error(`froniusInterval(), failed to read data: ${err.message}`);
-
-      if(err.message === 'Port Not Open') {
-        await inverter.close();
-        inverter = undefined;
-
-        await smartMeter.close();
-        smartMeter = undefined;
-
-        logger.info('Inverter and SmartMeter closed');
-      }
-    }
-  });
-}, ms('5 seconds'));
-
-// #########################################################################
 // Handle battery grid charging
 const handleBatteryGridChargingHandler = async function() {
   if(status.gridCharge) {
+    gridChargingHandlerTimeout = undefined;
+
     return;
   }
 
@@ -1030,6 +715,20 @@ const handleBatteryGridChargingHandler = async function() {
   let toChargeWhNeed;
   let useGrid          = false;
 
+  if(totalPvWh === 0) {
+//    logger.debug(`handleBatteryGridChargingHandler, no forecast?`, solcastAnalysis);
+//
+//    await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+//      priority: -1,
+//      sound:    'none',
+//      title:    'Fronius-Battery',
+//      message:  `No forecast? ${JSON.stringify(solcastAnalysis, null, 2)}`,
+//    }));
+
+    gridChargingHandlerTimeout = undefined;
+
+    return;
+  }
   if(totalPvWh < 5000) {
     // Niedriger PV Ertrag vorhergesagt, dann voll laden
     toChargeWhFixed = _.round(capacityWh * (100 - chargeStatePct) / 100);
@@ -1283,27 +982,53 @@ const handleBatteryGridChargingSchedule = async function() {
   const sunriseDate         = dayjs(sunTimes.sunrise);
   const sunriseTomorrowDate = dayjs(sunTimes.sunriseTomorrow);
   const sunsetDate          = dayjs(sunTimes.sunset);
+  const today18Date         = dayjs().hour(18).minute(0).second(0);
   const today6Date          = dayjs().hour(6).minute(0).second(0);
+
+  if(enableExtraLogging) {
+    logger.debug('handleBatteryGridChargingSchedule:start');
+  }
 
   if(gridChargingHandlerTimeout) {
     // The handler is already scheduled
+    if(enableExtraLogging) {
+      logger.debug('handleBatteryGridChargingSchedule:alreadyScheduled');
+    }
 
-    if(nowUtc.date() === sunriseDate.date() && nowUtc > sunriseDate && nowUtc > today6Date) {
-      // During daytime, or after sunset
-      clearTimeout(gridChargingHandlerTimeout);
-      gridChargingHandlerTimeout = undefined;
+//    if(nowUtc.date() === sunriseDate.date() && nowUtc > sunriseDate && nowUtc > today6Date) {
+//      logger.debug('handleBatteryGridChargingSchedule clear', {
+//        nowUtc:                nowUtc.toISOString(),
+//        sunriseDate:           sunriseDate.toISOString(),
+//        sunriseTomorrowDate:   sunriseTomorrowDate.toISOString(),
+//        today6Date:            today6Date.toISOString(),
+//        batteryGridChargeDate: status.batteryGridChargeDate,
+//      });
+//
+//      // During daytime, or after sunset
+//      clearTimeout(gridChargingHandlerTimeout);
+//      gridChargingHandlerTimeout = undefined;
+//    }
+
+    return;
+  }
+  if(nowUtc.hour() < 16 &&
+    status.batteryGridChargeDate === dayjs.utc().format('YYYY-MM-DD')
+  ) {
+    // The grid charge already happened today
+    if(enableExtraLogging) {
+      logger.debug('handleBatteryGridChargingSchedule:doneToday');
     }
 
     return;
   }
-  if(status.batteryGridChargeDate === dayjs.utc().format('YYYY-MM-DD')) {
-    // The grid charge already happened today
+  if(nowUtc.date() === dayjs.utc(strompreise.at(-1).startTime).date()) {
+    // Waiting for the price forecast for tomorrow
+    if(enableExtraLogging) {
+      logger.debug('handleBatteryGridChargingSchedule:waiting');
+    }
+
     return;
   }
-
-  logger.debug('handleBatteryGridChargingSchedule start', {
-    batteryGridChargeDate: status.batteryGridChargeDate,
-  });
 
   // check.assert.equal(nowUtc.date(), sunriseDate.date(), 'Sunrise date mismatch');
   // check.assert.equal(nowUtc.date(), sunsetDate.date(), 'Sunset date mismatch');
@@ -1318,14 +1043,17 @@ const handleBatteryGridChargingSchedule = async function() {
     return;
   }
 
+  logger.debug('handleBatteryGridChargingSchedule start', {
+    batteryGridChargeDate: status.batteryGridChargeDate,
+  });
+
   const nightData = _.filter(strompreise, data => {
     const startTimeDate = dayjs(data.startTime);
 
-    if(startTimeDate < nowUtc) {
-      return false;
-    }
-
-    if(startTimeDate > sunriseTomorrowDate) {
+    if(startTimeDate < nowUtc ||
+      (today18Date < sunriseTomorrowDate && startTimeDate < today18Date) ||
+      startTimeDate > sunriseTomorrowDate
+    ) {
       return false;
     }
 
@@ -1333,12 +1061,19 @@ const handleBatteryGridChargingSchedule = async function() {
   });
 
   if(!nightData.length) {
+    if(enableExtraLogging) {
+      logger.debug('handleBatteryGridChargingSchedule:missingNightData');
+    }
+
     if(nowUtc.hour() >= 16) {
       logger.debug('Failed to find nightData', {
-        nowUtc:      nowUtc.toISOString(),
-        strompreise: _.map(strompreise, strompreis => `${strompreis.startTime} ${strompreis.cent} ${strompreis.level}`),
-        sunriseDate: sunriseDate.toISOString(),
-        today6Date:  today6Date.toISOString(),
+        nowUtc:              nowUtc.toISOString(),
+        sunriseDate:         sunriseDate.toISOString(),
+        sunriseTomorrowDate: sunriseTomorrowDate.toISOString(),
+        today6Date:          today6Date.toISOString(),
+        today18Date:         today18Date.toISOString(),
+        strompreise:         _.map(strompreise, strompreis =>
+          `${strompreis.startTime} ${strompreis.cent} ${strompreis.level}`),
       });
       await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
         priority: -1,
@@ -1378,9 +1113,333 @@ const handleBatteryGridChargingSchedule = async function() {
   const minCentStartTime = dayjs(nightData[minKey].startTime);
 
   gridChargingHandlerTimeout = setTimeout(() => handleBatteryGridChargingHandler(),
-    minCentStartTime - nowUtc + ms('1 minute'));
+    minCentStartTime - nowUtc);
 };
 
+// #########################################################################
+// Register MQTT events
+
+mqttClient.on('connect',    ()  => logger.info('mqtt.connect'));
+mqttClient.on('reconnect',  ()  => logger.info('mqtt.reconnect'));
+mqttClient.on('close',      ()  => _.noop() /* logger.info('mqtt.close') */);
+mqttClient.on('disconnect', ()  => logger.info('mqtt.disconnect'));
+mqttClient.on('offline',    ()  => logger.info('mqtt.offline'));
+mqttClient.on('error',      err => logger.info('mqtt.error', err));
+mqttClient.on('end',        ()  => _.noop() /* logger.info('mqtt.end') */);
+
+// #########################################################################
+// Handle Stromzähler data
+mqttClient.on('message', async(topic, messageBuffer) => {
+  const messageRaw = messageBuffer.toString();
+
+  try {
+    let message;
+
+    try {
+      message = JSON.parse(messageRaw);
+    } catch{
+      // ignore
+    }
+
+    switch(topic) {
+      case 'auto/tele/STATUS':
+        autoStatus = message;
+        break;
+
+      case 'Fronius/solar/cmnd':
+        if(Object.hasOwn(message, 'chargeMax')) {
+          if(message.chargeMax) {
+            logger.info(`Charge maximum.`);
+
+            await updateStatus({chargeMax: message.chargeMax});
+          } else {
+            logger.info(`Charge maximum. Reset.`);
+
+            await updateStatus({chargeMax: null});
+          }
+
+          const {chargePct} = getBatteryChargePct();
+
+          if(chargePct !== null) {
+            await setBatteryPvCharge(chargePct);
+          }
+        } else if(Object.hasOwn(message, 'chargeTo')) {
+          if(message.chargeTo) {
+            logger.info(`Charge exception. Charge ${message.chargeTo}% today.`);
+
+            await updateStatus({chargeTo: message.chargeTo});
+          } else {
+            logger.info(`Charge exception. Reset to normal charge today.`);
+
+            await updateStatus({chargeTo: null});
+          }
+
+          const {chargePct} = getBatteryChargePct();
+
+          if(chargePct !== null) {
+            await setBatteryPvCharge(chargePct);
+          }
+        } else if(Object.hasOwn(message, 'gridChargePct')) {
+          if(message.gridChargePct) {
+            try {
+              await updateStatus({gridCharge: true});
+              await setBatteryGridCharge(message.gridChargePct);
+
+              logger.info(`Starting grid charge with ${message.gridChargePct}%`);
+
+              if(gridChargingDoneInterval) {
+                clearInterval(gridChargingDoneInterval);
+                gridChargingDoneInterval = undefined;
+              }
+
+              gridChargingDoneInterval = setInterval(async() => {
+                if(chargeStatePct >= 100) {
+                  await updateStatus({gridCharge: false});
+
+                  clearInterval(gridChargingDoneInterval);
+                  gridChargingDoneInterval = undefined;
+
+                  logger.info(`Finished grid charge (${chargeStatePct}%)`);
+                }
+              }, ms('1 minute'));
+            } catch(err) {
+              logger.error(`Error during grid charge: ${err.message}`);
+
+              await updateStatus({gridCharge: false});
+            }
+          } else {
+            await updateStatus({gridCharge: false});
+
+            logger.info(`Stoping grid charge (${chargeStatePct}%)`);
+
+            if(gridChargingDoneInterval) {
+              clearInterval(gridChargingDoneInterval);
+              gridChargingDoneInterval = undefined;
+            }
+          }
+        } else if(Object.hasOwn(message, 'preventBatteryUnload')) {
+          if(message.preventBatteryUnload) {
+            updateStatus({preventBatteryUnload: true});
+            await preventBatteryUnload();
+          } else {
+            updateStatus({preventBatteryUnload: false});
+            await resetBattery();
+          }
+        } else if(Object.hasOwn(message, 'extraLogging')) {
+          enableExtraLogging = message.extraLogging;
+        } else if(Object.hasOwn(message, 'triggerCheck')) {
+          handleBatteryGridChargingSchedule();
+        } else {
+          logger.error(`Unhandled cmnd '${topic}'`, message);
+        }
+        break;
+
+      case 'Fronius/maintenance/checkSoftwareVersion':
+        await checkSoftwareVersion();
+        break;
+
+      case 'maxSun/INFO':
+        maxSun = message;
+        break;
+
+      case 'solcast/analysis':
+        solcastAnalysis = message;
+        break;
+
+      case 'strom/tele/preise':
+        strompreise = message;
+        break;
+
+      case 'strom/tele/SENSOR':
+        ({momentanLeistung} = message);
+
+        if(status.batteryCent !== null && status.batteryCent && dcPower > 500) {
+          logger.debug(`PV Leistung ${dcPower}W, lösche batteryCent (${status.batteryCent}ct)`);
+
+          await updateStatus({batteryCent: null});
+        }
+        break;
+
+      case 'sunTimes/INFO':
+        sunTimes = message;
+        break;
+
+      case 'tasmota/espstrom/tele/SENSOR': {
+        const zaehlerEinspeisung = -message.SML.Leistung;
+
+        // logger.debug({zaehlerEinspeisung});
+
+        einspeisungen.enq(zaehlerEinspeisung);
+        break;
+      }
+
+      case 'tasmota/heizstab/stat/POWER': {
+        switch(messageRaw) {
+          case 'OFF':
+            heizstabLeistung = 0;
+            break;
+
+          case 'ON':
+            if(!heizstabLeistung) {
+              heizstabLeistung = 2000;
+            }
+            break;
+
+          default:
+            logger.error(`Unhandled message '${topic}'`, messageRaw);
+            break;
+        }
+        break;
+      }
+
+      case 'tasmota/heizstab/tele/SENSOR':
+        heizstabLeistung = message.ENERGY.Power;
+        break;
+
+      case `carconnectivity/garage/${config.vwId}/drives/primary/level`:
+        vwBatterySocPct = Number(messageRaw);
+        break;
+
+      case `carconnectivity/garage/${config.vwId}/charging/settings/target_level`:
+        vwTargetSocPct = Number(messageRaw);
+        break;
+
+      default:
+        logger.error(`Unhandled topic '${topic}'`, message);
+        break;
+    }
+  } catch(err) {
+    logger.error('mqtt handler failed', {topic, messageRaw, errMessage: err.message});
+  }
+});
+
+await mqttClient.subscribeAsync('auto/tele/STATUS');
+await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
+await mqttClient.subscribeAsync('Fronius/solar/cmnd');
+await mqttClient.subscribeAsync('Fronius/maintenance/checkSoftwareVersion');
+await mqttClient.subscribeAsync('maxSun/INFO');
+await mqttClient.subscribeAsync('solcast/analysis');
+await mqttClient.subscribeAsync('strom/tele/preise');
+await mqttClient.subscribeAsync('strom/tele/SENSOR');
+await mqttClient.subscribeAsync('sunTimes/INFO');
+await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
+await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
+await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
+
+healthInterval = setInterval(async() => {
+  await mqttClient.publishAsync(`fronius-battery/health/STATE`, 'OK');
+}, ms('1min'));
+
+// #########################################################################
+// Handle Fronius data
+froniusInterval = setInterval(async() => {
+  if(lock.isBusy('froniusInterval')) {
+    return;
+  }
+
+  await lock.acquire('froniusInterval', async() => {
+    let froniusIntervalErrorCount = 0;
+
+    while(!inverter || !smartMeter) {
+      try {
+        if(!inverter) {
+          logger.info('Reconnecting Modbus Inverter');
+          inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
+          await inverter.open();
+        }
+        if(!smartMeter) {
+          logger.info('Reconnecting Modbus SmartMeter');
+          smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
+          await smartMeter.open();
+        }
+      } catch(err) {
+        if(err.message.includes('ECONNREFUSED')) {
+          froniusIntervalErrorCount++;
+
+          if(froniusIntervalErrorCount < 10) {
+            await delay(ms('1 minute'));
+          } else if(!notified.froniusInterval) {
+            await sendMail({
+              to:      'technik@heine7.de',
+              subject: 'Fronius Solar Fehler, froniusInterval()',
+              html:    err.message,
+            });
+
+            notified.froniusInterval = true;
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    try {
+      const results = await promiseAllByKeys({
+        resultsSmartMeter: smartMeter.readRegisters(['W']),
+        resultsMppt:       inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW',
+          '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']),
+        resultsInverter:   inverter.readRegisters(['W', 'TmpCab']),
+      });
+
+      const {resultsSmartMeter, resultsMppt, resultsInverter} = results;
+      const newStatus = {};
+
+      if(resultsMppt['1_DCWH'] && resultsMppt['2_DCWH']) {
+        newStatus.solarWh = resultsMppt['1_DCWH'] + resultsMppt['2_DCWH'];
+      }
+      if(resultsMppt['3_DCWH']) {
+        newStatus.storageChargeWh = resultsMppt['3_DCWH'];
+      }
+      if(resultsMppt['4_DCWH']) {
+        newStatus.storageDisChargeWh = resultsMppt['4_DCWH'];
+      }
+
+      await updateStatus(newStatus);
+
+      await mqttClient.publishAsync('Fronius/solar/tele/SENSOR', JSON.stringify({
+        time: Date.now(),
+        battery: {
+          powerIncoming: resultsMppt['3_DCW'],
+          powerOutgoing: resultsMppt['4_DCW'],
+          stateOfCharge: resultsMppt.ChaState / 100,
+          ...newStatus,
+        },
+        meter: {
+          powerIncoming: resultsSmartMeter.W > 0 ?  resultsSmartMeter.W : 0,
+          powerOutgoing: resultsSmartMeter.W < 0 ? -resultsSmartMeter.W : 0,
+        },
+        inverter: {
+          powerIncoming: resultsInverter.W < 0 ? -resultsInverter.W : 0,
+          powerOutgoing: resultsInverter.W > 0 ?  resultsInverter.W : 0,
+          tmpCab:        _.round(resultsInverter.TmpCab),
+        },
+        solar: {
+          powerOutgoing: resultsMppt['1_DCW'] + resultsMppt['2_DCW'],
+        },
+      }), {retain: true});
+
+      Reflect.deleteProperty(notified, 'froniusInterval');
+
+      froniusIntervalErrorCount = 0;
+    } catch(err) {
+      logger.error(`froniusInterval(), failed to read data: ${err.message}`);
+
+      if(err.message === 'Port Not Open') {
+        await inverter.close();
+        inverter = undefined;
+
+        await smartMeter.close();
+        smartMeter = undefined;
+
+        logger.info('Inverter and SmartMeter closed');
+      }
+    }
+  });
+}, ms('5 seconds'));
+
+// #########################################################################
+// Trigger the battery grid charging
 await handleBatteryGridChargingSchedule();
 
 setInterval(() => handleBatteryGridChargingSchedule(),
