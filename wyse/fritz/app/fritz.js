@@ -2,6 +2,7 @@
 
 /* eslint-disable new-cap */
 
+import {setTimeout as delay} from 'node:timers/promises';
 import os            from 'node:os';
 
 import _             from 'lodash';
@@ -13,7 +14,7 @@ import {logger}      from '@stheine/helpers';
 import mqtt          from 'mqtt';
 import ms            from 'ms';
 
-import tr064Options  from '/var/fritz/tr064Options.js';
+import configFile    from './configFile.js';
 import {
   refresh,
   resolve,
@@ -171,7 +172,8 @@ callMonitor.connect();
 
 // #########################################################################
 // FritzBox TR-064 monitor
-const fritzbox = new Fritzbox.Fritzbox(tr064Options);
+const tr064Options = await configFile.read();
+const fritzbox     = new Fritzbox.Fritzbox(tr064Options);
 
 await fritzbox.initTR064Device();
 
@@ -245,18 +247,19 @@ stateInterval = setInterval(async() => {
 // Speedtest
 const speedtest = async function() {
   let download;
+  let error;
   let upload;
-  let retries = 3;
-  let stdout;
+  let retries = 6;
 
   do {
     try {
-      ({stdout} = await execa('/usr/bin/speedtest', [
-        '--host', 'voiptest.starface.de',
+      const {stdout} = await execa('/usr/bin/speedtest', [
+        // '--host', 'voiptest.starface.de',
+        '--server-id', '55133',
         '--format', 'json-pretty',
         '--accept-license',
         '--accept-gdpr',
-      ]));
+      ]);
 
       // logger.debug(stdout);
       const results = JSON.parse(stdout);
@@ -274,15 +277,30 @@ const speedtest = async function() {
         download: _.round(download / 1024 / 1024),
         upload:   _.round(upload   / 1024 / 1024),
       });
-    } catch(err) {
-      logger.error(err.message);
-    }
 
-    retries--;
+      retries = 0;
+    } catch(err) {
+      error = err.message;
+
+      logger.error(error);
+
+      retries--;
+
+      if(retries) {
+        await delay(ms('10m'));
+      }
+    }
   } while(retries && (!download || !upload));
 
-  if(mqttClient && stdout) {
+  if(download && upload) {
     await mqttClient.publishAsync(`FritzBox/speedtest/result`, JSON.stringify({download, upload}));
+  } else {
+    await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+      sound:   'none',
+      html:    1,
+      message: error,
+      title:   'Fritz, speedtest failed',
+    }));
   }
 };
 
