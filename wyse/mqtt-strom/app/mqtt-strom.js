@@ -180,33 +180,6 @@ const getStrompreise = async function() {
   }
 };
 
-// eslint-disable-next-line no-unused-vars
-const getStrompreiseAwattar = async function() {
-  try {
-    const response = await fetch('https://api.awattar.de/v1/marketdata');
-
-    check.assert.equal(response.status, 200);
-    check.assert.equal(response.statusText, 'OK');
-
-    const responseData   = await response.json();
-    const strompreiseRaw = responseData?.data;
-
-    const strompreise = _.map(strompreiseRaw, data => ({
-      startTime: new Date(data.start_timestamp),
-      cent:      _.round(data.marketprice / 10, 2), // Eur/MWh / 100ct/Eur * 1000 MWh/kWh
-    }));
-
-    // logger.debug(strompreise);
-    await mqttClient.publishAsync('strom/tele/preise', JSON.stringify(strompreise), {retain: true});
-
-    health = 'OK';
-  } catch(err) {
-    logger.error('getStrompreiseAwattar() failed', err.message);
-
-    health = `FAIL: ${err.message}`;
-  }
-};
-
 // #########################################################################
 // Init MQTT
 mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
@@ -692,3 +665,31 @@ healthInterval = setInterval(async() => {
   await mqttClient.publishAsync(`mqtt-strom/health/STATE`, health);
 }, ms('1min'));
 await mqttClient.publishAsync(`mqtt-strom/health/STATE`, health);
+
+
+
+// const getStrompreiseAwattar = async function() {
+//   try {
+//     const response = await fetch('https://api.awattar.de/v1/marketdata');
+//
+//     check.assert.equal(response.status, 200);
+//     check.assert.equal(response.statusText, 'OK');
+//
+//     const responseData   = await response.json();
+//     const strompreiseRaw = responseData?.data;
+//
+//     const strompreise = _.map(strompreiseRaw, data => ({
+//       startTime: new Date(data.start_timestamp),
+//       cent:      _.round(data.marketprice / 10, 2), // Eur/MWh / 100ct/Eur * 1000 MWh/kWh
+//     }));
+//
+//     // logger.debug(strompreise);
+//     await mqttClient.publishAsync('strom/tele/preise', JSON.stringify(strompreise), {retain: true});
+//
+//     health = 'OK';
+//   } catch(err) {
+//     logger.error('getStrompreiseAwattar() failed', err.message);
+//
+//     health = `FAIL: ${err.message}`;
+//   }
+// };
