@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
+import {setTimeout as delay} from 'node:timers/promises';
 import https  from 'node:https';
+import os     from 'node:os';
 
 import _      from 'lodash';
 import axios  from 'axios';
 import check  from 'check-types-2';
 import {Cron} from 'croner';
+import mqtt   from 'mqtt';
+import ms     from 'ms';
 import {
   logger,
   sendMail,
@@ -25,12 +29,19 @@ const {
 const httpsAgent = new https.Agent({
 //  rejectUnauthorized: false,
 });
+let   mqttClient;
+const hostname   = os.hostname();
 
 // ###########################################################################
 // Process handling
 
 const stopProcess = async function() {
   logger.info(`Shutdown -------------------------------------------------`);
+
+  if(mqttClient) {
+    await mqttClient.endAsync();
+    mqttClient = undefined;
+  }
 
   // eslint-disable-next-line no-process-exit
   process.exit(0);
@@ -55,61 +66,89 @@ const renderComics = function(metas) {
 };
 
 const readComic = async function(comic) {
-  let url;
+  let   date;
+  let   imageBase64;
+  let   label;
+  let   retry = 12 * 6;
+  const pageUrl = `${baseUrl}/${comic}/`;
 
-  try {
-    url = `${baseUrl}/${comic}/`;
+  do {
+    let imageUrl;
+    let page;
 
-    const pageResponse = await axios.get(url, {httpsAgent});
+    // logger.debug(`${comic} Reading ${pageUrl}`);
 
-    const page = pageResponse.data;
+    try {
+      const pageResponse = await axios.get(pageUrl, {httpsAgent});
 
-    const date = page
-      .replace(/^[\S\s]*<span class="cur">/, '')
-      .replace(/<\/span>[\S\s]*$/, '');
+      page = pageResponse.data;
+    } catch(err) {
+      if(err.includes('ECONNREFUSED')) {
+        retry--;
 
-    check.assert.less(date.length, 20, `${comic} Failed to read date '${date}'`);
+        if(retry) {
+          logger.error(`Failed reading page ${pageUrl} - retrying`, err.message);
+          await delay(ms('5m'));
+        } else {
+          logger.error(`Failed reading page ${pageUrl} - giving up`, err.message);
+        }
+      } else {
+        retry = 0;
 
-    const figure = page
-      .replace(/^[\S\s]*?<figure class="comic">\s*/, '')
-      .replace(/\s*<\/figure>[\S\s]*$/, '');
-    const img = figure
-      .replace(/\s*<cite.*<\/cite>/, '');
-
-    url = img
-      .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
-      .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="[^"]*" class="[^"]*" title="[^"]*" \/>/, '');
-
-    check.assert.match(url, /^https:.*\.(?:gif|jpg)$/, `${comic} Failed to parse img url from '${figure}'`);
-
-    const label = page
-      .replace(/^[\S\s]*<meta property="og:title" content="/, '')
-      .replace(/"\/>[\S\s]*$/, '');
-
-    check.assert.less(date.length, 40, `${comic} Failed to read label '${label}'`);
-
-    const imageResponse = await axios.get(url, {httpsAgent, responseType: 'arraybuffer'});
-    const imageBuffer = Buffer.from(imageResponse.data, 'binary');
-    const imageBase64 = imageBuffer.toString('base64');
-
-    return {date, imageBase64, label};
-  } catch(err) {
-    logger.error(`Failed reading ${url}`, err.message);
-  }
-};
-
-const readComics = async function() {
-  const metas = [];
-
-  for(const comic of comics) {
-    const meta = await readComic(comic);
-
-    if(meta) {
-      metas.push(meta);
+        logger.error(`Failed reading page ${pageUrl}`, err.message);
+      }
     }
-  }
 
-  return metas;
+    try {
+      date = page
+        .replace(/^[\S\s]*<span class="cur">/, '')
+        .replace(/<\/span>[\S\s]*$/, '');
+
+      check.assert.less(date.length, 20, `${comic} Failed to read date '${date}'`);
+
+      label = page
+        .replace(/^[\S\s]*<meta property="og:title" content="/, '')
+        .replace(/"\/>[\S\s]*$/, '');
+
+      check.assert.less(label.length, 40, `${comic} Failed to read label '${label}'`);
+
+      const figure = page
+        .replace(/^[\S\s]*?<figure class="comic">\s*/, '')
+        .replace(/\s*<\/figure>[\S\s]*$/, '');
+      const img = figure
+        .replace(/\s*<cite.*<\/cite>/, '');
+
+      imageUrl = img
+        .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
+        .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="[^"]*" class="[^"]*" title="[^"]*" \/>/, '');
+
+      check.assert.match(imageUrl, /^https:.*\.(?:gif|jpg)$/, `${comic} Failed to parse imageUrl from '${figure}'`);
+
+      const imageResponse = await axios.get(imageUrl, {httpsAgent, responseType: 'arraybuffer'});
+      const imageBuffer   = Buffer.from(imageResponse.data, 'binary');
+
+      imageBase64 = imageBuffer.toString('base64');
+
+      retry = 0;
+    } catch(err) {
+      if(err.includes('ECONNREFUSED')) {
+        retry--;
+
+        if(retry) {
+          logger.error(`Failed reading image ${imageUrl} - retrying`, err.message);
+          await delay(ms('5m'));
+        } else {
+          logger.error(`Failed reading image ${imageUrl} - giving up`, err.message);
+        }
+      } else {
+        retry = 0;
+
+        logger.error(`Failed reading image ${imageUrl}`, err.message);
+      }
+    }
+  } while(retry);
+
+  return {date, imageBase64, label};
 };
 
 const mailComics = async function(metas) {
@@ -122,34 +161,43 @@ const mailComics = async function(metas) {
 };
 
 const sendComics = async function() {
-  const metas = await readComics();
+  const metas = _.compact(await Promise.all(comics.map(comic => readComic(comic))));
 
   if(metas.length) {
     await mailComics(metas);
+  } else {
+    await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+      priority: -1,
+      sound:    'none',
+      title:    'Comics',
+      message:  'Failed to read any comic',
+    }));
   }
 };
 
-(async() => {
-  // #########################################################################
-  // Startup
-  logger.info(`Startup --------------------------------------------------`);
+// #########################################################################
+// Startup
+logger.info(`Startup --------------------------------------------------`);
 
-  // Signal handler
-  process.on('SIGHUP', async() => {
-    logger.info('Trigger by HUP');
-    await sendComics();
-  });
+// #########################################################################
+// Init MQTT
+mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
-  // #########################################################################
-  // Schedule
-  //                    ┌──────────────────────────────────── second (optional)
-  //                    │ ┌────────────────────────────────── minute
-  //                    │ │             ┌──────────────────── hour
-  //                    │ │             │           ┌──────── day of month
-  //                    │ │             │           │ ┌────── month
-  //                    │ │             │           │ │ ┌──── day of week (0 is Sunday)
-  //                    S M             H           D M W
-  const job = new Cron(`0 ${cronMinute} ${cronHour} * * *`, {timezone: 'Europe/Berlin'}, sendComics);
+// Signal handler
+process.on('SIGHUP', async() => {
+  logger.info('Trigger by HUP');
+  await sendComics();
+});
 
-  _.noop('Cron job started', job);
-})();
+// #########################################################################
+// Schedule
+//                    ┌──────────────────────────────────── second (optional)
+//                    │ ┌────────────────────────────────── minute
+//                    │ │             ┌──────────────────── hour
+//                    │ │             │           ┌──────── day of month
+//                    │ │             │           │ ┌────── month
+//                    │ │             │           │ │ ┌──── day of week (0 is Sunday)
+//                    S M             H           D M W
+const job = new Cron(`0 ${cronMinute} ${cronHour} * * *`, {timezone: 'Europe/Berlin'}, sendComics);
+
+_.noop('Cron job started', job);
