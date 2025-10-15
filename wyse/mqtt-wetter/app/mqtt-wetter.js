@@ -393,13 +393,13 @@ const handleSunTimes = async function() {
   let job;
 
   // Schedule
-  //    ┌────────────── second (optional)
-  //    │ ┌──────────── minute
-  //    │ │ ┌────────── hour
-  //    │ │ │ ┌──────── day of month
-  //    │ │ │ │ ┌────── month
-  //    │ │ │ │ │ ┌──── day of week (0 is Sunday)
-  //    S M H D M W
+  //              ┌────────────── second (optional)
+  //              │ ┌──────────── minute
+  //              │ │ ┌────────── hour
+  //              │ │ │ ┌──────── day of month
+  //              │ │ │ │ ┌────── month
+  //              │ │ │ │ │ ┌──── day of week (0 is Sunday)
+  //              S M H D M W
   job = new Cron(`0 0 0 * * *`, {timezone: 'Europe/Berlin'}, async() => {
     await handleMaxSun();
     await handleSunTimes();
