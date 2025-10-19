@@ -12,7 +12,7 @@
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
 #  8080 homer                  http://192.168.6.5:8080/
-#  8285 vaultwarden            http://192.168.6.5:8285/
+#  8285 vaultwarden            http://192.168.6.5:8285/ https://bitwarden.heine7.de https://bitwarden.heine7.de/admin
 #  8925 hivemq-mqtt-web-client http://192.168.6.5:8925/
 #  9001 mosquitto-websockets   websockets
 # 16095 uptime-kuma            http://192.168.6.5:16095/
@@ -211,6 +211,13 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/Fotos
+      o: bind
+
+  media_fotos_julia:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/Fotos-Julia
       o: bind
 
 #  media_fotos_Sony:
@@ -502,7 +509,6 @@ services:
   auto:
     restart: always
     build: auto
-    stop_signal: SIGKILL # Solange dort nodemon laeuft
     hostname: wyse-auto
     volumes:
       - ./auto/app:/app
@@ -521,6 +527,7 @@ services:
       - immich:/data_rsync/immich:ro
       - media_data_docs:/data_rsync/Docs:ro
       - media_fotos:/data_rsync/Fotos:ro
+      - media_fotos_julia:/data_rsync/Fotos-Julia:ro
       - nextcloud-backup:/data_rsync/nextcloud-backup:ro
       - paperless-export:/data_rsync/paperless-export:ro
 
@@ -624,9 +631,9 @@ services:
 #       to detect the upnp server.
   gerbera-filme:
     restart: always
+    image: gerbera/gerbera:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    image: gerbera/gerbera:latest
     hostname: wyse-filme
     network_mode: host
     command: gerbera --config /var/run/gerbera/59158-filme/config.xml
@@ -637,9 +644,9 @@ services:
 
 ##  gerbera-fotos:
 ##    restart: always
+##    image: gerbera/gerbera:latest
 ##    labels:
 ##      - "com.centurylinklabs.watchtower.enable=true"
-##    image: gerbera/gerbera:latest
 ##    hostname: wyse-fotos
 ##    network_mode: host
 ##    command: gerbera --config /var/run/gerbera/59157-fotos/config.xml
@@ -650,9 +657,9 @@ services:
 
   gerbera-kinder-filme:
     restart: always
+    image: gerbera/gerbera:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    image: gerbera/gerbera:latest
     hostname: wyse-kinder-filme
     network_mode: host
     command: gerbera --config /var/run/gerbera/59155-kinder-filme/config.xml
@@ -663,9 +670,9 @@ services:
 
 ##  gerbera-kinder-cds:
 ##    restart: always
+##    image: gerbera/gerbera:latest
 ##    labels:
 ##      - "com.centurylinklabs.watchtower.enable=true"
-##    image: gerbera/gerbera:latest
 ##    hostname: wyse-kinder-cds
 ##    network_mode: host
 ##    command: gerbera --config /var/run/gerbera/59156-kinder-cds/config.xml
@@ -676,9 +683,9 @@ services:
 
   gerbera-musik:
     restart: always
+    image: gerbera/gerbera:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    image: gerbera/gerbera:latest
     hostname: wyse-gerbera-musik
     network_mode: host
     command: gerbera --config /var/run/gerbera/59154-musik/config.xml
@@ -689,9 +696,9 @@ services:
 
 ##  gerbera-video:
 ##    restart: always
+##    image: gerbera/gerbera:latest
 ##    labels:
 ##      - "com.centurylinklabs.watchtower.enable=true"
-##    image: gerbera/gerbera:latest
 ##    hostname: wyse-gerbera-video
 ##    network_mode: host
 ##    command: gerbera --config /var/run/gerbera/59159-video/config.xml
@@ -742,13 +749,17 @@ services:
 
   immich:
     restart: always
-    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    image: ghcr.io/immich-app/immich-server:release
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     # extends:
     #   file: hwaccel.transcoding.yml
     #   service: cpu # set to one of [nvenc, quicksync, rkmpp, vaapi, vaapi-wsl] for accelerated transcoding
     volumes:
-      - immich-upload:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
+      - immich-upload:/usr/src/app/upload
+      - media_fotos:/Fotos:ro
+      - media_fotos_julia:/Fotos-Julia:ro
     env_file:
       /mnt/qnap/linux/data/immich/immich.env
     ports:
@@ -762,8 +773,10 @@ services:
   immich-machine-learning:
     restart: always
     # For hardware acceleration, add one of -[armnn, cuda, openvino] to the image tag.
-    # Example tag: ${IMMICH_VERSION:-release}-cuda
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    # Example tag: release-cuda
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     # extends: # uncomment this section for hardware acceleration - see https://immich.app/docs/features/ml-hardware-acceleration
     #   file: hwaccel.ml.yml
     #   service: cpu # set to one of [armnn, cuda, openvino, openvino-wsl] for accelerated inference - use the `-wsl` version for WSL2 where applicable
@@ -776,13 +789,19 @@ services:
 
   immich-redis:
     restart: always
-    image: docker.io/redis:6.2-alpine@sha256:905c4ee67b8e0aa955331960d2aa745781e6bd89afc44a8584bfd13bc890f0ae
+    # image: docker.io/redis:6.2-alpine@sha256:905c4ee67b8e0aa955331960d2aa745781e6bd89afc44a8584bfd13bc890f0ae
+    image: docker.io/valkey/valkey:8-bookworm@sha256:fea8b3e67b15729d4bb70589eb03367bab9ad1ee89c876f54327fc7c6e618571
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false" # Disable!
     healthcheck:
       test: redis-cli ping || exit 1
 
   immich-database:
     restart: always
-    image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:90724186f0a3517cf6914295b5ab410db9ce23190a2d9d0b9dd6463e3fa298f0
+    # image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:90724186f0a3517cf6914295b5ab410db9ce23190a2d9d0b9dd6463e3fa298f0
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:41eacbe83eca995561fe43814fd4891e16e39632806253848efaf04d3c8a8b84
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false" # Disable!
     env_file:
       - /mnt/qnap/linux/data/immich/immich.env
     environment:
@@ -1022,6 +1041,8 @@ services:
 
   octoprint:
     image: octoprint/octoprint
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     restart: unless-stopped
     ports:
       - 6286:80
@@ -1039,6 +1060,8 @@ services:
 
   paperless:
     image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     restart: unless-stopped
     depends_on:
       - paperless-broker
@@ -1061,12 +1084,16 @@ services:
 
   paperless-broker:
     image: docker.io/library/redis:7
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     restart: unless-stopped
     volumes:
       - paperless-redis:/data
 
   paperless-database:
     image: docker.io/library/mariadb:10
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     restart: unless-stopped
     volumes:
      - paperless-database:/var/lib/mysql
@@ -1257,9 +1284,9 @@ services:
 
   watchtower:
     image: containrrr/watchtower
-    hostname: wyse-watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    hostname: wyse-watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
