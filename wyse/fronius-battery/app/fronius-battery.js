@@ -358,6 +358,8 @@ const resetBattery = async function() {
     throw new Error(`Failed writing grid allow: ${err.message}`);
   }
 
+  await updateStatus({batteryStatus: 'Default'});
+
   // logger.info('resetBattery');
 };
 
@@ -388,6 +390,8 @@ const preventBatteryUnload = async function() {
     throw new Error(`Failed writing battery discharge rate: ${err.message}`);
   }
 
+  await updateStatus({batteryStatus: 'Halten'});
+
   // logger.info('preventBatteryUnload');
 };
 
@@ -397,6 +401,14 @@ const setBatteryGridCharge = async function(chargePct = 100) {
   //     InWRte (charge) auf 10000 (100.00 %) setzen
   // ==> Laden erzwingen = "negatives Entladen":
   //     OutWRte (discharge) auf -10000 (-100.00 %) setzen
+
+  // Max load rate
+  try {
+    // Allow 100% of max Charge rate. * 100 => Scaling Factor
+    await inverter.writeRegister('InWRte', [100 * 100]);
+  } catch(err) {
+    throw new Error(`Failed writing max battery charge rate: ${err.message}`);
+  }
 
   // Allow charge and discharge control
   try {
@@ -421,14 +433,6 @@ const setBatteryGridCharge = async function(chargePct = 100) {
     throw new Error(`Failed writing grid allow: ${err.message}`);
   }
 
-  // Max load rate
-  try {
-    // Allow 100% of max Charge rate. * 100 => Scaling Factor
-    await inverter.writeRegister('InWRte', [100 * 100]);
-  } catch(err) {
-    throw new Error(`Failed writing max battery charge rate: ${err.message}`);
-  }
-
   // Set load
   try {
     // % of max Charge. * 100 => Scaling Factor
@@ -436,6 +440,8 @@ const setBatteryGridCharge = async function(chargePct = 100) {
   } catch(err) {
     throw new Error(`Failed writing battery discharge rate: ${err.message}`);
   }
+
+  await updateStatus({batteryStatus: 'Netzladen'});
 };
 
 const setBatteryPvCharge = async function(chargePct) {
@@ -469,6 +475,14 @@ const setBatteryPvCharge = async function(chargePct) {
   } catch(err) {
     throw new Error(`Failed writing battery chargePct ${chargePct}: ${err.message}`);
   }
+
+  if(chargePct <= 10) {
+    await updateStatus({batteryStatus: `Laden min`});
+  } else if(chargePct === 100) {
+    await updateStatus({batteryStatus: `Laden max`});
+  } else {
+    await updateStatus({batteryStatus: `Laden ${_.round(chargePct)}%`});
+  }
 };
 
 const handleRate = async function(log = false) {
@@ -485,6 +499,16 @@ const handleRate = async function(log = false) {
 
       dcPowers.enq(dcPower);
     } catch(err) {
+      if(err.message === 'Port Not Open') {
+        await inverter.close();
+        inverter = undefined;
+
+        await smartMeter.close();
+        smartMeter = undefined;
+
+        logger.info('Inverter and SmartMeter closed');
+      }
+
       throw new Error(`Failed getting battery state: ${err.message}`);
     }
 
@@ -693,42 +717,62 @@ const handleBatteryGridChargingHandler = async function() {
     return;
   }
 
-  logger.debug('handleBatteryGridChargingHandler', 'Now is the beginning of the cheapest hour');
-
   check.assert.nonEmptyObject(solcastAnalysis);
+  check.assert.nonEmptyObject(sunTimes);
 
   const nowUtc      = dayjs.utc();
   const nowCent     = _.find(strompreise, data =>
     dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
-  const sunriseDate = dayjs(sunTimes.sunrise);
-  const sunsetDate  = dayjs(sunTimes.sunset);
-  const {
-    hourlyForecasts,
-    totalPvWh,
-  } = solcastAnalysis;
+  let   hourlyForecasts;
+  let   totalPvWh;
+  let   retries = 61;
+  let   sunriseDate = dayjs(sunTimes.sunrise);
+  let   sunsetDate  = dayjs(sunTimes.sunset);
 
-  check.assert.nonEmptyArray(hourlyForecasts);
-  check.assert.number(totalPvWh || 0);
+  if(nowUtc > sunsetDate) {
+    sunriseDate = dayjs(sunTimes.sunriseTomorrow);
+    sunsetDate = dayjs(sunTimes.sunsetTomorrow);
+  }
+
+  check.assert.less(nowUtc.valueOf(), sunriseDate.valueOf());
+  check.assert.less(nowUtc.valueOf(), sunsetDate.valueOf());
+
+  logger.debug(`handleBatteryGridChargingHandler, Now is the beginning of the cheapest hour (${nowCent}ct)`);
+
+  do {
+    ({hourlyForecasts, totalPvWh} = solcastAnalysis);
+
+    check.assert.nonEmptyArray(hourlyForecasts);
+    check.assert.number(totalPvWh || 0);
+
+    if(totalPvWh === 0) {
+      retries--;
+      if(retries) {
+        await delay(ms('1m'));
+      } else {
+        logger.debug(`handleBatteryGridChargingHandler, no forecast?`, {solcastAnalysis, sunTimes});
+
+        // await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+        //   priority: -1,
+        //   sound:    'none',
+        //   title:    'Fronius-Battery',
+        //   message:  `No forecast? ${JSON.stringify(solcastAnalysis, null, 2)}`,
+        // }));
+
+        gridChargingHandlerTimeout = undefined;
+
+        return;
+      }
+    } else {
+      retries = 0;
+    }
+  } while(retries);
 
   let foundGood        = false;
   let toChargeWhFixed;
   let toChargeWhNeed;
   let useGrid          = false;
 
-  if(totalPvWh === 0) {
-//    logger.debug(`handleBatteryGridChargingHandler, no forecast?`, solcastAnalysis);
-//
-//    await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-//      priority: -1,
-//      sound:    'none',
-//      title:    'Fronius-Battery',
-//      message:  `No forecast? ${JSON.stringify(solcastAnalysis, null, 2)}`,
-//    }));
-
-    gridChargingHandlerTimeout = undefined;
-
-    return;
-  }
   if(totalPvWh < 5000) {
     // Niedriger PV Ertrag vorhergesagt, dann voll laden
     toChargeWhFixed = _.round(capacityWh * (100 - chargeStatePct) / 100);
@@ -772,11 +816,16 @@ const handleBatteryGridChargingHandler = async function() {
   }
 
   {
-    // logger.debug('handleBatteryGridChargingHandler', {
-    //   nowUtc,
-    //   sunsetDate,
-    //   hourlyForecasts,
-    // });
+    let   startH   = nowUtc.local().hour();
+    const startPvH = _.first(hourlyForecasts).timeH;
+
+//    logger.debug('handleBatteryGridChargingHandler', {
+//      nowUtc,
+//      sunsetDate,
+//      hourlyForecasts,
+//      startH,
+//      startPvH,
+//    });
 
     let batteryMax = false;
     let currentWh  = _.round(capacityWh * chargeStatePct / 100);
@@ -785,11 +834,11 @@ const handleBatteryGridChargingHandler = async function() {
 
     currentWh -= 1000; // 1000 Mindestreserve der Batterie;
 
-    let   startH   = nowUtc.local().hour();
-    const startPvH = _.first(hourlyForecasts).timeH;
-
     if(startH > startPvH) {
-      startH -= 24;
+      logger.debug('handleBatteryGridChargingHandler startH > startPvH', {startH, startPvH, nowUtc});
+
+      startH = startPvH;
+      timeH  = startPvH;
     }
 
     for(timeH of _.range(startH, startPvH)) {
@@ -827,15 +876,18 @@ const handleBatteryGridChargingHandler = async function() {
     }
 
     for(const forecast of hourlyForecasts) {
-      const {estimateWh, startDate} = forecast;
-      let   thisHourWh = 0;
+      if(forecast.timeH < nowUtc.local().hour()) {
+        logger.debug('handleBatteryGridChargingHandler forcast.timeH < nowH', {forecast, nowUtc});
 
-      if(dayjs(startDate) > sunsetDate) {
-        break;
+        continue;
       }
 
-      timeH      = forecast.timeH;
+      let   thisHourWh = 0;
+
+      const {estimateWh} = forecast;
+
       currentWh += estimateWh;
+      timeH      = forecast.timeH;
 
       if(currentWh > capacityWh) {
         batteryMax = true;
@@ -1143,11 +1195,72 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
     switch(topic) {
       case 'auto/tele/STATUS':
-        autoStatus = message;
+        if(message.chargeMode !== autoStatus.chargeMode) {
+          autoStatus = message;
+
+          const {chargePct} = getBatteryChargePct();
+
+          if(chargePct !== null) {
+            await setBatteryPvCharge(chargePct);
+          }
+        } else {
+          autoStatus = message;
+        }
         break;
 
+      case 'Fronius/solar/cmnd/gridChargePct': {
+        const gridChargePct = Number(message);
+
+        if(gridChargePct) {
+          try {
+            await updateStatus({gridCharge: true});
+            await setBatteryGridCharge(gridChargePct);
+
+            logger.info(`Starting grid charge with ${gridChargePct}%`);
+
+            if(gridChargingDoneInterval) {
+              clearInterval(gridChargingDoneInterval);
+              gridChargingDoneInterval = undefined;
+            }
+
+            gridChargingDoneInterval = setInterval(async() => {
+              if(chargeStatePct < 100) {
+                await updateStatus({gridCharge: true});
+                await setBatteryGridCharge(gridChargePct);
+              } else {
+                await updateStatus({gridCharge: false});
+
+                clearInterval(gridChargingDoneInterval);
+                gridChargingDoneInterval = undefined;
+
+                await mqttClient.publishAsync('Fronius/solar/cmnd/gridChargePct', null, {retain: true});
+
+                logger.info(`Finished grid charge (${chargeStatePct}%)`);
+              }
+            }, ms('1 minute'));
+          } catch(err) {
+            logger.error(`Error during grid charge: ${err.message}`);
+
+            await updateStatus({gridCharge: false});
+          }
+        } else {
+          await updateStatus({gridCharge: false});
+          await handleRate();
+
+          logger.info(`Stoping grid charge (${chargeStatePct}%)`);
+
+          if(gridChargingDoneInterval) {
+            clearInterval(gridChargingDoneInterval);
+            gridChargingDoneInterval = undefined;
+          }
+        }
+        break;
+      }
+
       case 'Fronius/solar/cmnd':
-        if(Object.hasOwn(message, 'chargeMax')) {
+        if(Object.hasOwn(message, 'chargeMax') ||
+          Object.hasOwn(message, 'chargeTo')
+        ) {
           if(message.chargeMax) {
             logger.info(`Charge maximum.`);
 
@@ -1157,13 +1270,6 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             await updateStatus({chargeMax: null});
           }
-
-          const {chargePct} = getBatteryChargePct();
-
-          if(chargePct !== null) {
-            await setBatteryPvCharge(chargePct);
-          }
-        } else if(Object.hasOwn(message, 'chargeTo')) {
           if(message.chargeTo) {
             logger.info(`Charge exception. Charge ${message.chargeTo}% today.`);
 
@@ -1178,44 +1284,6 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
           if(chargePct !== null) {
             await setBatteryPvCharge(chargePct);
-          }
-        } else if(Object.hasOwn(message, 'gridChargePct')) {
-          if(message.gridChargePct) {
-            try {
-              await updateStatus({gridCharge: true});
-              await setBatteryGridCharge(message.gridChargePct);
-
-              logger.info(`Starting grid charge with ${message.gridChargePct}%`);
-
-              if(gridChargingDoneInterval) {
-                clearInterval(gridChargingDoneInterval);
-                gridChargingDoneInterval = undefined;
-              }
-
-              gridChargingDoneInterval = setInterval(async() => {
-                if(chargeStatePct >= 100) {
-                  await updateStatus({gridCharge: false});
-
-                  clearInterval(gridChargingDoneInterval);
-                  gridChargingDoneInterval = undefined;
-
-                  logger.info(`Finished grid charge (${chargeStatePct}%)`);
-                }
-              }, ms('1 minute'));
-            } catch(err) {
-              logger.error(`Error during grid charge: ${err.message}`);
-
-              await updateStatus({gridCharge: false});
-            }
-          } else {
-            await updateStatus({gridCharge: false});
-
-            logger.info(`Stoping grid charge (${chargeStatePct}%)`);
-
-            if(gridChargingDoneInterval) {
-              clearInterval(gridChargingDoneInterval);
-              gridChargingDoneInterval = undefined;
-            }
           }
         } else if(Object.hasOwn(message, 'preventBatteryUnload')) {
           if(message.preventBatteryUnload) {
@@ -1317,6 +1385,7 @@ await mqttClient.subscribeAsync('auto/tele/STATUS');
 await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/cmnd');
+await mqttClient.subscribeAsync('Fronius/solar/cmnd/gridChargePct');
 await mqttClient.subscribeAsync('Fronius/maintenance/checkSoftwareVersion');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/analysis');

@@ -30,6 +30,12 @@ import sunspec       from './sunspec_map_inverter.js';
     } catch(err) {
       throw new Error(`Failed writing battery charge rate ${setRate}: ${err.message}`);
     }
+    // Allow PV charging only
+    try {
+      await inverter.writeRegister('ChaGriSet', [0]);
+    } catch(err) {
+      throw new Error(`Failed writing PV only: ${err.message}`);
+    }
   } finally {
     await inverter.close();
   }
