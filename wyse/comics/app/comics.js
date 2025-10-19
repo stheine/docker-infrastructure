@@ -8,6 +8,7 @@ import _      from 'lodash';
 import axios  from 'axios';
 import check  from 'check-types-2';
 import {Cron} from 'croner';
+import dayjs  from 'dayjs';
 import mqtt   from 'mqtt';
 import ms     from 'ms';
 import {
@@ -82,12 +83,29 @@ const readComic = async function(comic) {
       const pageResponse = await axios.get(pageUrl, {httpsAgent});
 
       page = pageResponse.data;
+
+      date = page
+        .replace(/^[\S\s]*<span class="cur">/, '')
+        .replace(/<\/span>[\S\s]*$/, '');
+
+      check.assert.less(date.length, 20, `${comic} Failed to read date '${date}'`);
+
+      const day = date.replace(/^[A-Za-z]+\s+/, '');
+
+      check.assert.number(Number(day), `${comic} Failed to parse day from date '${date}'`);
+
+      check.assert.equal(Number(day), dayjs().date(), `${comic} Day mismatch '${date}'`);
     } catch(err) {
-      if(err.includes('ECONNREFUSED')) {
+      if(err.message.includes('ECONNREFUSED') ||
+        err.message.includes('status code 502') || // 502 Bad Gateway
+        err.message.includes('status code 504') || // 504 Gateway Timeout
+        err.message.includes('Day mismatch')
+      ) {
+        page = null;
         retry--;
 
         if(retry) {
-          logger.error(`Failed reading page ${pageUrl} - retrying`, err.message);
+          // logger.error(`Failed reading page ${pageUrl} - retrying`, err.message);
           await delay(ms('5m'));
         } else {
           logger.error(`Failed reading page ${pageUrl} - giving up`, err.message);
@@ -99,51 +117,47 @@ const readComic = async function(comic) {
       }
     }
 
-    try {
-      date = page
-        .replace(/^[\S\s]*<span class="cur">/, '')
-        .replace(/<\/span>[\S\s]*$/, '');
+    if(page) {
+      try {
+        label = page
+          .replace(/^[\S\s]*<meta property="og:title" content="/, '')
+          .replace(/"\/>[\S\s]*$/, '');
 
-      check.assert.less(date.length, 20, `${comic} Failed to read date '${date}'`);
+        check.assert.less(label.length, 40, `${comic} Failed to read label '${label}'`);
 
-      label = page
-        .replace(/^[\S\s]*<meta property="og:title" content="/, '')
-        .replace(/"\/>[\S\s]*$/, '');
+        const figure = page
+          .replace(/^[\S\s]*?<figure class="comic">\s*/, '')
+          .replace(/\s*<\/figure>[\S\s]*$/, '');
+        const img = figure
+          .replace(/\s*<cite.*<\/cite>/, '');
 
-      check.assert.less(label.length, 40, `${comic} Failed to read label '${label}'`);
+        imageUrl = img
+          .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
+          .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="[^"]*" class="[^"]*" title="[^"]*" \/>/, '');
 
-      const figure = page
-        .replace(/^[\S\s]*?<figure class="comic">\s*/, '')
-        .replace(/\s*<\/figure>[\S\s]*$/, '');
-      const img = figure
-        .replace(/\s*<cite.*<\/cite>/, '');
+        check.assert.match(imageUrl, /^https:.*\.(?:gif|jpg)$/, `${comic} Failed to parse imageUrl from '${figure}'`);
 
-      imageUrl = img
-        .replace(/<img id="comic-zoom" data-zoom-image="[^"]*" src="/, '')
-        .replace(/" +data-width="[^"]*" data-height="[^"]*" alt="[^"]*" class="[^"]*" title="[^"]*" \/>/, '');
+        const imageResponse = await axios.get(imageUrl, {httpsAgent, responseType: 'arraybuffer'});
+        const imageBuffer   = Buffer.from(imageResponse.data, 'binary');
 
-      check.assert.match(imageUrl, /^https:.*\.(?:gif|jpg)$/, `${comic} Failed to parse imageUrl from '${figure}'`);
+        imageBase64 = imageBuffer.toString('base64');
 
-      const imageResponse = await axios.get(imageUrl, {httpsAgent, responseType: 'arraybuffer'});
-      const imageBuffer   = Buffer.from(imageResponse.data, 'binary');
-
-      imageBase64 = imageBuffer.toString('base64');
-
-      retry = 0;
-    } catch(err) {
-      if(err.includes('ECONNREFUSED')) {
-        retry--;
-
-        if(retry) {
-          logger.error(`Failed reading image ${imageUrl} - retrying`, err.message);
-          await delay(ms('5m'));
-        } else {
-          logger.error(`Failed reading image ${imageUrl} - giving up`, err.message);
-        }
-      } else {
         retry = 0;
+      } catch(err) {
+        if(err.message.includes('ECONNREFUSED')) {
+          retry--;
 
-        logger.error(`Failed reading image ${imageUrl}`, err.message);
+          if(retry) {
+            // logger.error(`Failed reading image ${imageUrl} - retrying`, err.message);
+            await delay(ms('5m'));
+          } else {
+            logger.error(`Failed reading image ${imageUrl} - giving up`, err.message);
+          }
+        } else {
+          retry = 0;
+
+          logger.error(`Failed reading image ${imageUrl}`, err.message);
+        }
       }
     }
   } while(retry);
