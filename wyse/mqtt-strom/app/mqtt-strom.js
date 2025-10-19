@@ -146,7 +146,7 @@ const tibberQuery = new TibberQuery(tibberConfig);
 // #########################################################################
 const getStrompreise = async function() {
   try {
-    const queryPrice = '{viewer{homes{currentSubscription{priceInfo{' +
+    const queryPrice = '{viewer{homes{currentSubscription{priceInfo(resolution: QUARTER_HOURLY){' +
       'today{total energy startsAt currency level} ' +
       'tomorrow{total energy startsAt currency level}}}}}}';
 
@@ -172,9 +172,11 @@ const getStrompreise = async function() {
     // logger.debug(strompreise);
     await mqttClient.publishAsync('strom/tele/preise', JSON.stringify(strompreise), {retain: true});
 
+    logger.trace(`Refreshed strompreise`);
+
     health = 'OK';
   } catch(err) {
-    logger.error('getStrompreise() failed', err.message);
+    logger.error('getStrompreise() failed', err);
 
     health = `FAIL: ${err.message}`;
   }
