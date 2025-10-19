@@ -308,9 +308,10 @@ const stopCharging = async function() {
 
 const triggerSofort = async function() {
   if(wallboxState !== 'Lädt') {
-    if(vwBatterySocPct < 70) {
-      await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
-    }
+//TODO https://github.com/tillsteinbach/CarConnectivity-connector-volkswagen/issues/47
+//TODO    if(vwBatterySocPct < 70) {
+//TODO      await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
+//TODO    }
 
     await setChargeCurrent(16000);
     await startCharging();
@@ -497,7 +498,8 @@ const checkPVUeberschussLaden = async function() {
       if(wallboxState === 'Lädt') {
         if(hausBatterySocPct < 90 && lastPvProductionKwAvg < 1.5 ||
           hausBatterySocPct < 80 && lastPvProductionKwAvg < 2.5 && pvProductionKw <= 4 ||
-          hausBatterySocPct < 70 && lastPvProductionKwAvg < 4 && now > maxSunTime
+          hausBatterySocPct < 70 && lastPvProductionKwAvg < 4 && now > maxSunTime ||
+          hausBatterySocPct < 20
         ) {
           logger.debug(`PV ${chargeMode}, Laden Ende`, {
             lastPvProductionKwAvg: _.round(lastPvProductionKwAvg, 1),
@@ -532,8 +534,8 @@ const checkPVUeberschussLaden = async function() {
         (
           hausBatterySocPct > 80 ||
           hausBatterySocPct > 40 && now < maxSunTime ||
-          lastPvProductionKwAvg > 6 ||
-          chargeMode === 'Überschuss+'
+          hausBatterySocPct > 30 && lastPvProductionKwAvg > 6 ||
+          hausBatterySocPct > 30 && chargeMode === 'Überschuss+'
         )
       ) {
         logger.debug(`PV ${chargeMode}, Laden Start`, {
@@ -620,11 +622,11 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                 //   await stopCharging();
                 // }
 
-                if(vwTargetSocPending && vwTargetSocPending !== 80 ||
-                  !vwTargetSocPending && vwTargetSoc !== 80
-                ) {
-                  await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
-                }
+                // if(vwTargetSocPending && vwTargetSocPending !== 80 ||
+                //   !vwTargetSocPending && vwTargetSoc !== 80
+                // ) {
+                  // await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
+                // }
 
                 // Handled in 'Fronius/solar/tele/SENSOR'
                 break;
@@ -658,12 +660,14 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         case 'vwTargetSocPending':
           vwTargetSocPending = message;
 
-          if(message) {
-            logger.debug(`Setze targetSoc=${message} (pending)`);
+          // if(message && vwTargetSocPending !== vwTargetSoc) {
+          //   logger.debug(`Setze targetSoc=${message} (pending)`);
 
-            await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
-              JSON.stringify(message));
-          }
+          //   await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
+          //     JSON.stringify(message));
+          // } else {
+            await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', '', {retain: true});
+          // }
           break;
 
         default:
@@ -784,12 +788,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', '', {retain: true});
           } else {
-            logger.debug(`Pending targetSoc=${message}=>${vwTargetSocPending} still pending`);
+            // logger.debug(`Pending targetSoc=${message}=>${vwTargetSocPending} still pending`);
 
-            await delay(ms('30s'));
+            // await delay(ms('30s'));
 
-            await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
-              JSON.stringify(vwTargetSocPending));
+            // await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
+            //   JSON.stringify(vwTargetSocPending));
           }
         }
         break;
@@ -861,7 +865,22 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         wallboxState = newWallboxState;
 
         await updateStatus({wallboxState});
-        await checkPVUeberschussLaden();
+
+        switch(chargeMode) {
+          case 'Sofort':
+          case 'Sofort+':
+            await triggerSofort();
+            break;
+
+          case 'Überschuss':
+          case 'Überschuss+':
+            await checkPVUeberschussLaden();
+            break;
+
+          default:
+            // Nothing
+            break;
+        }
 
         // logState('Wallbox/evse/state');
         break;
