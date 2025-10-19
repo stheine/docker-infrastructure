@@ -151,9 +151,9 @@ export const getSolcastForecasts = async function(config) {
       check.assert.array(cachedSolcast.forecasts);
     }
 
-    if(cacheAge && cacheAge < ms('3 hours')) { // 10 free requests per day
+    if(cacheAge && cacheAge < ms('4 hours')) { // 10 free requests per day
       // Return cached data
-      // logger.info('Returned cached (<3h) solcast');
+      // logger.info('Returned cached (<4h) solcast');
 
       return cachedSolcast.forecasts;
     }
