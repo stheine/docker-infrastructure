@@ -23,9 +23,9 @@ until $(${SUCCESS}); do
 
       /usr/local/bin/docker restart docker-dovecot-1 docker-nginx-1
       if [ $? = 0 ]; then
-        echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate updated\n\nCertificate updated\n\nContainers restarted" | /usr/sbin/sendmail -t
+        echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate updated ($(hostname))\n\nCertificate updated\n\nContainers restarted" | /usr/sbin/sendmail -t
       else
-        echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate updated\n\nCertificate updated\n\nContainer restart failed for dovecot & nginx" | /usr/sbin/sendmail -t
+        echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate updated ($(hostname))\n\nCertificate updated\n\nContainer restart failed for dovecot & nginx" | /usr/sbin/sendmail -t
       fi
     else
       echo "$(date +"%Y-%m-%d %H:%M:%S") certs not updated: ${RESULT}"
@@ -34,7 +34,7 @@ until $(${SUCCESS}); do
         # do nothing
         /bin/true
       else
-        echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate update check failed\n\n${RESULT}\n" | /usr/sbin/sendmail -t
+        echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate update check failed ($(hostname))\n\n${RESULT}\n" | /usr/sbin/sendmail -t
       fi
     fi
 
@@ -44,7 +44,7 @@ until $(${SUCCESS}); do
 
     echo "$(date +"%Y-%m-%d %H:%M:%S") certbot renew failed: ${RESULT_CODE} ${RESULT} ${ERROR}" >&2
 
-    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate update check failed\n\n/usr/bin/certbot result=${RESULT_CODE} ${RESULT}\n${ERROR}\n$(ls -l /bin)\n\n$(ls -l /usr/bin/certbot)\n\n$(ls -l /var)" | /usr/sbin/sendmail -t
+    echo -e "From: technik@heine7.de\nTo: technik@heine7.de\nSubject: Certificate update check failed ($(hostname))\n\n/usr/bin/certbot result=${RESULT_CODE} ${RESULT}\n${ERROR}\n$(ls -l /bin)\n\n$(ls -l /usr/bin/certbot)\n\n$(ls -l /var)" | /usr/sbin/sendmail -t
 
     sleep 10
   fi
