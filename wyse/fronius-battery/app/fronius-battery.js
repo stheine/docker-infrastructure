@@ -269,7 +269,7 @@ const getBatteryChargePct = function() {
     note = `May to August, limit to ${config.summerChargeGoal}%.`;
     rate = 0;
   } else if(toChargeWh < capacityWh * 0.03) {
-    note = `Charge the last few Wh with ${capacityWh * 0.05}W (${toChargeWh}Wh toCharge).`;
+    note = `Charge the last few Wh with ${capacityWh * 0.05}W.`;
     rate = wattToRate(capacityWh * 0.05);
   } else if(maxDcPower > config.dcLimit) {
     if(limitPvHours || maxDcPower > config.dcLimit) {
@@ -485,6 +485,21 @@ const setBatteryPvCharge = async function(chargePct) {
   }
 };
 
+const findCurrentStrompreis = function() {
+  let   cent;
+  const nowUtc = dayjs.utc();
+
+  for(const data of strompreise.toReversed()) {
+    if(dayjs.utc(data.startTime) <= nowUtc) {
+      cent = data.cent;
+
+      break;
+    }
+  }
+
+  return cent;
+};
+
 const handleRate = async function(log = false) {
   try {
     // Get charge rate
@@ -512,12 +527,11 @@ const handleRate = async function(log = false) {
       throw new Error(`Failed getting battery state: ${err.message}`);
     }
 
-    const nowUtc      = dayjs.utc();
-    const nowCent     = _.find(strompreise, data =>
-      dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
-    const toChargeWh        = _.round(capacityWh * (100 - chargeStatePct) / 100);
-    const maxDcPower        = _.max(dcPowers.dump());
-    const maxEinspeisung    = _.max(einspeisungen.dump());
+    const nowUtc         = dayjs.utc();
+    const nowCent        = findCurrentStrompreis();
+    const toChargeWh     = _.round(capacityWh * (100 - chargeStatePct) / 100);
+    const maxDcPower     = _.max(dcPowers.dump());
+    const maxEinspeisung = _.max(einspeisungen.dump());
     const {
       highPvHours,
       highPvWh,
@@ -554,7 +568,7 @@ const handleRate = async function(log = false) {
       note = `Charge maximum.`;
       chargePct = 100;
     } else if(chargeStatePct < 20) {
-      note = `Charge to min of 20% (is ${chargeStatePct}%) with max.`;
+      note = `Charge to min of 20% with max.`;
       chargePct = 100;
     } else if(status.batteryCent !== null &&
       nowCent - status.batteryCent < config.useGridDiffCent
@@ -721,8 +735,7 @@ const handleBatteryGridChargingHandler = async function() {
   check.assert.nonEmptyObject(sunTimes);
 
   const nowUtc      = dayjs.utc();
-  const nowCent     = _.find(strompreise, data =>
-    dayjs.utc(data.startTime).format('YYYY-MM-DD HH') === nowUtc.format('YYYY-MM-DD HH')).cent;
+  const nowCent     = findCurrentStrompreis();
   let   hourlyForecasts;
   let   totalPvWh;
   let   retries = 61;
@@ -737,7 +750,9 @@ const handleBatteryGridChargingHandler = async function() {
   check.assert.less(nowUtc.valueOf(), sunriseDate.valueOf());
   check.assert.less(nowUtc.valueOf(), sunsetDate.valueOf());
 
-  logger.debug(`handleBatteryGridChargingHandler, Now is the beginning of the cheapest hour (${nowCent}ct)`);
+  logger.debug(`handleBatteryGridChargingHandler, ` +
+    `now is the beginning of the cheapest hour (${nowCent}ct), ` +
+    `battery=${_.round(capacityWh * chargeStatePct / 100)}Wh (${chargeStatePct}%)`);
 
   do {
     ({hourlyForecasts, totalPvWh} = solcastAnalysis);
@@ -773,12 +788,16 @@ const handleBatteryGridChargingHandler = async function() {
   let toChargeWhNeed;
   let useGrid          = false;
 
+  // ----------------------------------------------------------------
+  // 1. Bei sehr niedriger PV Vorhersage, Akku voll laden
   if(totalPvWh < 5000) {
     // Niedriger PV Ertrag vorhergesagt, dann voll laden
     toChargeWhFixed = _.round(capacityWh * (100 - chargeStatePct) / 100);
 
     logger.debug(`handleBatteryGridChargingHandler, very low forecast (${_.round(totalPvWh)}Wh), ` +
       `charge ${toChargeWhFixed}Wh`);
+  // ----------------------------------------------------------------
+  // 2. Bei niedriger PV Vorhersage, Akku halb-voll laden
   } else if(totalPvWh < 10000) {
     // Wenig PV Ertrag vorhergesagt, dann auf Hälfte laden
     // TODO anteilig?
@@ -790,6 +809,8 @@ const handleBatteryGridChargingHandler = async function() {
     logger.debug(`handleBatteryGridChargingHandler, okish forecast (${_.round(totalPvWh)}Wh)`);
   }
 
+  // ----------------------------------------------------------------
+  // 3. Bei teurem Strompreis am Tag, Akku voll laden
   {
     const dayData = _.filter(strompreise, data => {
       const startTimeDate = dayjs(data.startTime);
@@ -815,6 +836,8 @@ const handleBatteryGridChargingHandler = async function() {
     }
   }
 
+  // ----------------------------------------------------------------
+  // 4. Akkustand gegen die Verbrauchsprognose prüfen
   {
     let   startH   = nowUtc.local().hour();
     const startPvH = _.first(hourlyForecasts).timeH;
@@ -841,6 +864,7 @@ const handleBatteryGridChargingHandler = async function() {
       timeH  = startPvH;
     }
 
+    // Prognose für die Nachtstunden bis zum Beginn der PV Produktion
     for(timeH of _.range(startH, startPvH)) {
       const timeHDate = dayjs(_.first(hourlyForecasts.startDate)).hour(timeH);
       let   thisHourWh = 0;
@@ -850,9 +874,9 @@ const handleBatteryGridChargingHandler = async function() {
       }
 
       if(timeH < 7) {
-        thisHourWh += 300;
+        thisHourWh += 300; // Vor dem Aufstehen 300W Grundlast
       } else {
-        thisHourWh += 500;
+        thisHourWh += 500; // Nach dem Aufstehen 500W Grundlast
       }
 
       if(thisHourWh > currentWh) {
@@ -861,23 +885,35 @@ const handleBatteryGridChargingHandler = async function() {
 
         if(cent - nowCent < config.useGridDiffCent) {
           // Rather use grid power directly, than consume battery power
-          logger.debug(`Forecast: ${timeH}:00 => Use grid for ${cent}ct => batteryCent=${nowCent}ct`);
+          logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 => ` +
+            `       ` +
+            `Use grid for ${cent}ct => batteryCent=${nowCent}ct`);
 
           useGrid = true;
         } else {
           chargeWh   += thisHourWh;
-          logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh charge ${chargeWh}Wh`);
+          logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 => ` +
+            `       ` +
+            `${_.padStart(currentWh, 4)}Wh charge ${chargeWh}Wh`);
         }
       } else {
         currentWh -= thisHourWh;
 
-        logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh`);
+        logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 => ` +
+          `       ` +
+          `${_.padStart(currentWh, 4)}Wh`);
       }
     }
 
+    // Prognose für die Tagstunden mit PV Produktion
     for(const forecast of hourlyForecasts) {
       if(forecast.timeH < nowUtc.local().hour()) {
-        logger.debug('handleBatteryGridChargingHandler forcast.timeH < nowH', {forecast, nowUtc});
+        // logger.debug('handleBatteryGridChargingHandler forcast.timeH < nowH', {forecast, nowUtc});
+
+        continue;
+      }
+      if(dayjs(forecast.startDate) > sunsetDate) {
+        // logger.debug('handleBatteryGridChargingHandler forcast.timeH > sunsetDate', {forecast, sunsetDate});
 
         continue;
       }
@@ -917,15 +953,18 @@ const handleBatteryGridChargingHandler = async function() {
       }
 
       if(estimateWh < 1500) {
-        logger.debug(`Forecast: ${timeH}:00 ${estimateWh}Wh => ${currentWh}Wh` +
+        logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 ${_.padStart(estimateWh, 4)}Wh => ` +
+          `${_.padStart(currentWh, 4)}Wh` +
           `${chargeWh ? ` charge ${chargeWh}Wh` : ''}`);
       } else {
-        logger.debug(`Forecast: ${timeH}:00 ${estimateWh}Wh => ${currentWh}Wh - good estimate` +
+        logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 ${_.padStart(estimateWh, 4)}Wh => ` +
+          `${_.padStart(currentWh, 4)}Wh - good estimate` +
           `${chargeWh ? ` charge ${chargeWh}Wh` : ''}`);
         foundGood = true;
       }
     }
 
+    // Prognose für die Abendstunden nach der PV Produktion
     for(timeH of _.range(timeH + 1, 24)) {
       let thisHourWh = 0;
 
@@ -945,7 +984,8 @@ const handleBatteryGridChargingHandler = async function() {
         currentWh -= thisHourWh;
       }
 
-      logger.debug(`Forecast: ${timeH}:00 => ${currentWh}Wh` +
+      logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00        => ` +
+        `${_.padStart(currentWh, 4)}Wh` +
         `${chargeWh ? ` charge ${chargeWh}Wh` : ''}`);
     }
 
