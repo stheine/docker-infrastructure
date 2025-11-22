@@ -1,3 +1,5 @@
+name: docker
+
 volumes:
   control:
     driver: local
@@ -7,6 +9,20 @@ volumes:
       o: bind
 
 services:
+  casambi-mqtt:
+    restart: always
+    build: casambi-mqtt
+    hostname: pi-casambi-mqtt
+    stop_signal: SIGKILL
+    environment:
+      - CASAMBI_NETWORK_PASSWORD=holzhaus7occhio
+      - MQTT_BROKER=wyse.fritz.box
+      - MQTT_PORT=1883
+      - MQTT_BASE_TOPIC=casambi
+    volumes:
+      - ./casambi-mqtt/casambi-mqtt.py:/usr/src/app/casambi-mqtt.py
+      - /run/dbus:/run/dbus
+
   control-io:
     restart: always
     build: control-io
@@ -20,10 +36,10 @@ services:
       - ./control-io/app:/app
       - control:/var/control
 
-  portainer_agent:
+  portainer-agent:
     restart: always
     image: portainer/agent
-    hostname: qnap-portainer-agent
+    hostname: pi-control-portainer-agent
     ports:
       - 8009:9001
     volumes:
