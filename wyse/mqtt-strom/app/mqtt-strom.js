@@ -176,7 +176,7 @@ const getStrompreise = async function() {
 
     health = 'OK';
   } catch(err) {
-    logger.error('getStrompreise() failed', err);
+    logger.error('getStrompreise() failed', err.message);
 
     health = `FAIL: ${err.message}`;
   }
