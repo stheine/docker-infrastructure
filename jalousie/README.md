@@ -6,15 +6,17 @@
 
 - `rpi-imager`
 - `Raspberry Pi 3`
-- `Raspberry Pi OS (other) / Raspberry Pi OS (Bullseye, 32-bit) Lite`
+- `Raspberry Pi OS (other) / Raspberry Pi OS (64-bit) Lite (Trixie)`
 - Next
 - Edit settings
-- [x] Set hostname
-- [x] Set username and password
-- [x] Set locale settings, Time zone `Europe/Berlin`
-- [x] Enable SSH
-- [x] Allow public-key authentication only, enter `authorized_key`
-- Save
+  - General: 
+    - [x] Set hostname `jalousie`
+    - [x] Set username and password
+    - [x] Set locale settings, Time zone `Europe/Berlin`
+  - Services:
+    - [x] Enable SSH
+    - [x] Allow public-key authentication only, enter `authorized_key`
+   - Save
 - Yes
 - Write to SD Card
 - Boot with new SD Card
@@ -23,11 +25,11 @@
 ### Enable Serial interface
 
 ```
-sudo vi /boot/config.txt
+sudo vi /boot/firmware/config.txt
 ```
 
 ```
-echo "# Enable the optional hardware interface, SPI
+# Enable the optional hardware interface, SPI
 dtparam=spi=on
 
 dtoverlay=disable-wifi
@@ -91,6 +93,11 @@ cp docker/docker_host_system__profile .profile
 
 # Log out and in
 
+mkdir /var/opt/pihole
+cd ~/docker
+docker compose up -d pihole
+docker compose exec pihole pihole setpassword
+
 cd ~/docker/jalousie-backend
 git clone git@github.com:stheine/jalousie-backend.git app/
 
@@ -113,7 +120,7 @@ docker compose up -d
 ### Check postfix
 
 ```
-apt install nullmailer
+sudo apt install nullmailer
 
 <hostname>
 wyse.fritz.box smtp --port=25
