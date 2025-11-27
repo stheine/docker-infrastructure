@@ -96,7 +96,7 @@ services:
       - pihole
 
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: jalousie-watchtower
