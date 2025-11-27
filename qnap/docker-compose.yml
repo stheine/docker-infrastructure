@@ -50,7 +50,7 @@ services:
       - 31038:31038
 
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower
     hostname: qnap-watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
