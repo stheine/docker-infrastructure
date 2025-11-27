@@ -72,22 +72,30 @@ def find(units, name):
       return unit
 
 async def main():
+  casambi = None
+
   logging.getLogger("CasambiBt").setLevel(logging.INFO)
 
   # -----------------------------------------------------------------
   # MQTT connect
-  #def onConnect(client, userdata, flags, rc, properties):
-  #  if rc == 0:
-  #    logger.info("Connected to MQTT Broker!")
-  #  else:
-  #    logger.error("Failed to connect, return code %d", rc)
+  async def onConnect(mqttClient, userdata, message, four):
+    logger.info("Connected to MQTT Broker!")
+
+    while casambi == None:
+      await asyncio.sleep(1)
+
+    # -----------------------------------------------------------------
+    # Subscribe to MQTT messages for each of the Casambi units
+    for unit in casambi.units:
+      topic = f"{baseTopic}/{casambi.networkName}/{unit.name}/cmnd"
+
+      await mqttClient.asyncio_subscribe(topic)
+
+      logger.info(f"Subscribed to {topic}")
 
   mqttClient = AsyncioPahoClient(client_id=client_id)
 
-  # mqttClient.username_pw_set(mqttUsername, mqttPassword)
-
-  # TODO mqttClient.on_connect = onConnect
-  # TODO mqttClient.on_disconnect = onDisconnect
+  mqttClient.asyncio_listeners.add_on_connect(onConnect)
 
   await mqttClient.asyncio_connect(broker, port)
 
@@ -191,14 +199,7 @@ async def main():
     mqttClient.asyncio_listeners.add_on_message(onMessageAsync)
 
     # -----------------------------------------------------------------
-    # Subscribe to MQTT messages for each of the Casambi units
-    for unit in casambi.units:
-      topic = f"{baseTopic}/{casambi.networkName}/{unit.name}/cmnd"
-
-      await mqttClient.asyncio_subscribe(topic)
-
-      logger.info(f"Subscribed to {topic}")
-
+    # Report health
     async def health():
       logger.info("Start health interval")
       while True:
