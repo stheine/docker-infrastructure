@@ -1282,7 +1282,7 @@ services:
       - 31038:31038
 
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: wyse-watchtower
