@@ -12,6 +12,7 @@ import os
 import random
 import re
 import sys
+import time
 
 from CasambiBt import Casambi, discover
 from asyncio_paho import AsyncioPahoClient
@@ -196,7 +197,16 @@ async def main():
 
       await mqttClient.asyncio_subscribe(topic)
 
-      logger.debug(f"Subscribed to {topic}")
+      logger.info(f"Subscribed to {topic}")
+
+    async def health():
+      logger.info("Start health interval")
+      while True:
+        mqttClient.publish('casambi/health/STATE', 'OK', qos=0, retain=False)
+        await asyncio.sleep(60)
+
+    loop = asyncio.get_running_loop()
+    loop.create_task(health())
       
     # -----------------------------------------------------------------
     # Make the app never stop
