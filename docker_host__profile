@@ -76,3 +76,9 @@ export PATH=/share/linux/tools/busybox/:/share/CACHEDEV1_DATA/.qpkg/Entware/bin/
 alias dcps="docker compose ps --format 'table {{.ID}}\t{{.Service}}\t{{.Status}}\t{{.Ports}}'"
 alias dsdf="docker system df --verbose --format '{{range .Containers}}{{.Size}}\t{{.Names}}\n{{end}}' | sort -h"
 alias dcl="docker compose logs --tail 100 -f"
+
+# Load nvm
+NVM_DIR="$(realpath "$HOME/.nvm")"
+export NVM_DIR
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
