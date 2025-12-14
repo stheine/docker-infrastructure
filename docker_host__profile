@@ -14,6 +14,8 @@ NORMAL="${ESC}[0m"
 ###############################################################################
 # Prompt
 
+HOSTNAME=$(hostname)
+
 set_ps1() {
   LAST_RESULT=$? # Must come first!
 
@@ -24,7 +26,7 @@ set_ps1() {
     PS1+="\[$BOLDRED\]$FAILEDX($LAST_RESULT)\[$NORMAL\] "
   fi
 
-  PS1+="\[$BGGREEN\]qnap\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] # "
+  PS1+="\[$BGGREEN\]${HOSTNAME}\[$NORMAL\] \[$INVERSE\]"'${PWD#$HOME/}'"\[$NORMAL\] # "
 }
 PROMPT_COMMAND='set_ps1'
 
@@ -62,7 +64,7 @@ alias vi=start_vi
 # Console label
 
 TITLE_PREFIX=
-TITLE_PREFIX='qnap'
+TITLE_PREFIX=${HOSTNAME}
 echo -e "${HEADER}${TITLE_PREFIX}${TITLE}${CTLG}\c"
 
 ###############################################################################
@@ -70,3 +72,7 @@ echo -e "${HEADER}${TITLE_PREFIX}${TITLE}${CTLG}\c"
 alias ll='ls -l'
 set -o vi
 export PATH=/share/linux/tools/busybox/:/share/CACHEDEV1_DATA/.qpkg/Entware/bin/:$PATH:/share/CACHEDEV1_DATA/.qpkg/container-station/bin/
+
+alias dcps="docker compose ps --format 'table {{.ID}}\t{{.Service}}\t{{.Status}}\t{{.Ports}}'"
+alias dsdf="docker system df --verbose --format '{{range .Containers}}{{.Size}}\t{{.Names}}\n{{end}}' | sort -h"
+alias dcl="docker compose logs --tail 100 -f"
