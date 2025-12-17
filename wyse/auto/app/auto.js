@@ -62,6 +62,7 @@ let   revertChargeModeTimeout;
 let   strompreise;
 let   vwBatterySocPct;
 let   vwConnected;
+let   vwAutoUnlock;
 let   vwParkingLatitude;
 let   vwParkingLongitude;
 let   vwTargetSoc;
@@ -308,10 +309,9 @@ const stopCharging = async function() {
 
 const triggerSofort = async function() {
   if(wallboxState !== 'Lädt') {
-//TODO https://github.com/tillsteinbach/CarConnectivity-connector-volkswagen/issues/47
-//TODO    if(vwBatterySocPct < 70) {
-//TODO      await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
-//TODO    }
+    if(vwBatterySocPct < 70) {
+      await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(70), {retain: true});
+    }
 
     await setChargeCurrent(16000);
     await startCharging();
@@ -347,6 +347,18 @@ const handleLocation = async function() {
     if(atHome && ['Sofort', 'Sofort+'].includes(chargeMode)) {
       await triggerSofort();
     }
+
+    if(atHome && !vwAutoUnlock) {
+      logger.debug('trigger auto-unlock, True', {vwAutoUnlock, atHome});
+
+      await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/auto_unlock_writetopic`,
+        'True');
+    } else if(!atHome && vwAutoUnlock) {
+      logger.debug('trigger auto-unlock, False', {vwAutoUnlock, atHome});
+
+      await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/auto_unlock_writetopic`,
+        'False');
+    }
   }
 };
 
@@ -380,8 +392,7 @@ const getChargeTime = function() {
   let minCost;
 
   do {
-    const cost =
-      _.sum(_.map(_.slice(nightData, key, key + hoursToCharge), 'cent')) / hoursToCharge * kwhToCharge;
+    const cost = _.sum(_.map(_.slice(nightData, key, key + (hoursToCharge * 4)), 'cent'));
 
     if(minCost === undefined || cost < minCost) {
       minKey  = key;
@@ -389,20 +400,19 @@ const getChargeTime = function() {
     }
 
     key++;
-  } while(key + hoursToCharge <= nightData.length);
+  } while(key + (hoursToCharge * 4) <= nightData.length);
 
   // logger.debug({kwhToCharge, minKey, minCost, hoursToCharge});
 
   const chargeStartTime = dayjs(nightData[minKey].startTime);
-  const chargeEndTime   = nightData[minKey + hoursToCharge] ?
-    dayjs(nightData[minKey + hoursToCharge].startTime) :
+  const chargeEndTime   = nightData[minKey + (hoursToCharge * 4)] ?
+    dayjs(nightData[minKey + (hoursToCharge * 4)].startTime) :
     dayjs(chargeStartTime).add(1, 'hour');
 
   logger.debug({
     kwhToCharge,
     hoursToCharge,
     nightData:       _.map(nightData, data => `${data.startTime} ${data.cent}c (${data.level})`),
-    minCost:         _.round(minCost),
     chargeStartTime: chargeStartTime.toISOString(),
     chargeEndTime:   chargeEndTime.toISOString(),
   });
@@ -658,16 +668,21 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           break;
 
         case 'vwTargetSocPending':
-          vwTargetSocPending = message;
+          if(message) {
+            if(message !== vwTargetSoc) {
+              vwTargetSocPending = message;
 
-          // if(message && vwTargetSocPending !== vwTargetSoc) {
-          //   logger.debug(`Setze targetSoc=${message} (pending)`);
+              logger.debug(`Setze targetSoc=${message} (pending)`);
 
-          //   await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
-          //     JSON.stringify(message));
-          // } else {
-            await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', '', {retain: true});
-          // }
+              await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
+                JSON.stringify(message));
+            } else {
+              vwTargetSocPending = null;
+              await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', '', {retain: true});
+            }
+          } else {
+            vwTargetSocPending = null;
+          }
           break;
 
         default:
@@ -718,21 +733,23 @@ mqttClient.on('message', async(topic, messageBuffer) => {
       case 'carconnectivity/connectors/volkswagen/connection_state':
         vwConnected = message === 'True' || message === 'connected';
 
+        // logger.debug('connection_state', {vwUpdated, vwUpdateIntervalS, vwConnected});
+
         if(vwUpdateIntervalS) {
           if(vwConnected) {
             if(disconnectedHandler) {
-              logger.debug('Clear disconnectedTimeout', {vwConnected, vwUpdated});
+              // logger.debug('Clear disconnectedTimeout', {vwConnected, vwUpdated});
               clearTimeout(disconnectedHandler);
               disconnectedHandler = null;
             }
           } else if(!disconnectedHandler) {
-            logger.debug('Start disconnectedTimeout', {vwConnected, vwUpdated});
+            // logger.debug('Start disconnectedTimeout', {vwConnected, vwUpdated});
             disconnectedHandler = setTimeout(async() => {
               disconnectedHandler = undefined;
               logger.debug('Trigger restart in disconnected handler');
 
               await restartCarconnectivity('carconnectivity-mqtt');
-            }, ms(`${2 * vwUpdateIntervalS / 60 + 1}m`));
+            }, ms(`${8 * vwUpdateIntervalS / 60 + 1}m`));
           }
         }
         break;
@@ -753,9 +770,9 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           const now   = dayjs.utc();
           const ageMs = now - dayjs(vwUpdated);
 
-          // logger.debug('vwUpdated', {vwUpdated, ageS: ageMs / 1000);
+          // logger.debug('last_update', {vwUpdated, vwUpdateIntervalS, ageS: ageMs / 1000});
 
-          if(ageMs < ms(`${2 * vwUpdateIntervalS / 60 + 1}m`)) {
+          if(ageMs < ms(`${8 * vwUpdateIntervalS / 60 + 1}m`)) {
             if(missingUpdateHandler) {
               clearTimeout(missingUpdateHandler);
               missingUpdateHandler = null;
@@ -766,7 +783,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               logger.debug('Trigger missingUpdate handler', {vwConnected, vwUpdated});
 
               await restartCarconnectivity('carconnectivity-mqtt');
-            }, ms(`${2 * vwUpdateIntervalS / 60 + 1}m`) - ageMs);
+            }, ms(`${8 * vwUpdateIntervalS / 60 + 1}m`) - ageMs);
           } else {
             logger.debug(`Outdated update: ${vwUpdated}`, {vwConnected, vwUpdated});
 
@@ -779,6 +796,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         vwBatterySocPct = message;
         break;
 
+      case `carconnectivity/garage/${vwId}/charging/settings/auto_unlock`:
+        vwAutoUnlock = message === 'True';
+
+        logger.debug({vwAutoUnlock, message});
+        break;
+
       case `carconnectivity/garage/${vwId}/charging/settings/target_level`:
         vwTargetSoc = message;
 
@@ -788,12 +811,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
             await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', '', {retain: true});
           } else {
-            // logger.debug(`Pending targetSoc=${message}=>${vwTargetSocPending} still pending`);
+            logger.debug(`Pending targetSoc=${message}=>${vwTargetSocPending} still pending`);
 
-            // await delay(ms('30s'));
+            await delay(ms('30s'));
 
-            // await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
-            //   JSON.stringify(vwTargetSocPending));
+            await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
+              JSON.stringify(vwTargetSocPending));
           }
         }
         break;
@@ -914,6 +937,7 @@ await mqttClient.subscribeAsync('carconnectivity/connectors/volkswagen/interval'
 await mqttClient.subscribeAsync('carconnectivity/connectors/volkswagen/connection_state'); // order B
 await mqttClient.subscribeAsync('carconnectivity/connectors/volkswagen/last_update');      // order C
 await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/drives/primary/level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/charging/settings/auto_unlock`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/position/latitude`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/position/longitude`);
