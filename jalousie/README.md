@@ -99,7 +99,7 @@ git config --global user.name 'Stefan Heine'
 git clone git@github.com:stheine/docker-infrastructure.git
 ln -s docker-infrastructure/jalousie docker
 
-cp docker/docker_host_system__profile .profile
+cp docker-infrastructure/docker_host__profile .profile
 
 # Log out and in
 
