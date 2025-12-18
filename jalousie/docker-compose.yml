@@ -55,10 +55,10 @@ services:
   pihole:
     restart: always
     image: pihole/pihole:latest
+    hostname: pi-jalousie-pihole
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     # shm_size: '200mb'
-    hostname: pi-pihole
     # dns:
     # - 192.168.6.1
     ports:
@@ -96,7 +96,7 @@ services:
       - pihole
 
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: jalousie-watchtower

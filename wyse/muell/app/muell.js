@@ -119,7 +119,7 @@ const checkMuell = async function() {
 
   await mqttClient.publishAsync(topicNaechste, JSON.stringify(leerungenZukunftProSorte), {retain: true});
 
-  if(leerungenZukunft.length < 10) {
+  if(leerungenZukunft.length < 6) {
     try {
       await sendMail({
         to:      'stefan@heine7.de',

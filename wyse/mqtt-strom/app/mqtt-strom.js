@@ -145,41 +145,52 @@ const tibberQuery = new TibberQuery(tibberConfig);
 
 // #########################################################################
 const getStrompreise = async function() {
-  try {
-    const queryPrice = '{viewer{homes{currentSubscription{priceInfo(resolution: QUARTER_HOURLY){' +
-      'today{total energy startsAt currency level} ' +
-      'tomorrow{total energy startsAt currency level}}}}}}';
+  let retry = 10;
 
-    const result = await tibberQuery.query(queryPrice);
-    const strompreiseRaw = [
-      ...result.viewer.homes[0].currentSubscription.priceInfo.today,
-      ...result.viewer.homes[0].currentSubscription.priceInfo.tomorrow,
-    ];
-    const strompreise = _.map(strompreiseRaw, data => ({
-      startTime: new Date(data.startsAt),
-      cent:      _.round(data.energy * 100, 2), // Eur/kWh + 100ct/Eur
-      level:     data.level,
-    }));
+  do {
+    try {
+      const queryPrice = '{viewer{homes{currentSubscription{priceInfo(resolution: QUARTER_HOURLY){' +
+        'today{total energy startsAt currency level} ' +
+        'tomorrow{total energy startsAt currency level}}}}}}';
 
-    const nowUtc = dayjs.utc();
-    const lastPreisStartDate = dayjs.utc(strompreise.at(-1).startTime);
-    const diff = lastPreisStartDate.diff(nowUtc, 'day', true);
+      const result = await tibberQuery.query(queryPrice);
+      const strompreiseRaw = [
+        ...result.viewer.homes[0].currentSubscription.priceInfo.today,
+        ...result.viewer.homes[0].currentSubscription.priceInfo.tomorrow,
+      ];
+      const strompreise = _.map(strompreiseRaw, data => ({
+        startTime: new Date(data.startsAt),
+        cent:      _.round(data.energy * 100, 2), // Eur/kWh + 100ct/Eur
+        level:     data.level,
+      }));
 
-    if(nowUtc.hour() > 18) {
-      check.assert.greater(diff, 1, `Letzter Preis fuer ${strompreise.at(-1).startTime}`);
+      const nowUtc = dayjs.utc();
+      const lastPreisStartDate = dayjs.utc(strompreise.at(-1).startTime);
+      const diff = lastPreisStartDate.diff(nowUtc, 'day', true);
+
+      if(nowUtc.hour() > 18) {
+        check.assert.greater(diff, 1, `Letzter Preis fuer ${strompreise.at(-1).startTime}`);
+      }
+
+      // logger.debug(strompreise);
+      await mqttClient.publishAsync('strom/tele/preise', JSON.stringify(strompreise), {retain: true});
+
+      logger.trace(`Refreshed strompreise`);
+
+      health = 'OK';
+      retry  = 0;
+    } catch(err) {
+      logger.error('getStrompreise() failed', err.message);
+
+      health = `FAIL: ${err.message}`;
+
+      if(retry) {
+        retry--;
+
+        await delay(ms('5m'));
+      }
     }
-
-    // logger.debug(strompreise);
-    await mqttClient.publishAsync('strom/tele/preise', JSON.stringify(strompreise), {retain: true});
-
-    logger.trace(`Refreshed strompreise`);
-
-    health = 'OK';
-  } catch(err) {
-    logger.error('getStrompreise() failed', err);
-
-    health = `FAIL: ${err.message}`;
-  }
+  } while(retry && health !== 'OK');
 };
 
 // #########################################################################

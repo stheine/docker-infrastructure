@@ -6,28 +6,39 @@
 
 - `rpi-imager`
 - `Raspberry Pi 3`
-- `Raspberry Pi OS (other) / Raspberry Pi OS (Bullseye, 32-bit) Lite`
+- `Raspberry Pi OS (other) / Raspberry Pi OS (64-bit) (Trixie with Desktop)`
 - Next
 - Edit settings
-- [x] Set hostname
-- [x] Set username and password
-- [x] Set locale settings, Time zone `Europe/Berlin`
-- [x] Enable SSH
-- [x] Allow public-key authentication only, enter `authorized_key`
-- Save
+  - General:
+    - [x] Set hostname `jalousie`
+    - [x] Set username and password
+    - [x] Set locale settings, Time zone `Europe/Berlin`
+  - Services:
+    - [x] Enable SSH
+    - [x] Allow public-key authentication only, enter `authorized_key`
+   - Save
 - Yes
 - Write to SD Card
 - Boot with new SD Card
 - ssh into server
 
+### Disable GUI
+
+Note: the Desktop needs to be installed as otherwise some
+Bluetooth modules (Audio Sink and Source) are missing.
+
+```
+sudo systemctl set-default multi-user.target
+```
+
 ### Enable Serial interface
 
 ```
-sudo vi /boot/config.txt
+sudo vi /boot/firmware/config.txt
 ```
 
 ```
-echo "# Enable the optional hardware interface, SPI
+# Enable the optional hardware interface, SPI
 dtparam=spi=on
 
 dtoverlay=disable-wifi
@@ -47,6 +58,7 @@ echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > .selected-editor
 
 echo "192.168.6.7:/linux /mnt/qnap_linux nfs defaults,_netdev,bg,soft 0 0" | sudo tee -a /etc/fstab >/dev/null
 sudo mkdir /mnt/qnap_linux
+sudo systemctl daemon-reload
 sudo mount -a
 
 echo "@reboot /bin/sleep 20 && /bin/mount -a" | sudo tee -a /var/spool/cron/crontabs/root >/dev/null
@@ -65,7 +77,7 @@ Add the new SSH key into the git allowed SSH keys
 
 ### Install docker
 
-https://docs.docker.com/engine/install/raspberry-pi-os/
+https://docs.docker.com/engine/install/debian
 
 ```
 sudo vi /etc/docker/daemon.json
@@ -91,6 +103,16 @@ cp docker/docker_host_system__profile .profile
 
 # Log out and in
 
+sudo mkdir /var/opt/pihole
+cd ~/docker
+docker compose up -d pihole
+docker compose exec pihole pihole setpassword
+```
+
+https://wiki.heine7.de/index.php/Pihole
+http://192.168.6.6/admin/
+
+```
 cd ~/docker/jalousie-backend
 git clone git@github.com:stheine/jalousie-backend.git app/
 
@@ -113,8 +135,12 @@ docker compose up -d
 ### Check postfix
 
 ```
-apt install nullmailer
+sudo apt install nullmailer
 
 <hostname>
 wyse.fritz.box smtp --port=25
 ```
+
+### Unattended upgrades
+
+https://wiki.heine7.de/index.php/Unattended_upgrades

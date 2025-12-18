@@ -789,8 +789,7 @@ services:
 
   immich-redis:
     restart: always
-    # image: docker.io/redis:6.2-alpine@sha256:905c4ee67b8e0aa955331960d2aa745781e6bd89afc44a8584bfd13bc890f0ae
-    image: docker.io/valkey/valkey:8-bookworm@sha256:fea8b3e67b15729d4bb70589eb03367bab9ad1ee89c876f54327fc7c6e618571
+    image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b19a6d69690f94a3954ec131277b9a26b95b3aa
     labels:
       - "com.centurylinklabs.watchtower.enable=false" # Disable!
     healthcheck:
@@ -798,34 +797,34 @@ services:
 
   immich-database:
     restart: always
-    # image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:90724186f0a3517cf6914295b5ab410db9ce23190a2d9d0b9dd6463e3fa298f0
-    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:41eacbe83eca995561fe43814fd4891e16e39632806253848efaf04d3c8a8b84
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
     labels:
       - "com.centurylinklabs.watchtower.enable=false" # Disable!
     env_file:
       - /mnt/qnap/linux/data/immich/immich.env
     environment:
       POSTGRES_INITDB_ARGS: '--data-checksums'
+    shm_size: 128mb
     volumes:
       - immich-database:/var/lib/postgresql/data
-    healthcheck:
-      test: >-
-        pg_isready --dbname="$${POSTGRES_DB}" --username="$${POSTGRES_USER}" || exit 1;
-        Chksum="$$(psql --dbname="$${POSTGRES_DB}" --username="$${POSTGRES_USER}" --tuples-only --no-align
-        --command='SELECT COALESCE(SUM(checksum_failures), 0) FROM pg_stat_database')";
-        echo "checksum failure count is $$Chksum";
-        [ "$$Chksum" = '0' ] || exit 1
-      interval: 5m
-      start_interval: 30s
-      start_period: 5m
-    command: >-
-      postgres
-      -c shared_preload_libraries=vectors.so
-      -c 'search_path="$$user", public, vectors'
-      -c logging_collector=on
-      -c max_wal_size=2GB
-      -c shared_buffers=512MB
-      -c wal_compression=on
+#    healthcheck:
+#      test: >-
+#        pg_isready --dbname="$${POSTGRES_DB}" --username="$${POSTGRES_USER}" || exit 1;
+#        Chksum="$$(psql --dbname="$${POSTGRES_DB}" --username="$${POSTGRES_USER}" --tuples-only --no-align
+#        --command='SELECT COALESCE(SUM(checksum_failures), 0) FROM pg_stat_database')";
+#        echo "checksum failure count is $$Chksum";
+#        [ "$$Chksum" = '0' ] || exit 1
+#      interval: 5m
+#      start_interval: 30s
+#      start_period: 5m
+#    command: >-
+#      postgres
+#      -c shared_preload_libraries=vectors.so
+#      -c 'search_path="$$user", public, vectors'
+#      -c logging_collector=on
+#      -c max_wal_size=2GB
+#      -c shared_buffers=512MB
+#      -c wal_compression=on
 
   internet-connected:
     restart: always
@@ -1081,6 +1080,11 @@ services:
       PAPERLESS_DBUSER: paperless
       PAPERLESS_DBPASS: paperless
       PAPERLESS_DBPORT: 3306
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "-S", "--max-time", "2", "http://localhost:7273"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   paperless-broker:
     image: docker.io/library/redis:7
@@ -1234,7 +1238,7 @@ services:
   uptime-kuma:
     restart: always
     # build: uptime-kuma
-    image: louislam/uptime-kuma
+    image: louislam/uptime-kuma:2
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: wyse-uptime-kuma
@@ -1283,7 +1287,7 @@ services:
       - 31038:31038
 
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     hostname: wyse-watchtower

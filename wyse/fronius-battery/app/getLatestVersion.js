@@ -42,7 +42,7 @@ export default async function getLatestVersion() {
   const response = await axios.get(url);
 
   const version = response.data
-    .replace(/^.*Firmware Changelog Fronius GEN24 Tauro Verto /, '')
+    .replace(/^.*Firmware Fronius Update GEN24 Tauro Verto /, '')
     .replace(/".*$/, '');
 
   check.assert.match(version, /^\d+\.\d+/);
