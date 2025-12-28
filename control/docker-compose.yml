@@ -8,6 +8,14 @@ volumes:
       device: /mnt/qnap_linux/data/control
       o: bind
 
+  pihole_etc_pihole:
+    driver: local
+    driver_opts:
+      type: none
+        # device: /mnt/qnap_linux/data/pihole/etc_pihole
+      device: /var/opt/pihole
+      o: bind
+
 services:
   casambi-mqtt:
     restart: always
@@ -40,6 +48,23 @@ services:
     restart: always
     build: noop
     hostname: wyse-noop
+
+  pihole:
+    restart: always
+    image: pihole/pihole:latest
+    hostname: pi-control-pihole
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    environment:
+      TZ: 'Europe/Berlin'
+      FTLCONF_dns_listeningMode: 'all'
+    volumes:
+      - pihole_etc_pihole:/etc/pihole
 
   portainer-agent:
     restart: always
