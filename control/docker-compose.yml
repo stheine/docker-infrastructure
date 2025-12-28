@@ -36,6 +36,11 @@ services:
       - ./control-io/app:/app
       - control:/var/control
 
+  noop:
+    restart: always
+    build: noop
+    hostname: wyse-noop
+
   portainer-agent:
     restart: always
     image: portainer/agent
