@@ -12,15 +12,15 @@ services:
   casambi-mqtt:
     restart: always
     build: casambi-mqtt
-    hostname: pi-casambi-mqtt
+    hostname: pi-control-casambi-mqtt
     stop_signal: SIGKILL
     environment:
-      - CASAMBI_NETWORK_PASSWORD=holzhaus7occhio
-      - MQTT_BROKER=wyse.fritz.box
-      - MQTT_PORT=1883
-      - MQTT_BASE_TOPIC=casambi
+      - CASAMBI_NETWORK_PASSWORD
+      - MQTT_BROKER
+      - MQTT_PORT
+      - MQTT_BASE_TOPIC
     volumes:
-      - ./casambi-mqtt/casambi-mqtt.py:/usr/src/app/casambi-mqtt.py
+      # - ./casambi-mqtt/casambi-mqtt.py:/usr/src/app/casambi-mqtt.py
       - /run/dbus:/run/dbus
 
   control-io:
