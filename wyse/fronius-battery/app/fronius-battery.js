@@ -865,7 +865,7 @@ const handleBatteryGridChargingHandler = async function() {
     }
 
     // Prognose für die Nachtstunden bis zum Beginn der PV Produktion
-    for(timeH of _.range(startH, startPvH)) {
+    for(timeH of _.range(startH, startPvH + 1)) {
       const timeHDate = dayjs(_.first(hourlyForecasts.startDate)).hour(timeH);
       let   thisHourWh = 0;
 
@@ -885,21 +885,21 @@ const handleBatteryGridChargingHandler = async function() {
 
         if(cent - nowCent < config.useGridDiffCent) {
           // Rather use grid power directly, than consume battery power
-          logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 => ` +
+          logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00        => ` +
             `       ` +
             `Use grid for ${cent}ct => batteryCent=${nowCent}ct`);
 
           useGrid = true;
         } else {
           chargeWh   += thisHourWh;
-          logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 => ` +
+          logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00        => ` +
             `       ` +
             `${_.padStart(currentWh, 4)}Wh charge ${chargeWh}Wh`);
         }
       } else {
         currentWh -= thisHourWh;
 
-        logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00 => ` +
+        logger.debug(`Forecast: ${_.padStart(timeH, 2)}:00        => ` +
           `       ` +
           `${_.padStart(currentWh, 4)}Wh`);
       }
