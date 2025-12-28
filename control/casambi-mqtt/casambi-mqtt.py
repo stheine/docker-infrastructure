@@ -12,7 +12,6 @@ import os
 import random
 import re
 import sys
-import time
 
 from CasambiBt import Casambi, discover
 from asyncio_paho import AsyncioPahoClient
@@ -45,27 +44,6 @@ logger.addHandler(handler)
 # casambiBtLogger.setLevel(logging.WARNING)
 # casambiBtLogger.addHandler(handler)
 
-def onDisconnect(client, userdata, rc):
-  logger.info("Disconnected with result code: %s", rc)
-  reconnect_count, reconnect_delay = 0, FIRST_RECONNECT_DELAY
-  while reconnect_count < MAX_RECONNECT_COUNT:
-    logger.info("Reconnecting in %d seconds...", reconnect_delay)
-    time.sleep(reconnect_delay)
-
-    try:
-      client.reconnect()
-      logger.info("Reconnected successfully!")
-      return
-    except Exception as err:
-      logger.error("%s. Reconnect failed. Retrying...", err)
-
-    reconnect_delay *= RECONNECT_RATE
-    reconnect_delay = min(reconnect_delay, MAX_RECONNECT_DELAY)
-    reconnect_count += 1
-
-  logger.info("Reconnect failed after %s attempts. Exiting...", reconnect_count)
-
-
 def find(units, name):
   for unit in units:
     if unit.name == name:
@@ -82,10 +60,16 @@ async def main():
     logger.info("Connected to MQTT Broker!")
 
     while casambi == None:
+      logger.info("Waiting for connection to casambi network.")
+
       await asyncio.sleep(1)
 
     # -----------------------------------------------------------------
     # Subscribe to MQTT messages for each of the Casambi units
+    logger.info("Connected to casambi network. Subscribing.")
+
+    await asyncio.sleep(1)
+
     for unit in casambi.units:
       topic = f"{baseTopic}/{casambi.networkName}/{unit.name}/cmnd"
 
@@ -97,22 +81,25 @@ async def main():
 
   mqttClient.asyncio_listeners.add_on_connect(onConnect)
 
+  # mqttClient.username_pw_set(mqttUsername, mqttPassword)
   await mqttClient.asyncio_connect(broker, port)
 
   # -----------------------------------------------------------------
   # Discover networks
-  logger.debug("Searching Casambi network(s)...")
+  logger.info("Searching Casambi network(s)...")
   networks = await discover()
 
   if len(networks) == 0:
-    logger.error(f"network found")
+    logger.error(f"no network found")
 
     exit()
   elif len(networks) == 1:
     network = networks[0]
+
+    logger.info(f"one network found {network.address} {network.name}")
   else:
     for i, d in enumerate(networks):
-      print(f"[{i}]\t{d.address}")
+      print(f"[{i}]\t{d.address} {d.name}")
 
     selection = int(input("Select network: "))
 
@@ -133,7 +120,7 @@ async def main():
     # Handler for Casambi unit state change, publishing the new state to MQTT
     def unitChangedHandler(unit):
       logger.info(f"Unit change: {unit.name}, on={unit._on}, dimmer={unit._state.dimmer} vertical={unit._state.vertical} temperature={unit._state.temperature}") # TODO debug
-    
+
       msg = {
         "on":          unit._on,
         "online":      unit._online,
@@ -147,9 +134,9 @@ async def main():
         "xy":          unit._state.xy,
       }
       topic = f"{baseTopic}/{casambi.networkName}/{unit.name}/state"
-    
+
       result = mqttClient.publish(topic, json.dumps(msg), qos=0, retain=True)
-    
+
       status = result[0]
       if status != 0:
         logger.error(f"Failed to send message to topic {topic}")
@@ -161,7 +148,7 @@ async def main():
     # -----------------------------------------------------------------
     # Handler for MQTT messages
     async def onMessageAsync(client, userdata, msg):
-      logger.debug(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+      logger.info(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
       loop = asyncio.get_running_loop()
       set = json.loads(msg.payload.decode())
@@ -203,12 +190,16 @@ async def main():
     async def health():
       logger.info("Start health interval")
       while True:
-        mqttClient.publish('casambi/health/STATE', 'OK', qos=0, retain=False)
+        if casambi.connected:
+          mqttClient.publish('casambi/health/STATE', 'OK', qos=0, retain=False)
+        else:
+          logger.info('Casambi network not connected')
+
         await asyncio.sleep(60)
 
     loop = asyncio.get_running_loop()
     loop.create_task(health())
-      
+
     # -----------------------------------------------------------------
     # Make the app never stop
     await asyncio.Future()
