@@ -369,13 +369,13 @@ const getChargeTime = function() {
     return {};
   }
 
-  if(vwBatterySocPct >= vwTargetSoc) {
+  if(vwBatterySocPct >= (vwTargetSocPending || vwTargetSoc)) {
     return {};
   }
 
   // logger.debug({strompreise});
 
-  const kwhToCharge = vwBatteryCapacityKwh * (vwTargetSoc - vwBatterySocPct) / 100;
+  const kwhToCharge = vwBatteryCapacityKwh * ((vwTargetSocPending || vwTargetSoc) - vwBatterySocPct) / 100;
   const hoursToCharge = Math.ceil(kwhToCharge / 10);
 
   const now           = dayjs.utc();
@@ -409,7 +409,10 @@ const getChargeTime = function() {
     dayjs(nightData[minKey + (hoursToCharge * 4)].startTime) :
     dayjs(chargeStartTime).add(1, 'hour');
 
-  logger.debug({
+  logger.debug('getChargeTime', {
+    vwBatterySocPct,
+    vwTargetSoc,
+    vwTargetSocPending,
     kwhToCharge,
     hoursToCharge,
     nightData:       _.map(nightData, data => `${data.startTime} ${data.cent}c (${data.level})`),
@@ -420,7 +423,7 @@ const getChargeTime = function() {
   return {chargeStartTime, chargeEndTime};
 };
 
-const handleNightChargingSchedule = async function() {
+const handleNightChargingSchedule = async function(force = false) {
   if(chargeMode !== 'Nachts') {
     // TODO => auch dann laden, wenn ladestand gering, und/oder schlechte vorhersage, oder winter
     // logger.debug(`handleNightChargingSchedule, skip for chargeMode=${chargeMode}`);
@@ -429,12 +432,20 @@ const handleNightChargingSchedule = async function() {
   }
 
   if(chargeStartTimeout && chargeEndTimeout) {
-    // logger.debug(`handleNightChargingSchedule, already scheduled`);
+    if(force) {
+      clearTimeout(chargeEndTimeout);
+      chargeEndTimeout = undefined;
 
-    return;
+      clearTimeout(chargeStartTimeout);
+      chargeStartTimeout = undefined;
+    } else {
+      // logger.debug(`handleNightChargingSchedule, already scheduled`);
+
+      return;
+    }
   }
 
-  if(vwBatterySocPct >= vwTargetSoc) {
+  if(vwBatterySocPct >= (vwTargetSocPending || vwTargetSoc)) {
     // logger.debug(`handleNightChargingSchedule, already charged`);
 
     return;
@@ -613,7 +624,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                   await stopCharging();
                 }
 
-                await handleNightChargingSchedule();
+                await handleNightChargingSchedule(true);
                 break;
               }
 
@@ -683,6 +694,8 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           } else {
             vwTargetSocPending = null;
           }
+
+          await handleNightChargingSchedule(true);
           break;
 
         default:
