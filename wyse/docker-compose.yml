@@ -3,6 +3,7 @@
 #    80 nginx (http)           http://192.168.6.5/           Freigabe in FritzBox
 #   443 nginx (https)          https://192.168.6.5/          Freigabe in FritzBox
 #   993 dovecot                imap                          Freigabe in FritzBox
+#  1881 zigbee2mqtt            http://192.168.6.5:1881/
 #  1883 mosquitto-websockets   mqtt
 #  2283 immich                 http://192.168.6.5:2283/
 ###  2342 photoprism             http://192.168.6.5:2342/
@@ -479,6 +480,13 @@ volumes:
 ##      type: none
 ##      device: /mnt/qnap/linux/data/www_auth
 ##      o: bind
+
+  zigbee2mqtt:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/zigbee2mqtt
+      o: bind
 
 networks:
   bridge:
@@ -1297,3 +1305,18 @@ services:
       WATCHTOWER_LABEL_ENABLE: 1
       WATCHTOWER_NOTIFICATIONS: shoutrrr
       WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
+
+  zigbee2mqtt:
+    restart: always
+    image: koenkk/zigbee2mqtt:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    # build: zigbee2mqtt
+    ports:
+      - 1881:1881
+    volumes:
+      - zigbee2mqtt:/app/data
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    environment:
+      - TZ=Europe/Amsterdam
