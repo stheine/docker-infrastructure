@@ -56,6 +56,7 @@ async def main():
 
   # -----------------------------------------------------------------
   # MQTT connect
+  # Subscribe to MQTT messages for each of the Casambi units
   async def onConnect(mqttClient, userdata, message, four):
     logger.info("Connected to MQTT Broker!")
 
@@ -64,11 +65,9 @@ async def main():
 
       await asyncio.sleep(1)
 
-    # -----------------------------------------------------------------
-    # Subscribe to MQTT messages for each of the Casambi units
-    logger.info("Connected to casambi network. Subscribing.")
-
     await asyncio.sleep(1)
+
+    logger.info(f"Connected to casambi network. Subscribing to {len(casambi.units)} units.")
 
     for unit in casambi.units:
       topic = f"{baseTopic}/{casambi.networkName}/{unit.name}/cmnd"
@@ -194,6 +193,11 @@ async def main():
           mqttClient.publish('casambi/health/STATE', 'OK', qos=0, retain=False)
         else:
           logger.info('Casambi network not connected')
+
+          await casambi.connect(network, networkPassword)
+
+          if casambi.connected:
+            logger.info(f"Re-connected to network: {casambi.networkName}")
 
         await asyncio.sleep(60)
 
