@@ -16,13 +16,6 @@ volumes:
       device: /var/opt/pihole
       o: bind
 
-  zigbee2mqtt:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/qnap_linux/data/zigbee2mqtt
-      o: bind
-
 services:
   casambi-mqtt:
     restart: always
@@ -122,18 +115,3 @@ services:
       WATCHTOWER_LABEL_ENABLE: 1
       WATCHTOWER_NOTIFICATIONS: shoutrrr
       WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
-
-  zigbee2mqtt:
-    restart: always
-    image: koenkk/zigbee2mqtt:latest
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    # build: zigbee2mqtt
-    ports:
-      - 1881:1881
-    volumes:
-      - zigbee2mqtt:/app/data
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
-    environment:
-      - TZ=Europe/Amsterdam
