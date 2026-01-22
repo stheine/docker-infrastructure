@@ -1,4 +1,4 @@
-FROM node:18-bullseye
+FROM node:24-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -39,9 +39,12 @@ WORKDIR /source
 ARG PIGPIO_VERSION=79
 RUN \
   apt-get install -y \
+    g++ \
     gcc \
     make \
-    musl-dev && \
+    musl-dev \
+    python3 \
+    python3-distutils
   wget https://github.com/joan2937/pigpio/archive/v$PIGPIO_VERSION.zip && \
   unzip v$PIGPIO_VERSION && \
   cd pigpio-$PIGPIO_VERSION && \
