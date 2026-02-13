@@ -13,7 +13,6 @@ docker compose logs \
   mqtt-solcast \
   mqtt-strom \
   mqtt-vito \
-  mqtt-volumio \
   mqtt-wetter \
   muell \
   noop \
