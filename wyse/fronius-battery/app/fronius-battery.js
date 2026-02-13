@@ -139,8 +139,14 @@ const checkSoftwareVersion = async() => {
   // logger.info(`--------------------- Cron SW Version ----------------------`);
 
   try {
-    const runningVersion = await inverter.readRegister('Vr');
     const latestVersion  = await getLatestVersion();
+
+    if(latestVersion === 'unknown') {
+      return;
+    }
+
+    const runningVersion = await inverter.readRegister('Vr');
+
     // eslint-disable-next-line max-len
     const url = 'https://www.fronius.com/de-de/germany/download-center#!/searchconfig/%7B%22countryPath%22%3A%22%2Fsitecore%2Fcontent%2FGermany%22%2C%22language%22%3A%22de-DE%22%2C%22searchword%22%3A%22gen24%22%2C%22selectedCountry%22%3A%22Germany%22%2C%22solarenergy%22%3A%7B%22facets%22%3A%5B%7B%22id%22%3A%22Firmware%22%2C%22categoryId%22%3A%22DocumentType%22%7D%5D%7D%7D';
 
