@@ -8,6 +8,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import os                    from 'node:os';
 
 import _             from 'lodash';
+import axios         from 'axios';
 import check         from 'check-types-2';
 import {Cron}        from 'croner';
 import dayjs         from 'dayjs';
@@ -125,6 +126,8 @@ logger.info(`Startup --------------------------------------------------`);
 const config = await configFile.read();
 const status = await statusFile.read();
 
+const {energyForecastAccessToken, homeId, tibberAccessToken, vwId} = config;
+
 let {gesamtEinspeisung, verbrauchHaus} = status;
 
 gesamtEinspeisung  = gesamtEinspeisung || 0;
@@ -136,15 +139,60 @@ verbrauchHaus      = verbrauchHaus     || 0;
 const tibberQueryUrl = 'https://api.tibber.com/v1-beta/gql';
 const tibberConfig = {
   apiEndpoint: {
-    apiKey:   config.tibberAccessToken,
+    apiKey:   tibberAccessToken,
     queryUrl: tibberQueryUrl,
   },
-  homeId:    config.homeId, // {viewer{homes{id}}}
+  homeId, // {viewer{homes{id}}}
 };
 const tibberQuery = new TibberQuery(tibberConfig);
 
 // #########################################################################
+const getForecast = async function() {
+  let thisHealth;
+  let retry = 10;
+
+  do {
+    try {
+      const result = await axios.get(`https://www.energyforecast.de/api/v1/predictions/next_48_hours?` +
+        `&fixed_cost_cent=0` +
+        `&market_zone=DE-LU` +
+        `&resolution=QUARTER_HOURLY` +
+        `&vat=0` +
+        `&token=${energyForecastAccessToken}`);
+
+      check.assert.equal(result.status, 200, `Unexpected result ${result.status} ${result.statusText}`);
+
+      const forecast = _.map(result.data, data => ({
+        startTime: new Date(data.start),
+        cent:      _.round(data.price * 100, 2),
+        origin:    data.price_origin,
+      }));
+
+      await mqttClient.publishAsync('strom/tele/forecast', JSON.stringify(forecast), {retain: true});
+
+      logger.trace(`Refreshed forecast`);
+
+      retry      = 0;
+      thisHealth = null;
+    } catch(err) {
+      logger.error('getForecast() failed', err.message);
+
+      thisHealth = `FAIL: ${err.message}`;
+      health     = thisHealth;
+
+      if(retry) {
+        retry--;
+
+        await delay(ms('5m'));
+      }
+    }
+  } while(retry && health);
+
+  return thisHealth;
+};
+
 const getStrompreise = async function() {
+  let thisHealth;
   let retry = 10;
 
   do {
@@ -177,12 +225,13 @@ const getStrompreise = async function() {
 
       logger.trace(`Refreshed strompreise`);
 
-      health = 'OK';
-      retry  = 0;
+      retry      = 0;
+      thisHealth = null;
     } catch(err) {
       logger.error('getStrompreise() failed', err.message);
 
-      health = `FAIL: ${err.message}`;
+      thisHealth = `FAIL: ${err.message}`;
+      health     = thisHealth;
 
       if(retry) {
         retry--;
@@ -190,7 +239,9 @@ const getStrompreise = async function() {
         await delay(ms('5m'));
       }
     }
-  } while(retry && health !== 'OK');
+  } while(retry && health);
+
+  return thisHealth;
 };
 
 // #########################################################################
@@ -270,7 +321,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           return;
         }
 
-        if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
+        if(message.SML.Leistung < -10000 || message.SML.Leistung > 20000) {
           logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`);
           zaehlerLeistung = null;
 
@@ -613,12 +664,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
-      case `carconnectivity/garage/${config.vwId}/drives/primary/level`: {
+      case `carconnectivity/garage/${vwId}/drives/primary/level`: {
         vwBatterySocPct = messageRaw;
         break;
       }
 
-      case `carconnectivity/garage/${config.vwId}/charging/settings/target_level`: {
+      case `carconnectivity/garage/${vwId}/charging/settings/target_level`: {
         vwTargetSocPct = messageRaw;
         break;
       }
@@ -647,8 +698,8 @@ await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/SetOption31', '1');
 await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
 await mqttClient.subscribeAsync('auto/tele/STATUS');
-await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
-await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/drives/primary/level`);
+await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/forecasts');
@@ -665,13 +716,17 @@ while(_.isNull(vitoBetriebsart)) {
 await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
 await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
 
-//                    s m h     d m wd
+//                    s m h              d m wd
 const job = new Cron('0 5 14,16,18,20,22 * * *', {timezone: 'Europe/Berlin'}, async() => {
-  await getStrompreise();
+  const health1 = await getForecast();
+  const health2 = await getStrompreise();
+
+  health = health1 || health2 || 'OK';
 });
 
 _.noop('Cron job started', job);
 
+await getForecast();
 await getStrompreise();
 
 healthInterval = setInterval(async() => {
