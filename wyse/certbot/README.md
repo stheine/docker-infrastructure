@@ -37,6 +37,9 @@ Neuen Domainnamen erstellen:
 
 In Zertifikat aufnehmen:
 ```
+ssh ipv4
+
+cd docker
 docker compose run --rm certbot /bin/bash -l
 cd /etc/letsencrypt/live/heine7.de/
 /usr/bin/openssl x509 -in cert.pem -text -noout | grep DNS
@@ -48,7 +51,8 @@ cd /etc/letsencrypt/live/heine7.de/
   -d immich.heine7.de \
   -d ladder.heine7.de \
   -d paperless.heine7.de \
-  -d wiki.heine7.de
+  -d wiki.heine7.de \
+  -d www.spasmodische-dysphonie.de
 # (E)xpand
 exit
 docker compose kill -s HUP dovecot

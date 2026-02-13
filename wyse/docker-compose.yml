@@ -16,6 +16,7 @@
 #  8285 vaultwarden            http://192.168.6.5:8285/ https://bitwarden.heine7.de https://bitwarden.heine7.de/admin
 #  8925 hivemq-mqtt-web-client http://192.168.6.5:8925/
 #  9001 mosquitto-websockets   websockets
+#  9673 wordpress              http://192.168.6.5:9673/
 # 16095 uptime-kuma            http://192.168.6.5:16095/
 # 26687 control-ui             http://192.168.6.5:26687/
 # 31038 watchdog               http://192.168.6.5:31038/
@@ -472,6 +473,20 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/linux/data/www
+      o: bind
+
+  wordpress:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/wordpress
+      o: bind
+
+  wordpress-database:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/wordpress-database
       o: bind
 
 ##  www_auth:
@@ -1040,6 +1055,7 @@ services:
       - nextcloud-aio-mastercontainer
       - paperless
       - vaultwarden
+      - wordpress
 
   noop:
     restart: always
@@ -1305,6 +1321,30 @@ services:
       WATCHTOWER_LABEL_ENABLE: 1
       WATCHTOWER_NOTIFICATIONS: shoutrrr
       WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
+
+  wordpress:
+    image: wordpress
+    restart: always
+    ports:
+      - 9673:80
+    environment:
+      WORDPRESS_DB_HOST: wordpress-database
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_DATABASE}
+    volumes:
+      - wordpress:/var/www/html
+
+  wordpress-database:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${WORDPRESS_DB_DATABASE}
+      MYSQL_USER: ${WORDPRESS_DB_USER}
+      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    volumes:
+      - wordpress-database:/var/lib/mysql
 
   zigbee2mqtt:
     restart: always
