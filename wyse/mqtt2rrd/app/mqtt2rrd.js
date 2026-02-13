@@ -506,21 +506,6 @@ process.on('SIGTERM', () => stopProcess());
           break;
         }
 
-        case 'Wohnzimmer/tele/SENSOR': {
-          // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd';
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              humidity:       message.humidity,
-              temperatureDht: message.temperature,
-            },
-          };
-          break;
-        }
-
         case 'Zigbee/LuftSensor Büro': {
           if(message.humidity && message.temperature) {
             // logger.info(topic, message);
@@ -532,6 +517,23 @@ process.on('SIGTERM', () => stopProcess());
               ...{
                 bueroHumidity:    message.humidity,
                 bueroTemperature: message.temperature,
+              },
+            };
+          }
+          break;
+        }
+
+        case 'Zigbee/LuftSensor Wohnzimmer': {
+          if(message.humidity && message.temperature) {
+            // logger.info(topic, message);
+            const file = '/var/jalousie/jalousie.rrd';
+
+            files.push(file);
+            update[file] = {
+              ...update[file],
+              ...{
+                humidity:       message.humidity,
+                temperatureDht: message.temperature,
               },
             };
           }
@@ -579,15 +581,14 @@ process.on('SIGTERM', () => stopProcess());
   await mqttClient.subscribeAsync('strom/tele/SENSOR');
   await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
   await mqttClient.subscribeAsync('tasmota/espco2/tele/SENSOR');
-  await mqttClient.subscribeAsync('tasmota/espco2klein/tele/SENSOR');
   await mqttClient.subscribeAsync('tasmota/espfeinstaub/tele/SENSOR');
   await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
   await mqttClient.subscribeAsync('tasmota/heizstab/tele/STATE');
   await mqttClient.subscribeAsync('vito/tele/SENSOR');
   await mqttClient.subscribeAsync('Wind/tele/SENSOR');
-  await mqttClient.subscribeAsync('Wohnzimmer/tele/SENSOR');
   await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
   await mqttClient.subscribeAsync('Zigbee/LuftSensor Büro');
+  await mqttClient.subscribeAsync('Zigbee/LuftSensor Wohnzimmer');
   await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW');
   await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km');
   await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct');

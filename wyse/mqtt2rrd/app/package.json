@@ -10,13 +10,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@stheine/helpers": "1.1.2",
+    "@stheine/helpers": "1.2.1",
     "async-lock": "1.4.1",
-    "dayjs": "1.11.13",
-    "execa": "9.5.1",
+    "dayjs": "1.11.19",
+    "execa": "9.6.1",
     "graphviz": "0.0.9",
-    "lodash": "4.17.21",
-    "mqtt": "5.10.2",
+    "lodash": "4.17.23",
+    "mqtt": "5.15.0",
     "ms": "2.1.3"
   }
 }

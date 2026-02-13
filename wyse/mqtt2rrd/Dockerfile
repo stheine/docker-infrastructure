@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
@@ -45,7 +45,7 @@ RUN \
     libpng-dev \
     libxml2-dev \
     make
-ARG RRDTOOL_VERSION=1.8.0
+ARG RRDTOOL_VERSION=1.9.0
 RUN \
   wget https://github.com/oetiker/rrdtool-1.x/releases/download/v$RRDTOOL_VERSION/rrdtool-$RRDTOOL_VERSION.tar.gz && \
   tar xf rrdtool-$RRDTOOL_VERSION.tar.gz && \
@@ -97,6 +97,8 @@ WORKDIR /app
 
 # RUN \
 #   npm install
+
+ENV RRD_LOCKING block
 
 CMD ["/usr/local/bin/node", "/app/mqtt2rrd.js"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]
