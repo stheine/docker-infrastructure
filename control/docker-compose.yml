@@ -38,9 +38,9 @@ services:
   pihole:
     restart: always
     image: pihole/pihole:latest
-    hostname: pi-control-pihole
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    hostname: pi-control-pihole
     ports:
       - "53:53/tcp"
       - "53:53/udp"
@@ -55,6 +55,8 @@ services:
   portainer-agent:
     restart: always
     image: portainer/agent
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     hostname: pi-control-portainer-agent
     ports:
       - 8009:9001
