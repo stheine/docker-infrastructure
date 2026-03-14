@@ -192,12 +192,11 @@ async def main():
         if casambi.connected:
           mqttClient.publish('casambi/health/STATE', 'OK', qos=0, retain=False)
         else:
-          logger.info('Casambi network not connected')
+          logger.info('Casambi network not connected, restarting')
 
-          await casambi.connect(network, networkPassword)
+          await asyncio.sleep(30)
 
-          if casambi.connected:
-            logger.info(f"Re-connected to network: {casambi.networkName}")
+          sys.exit('Casambi network not connected, restarting')
 
         await asyncio.sleep(60)
 
