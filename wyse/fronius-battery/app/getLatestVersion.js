@@ -1,10 +1,12 @@
+/* eslint-disable prefer-const */
+
 // import _     from 'lodash';
-// import axios from 'axios';
+import axios from 'axios';
 // import check from 'check-types-2';
 // import {parseSetCookie} from 'set-cookie-parser';
 
 export default async function getLatestVersion() {
-//  let version;
+  let version;
 
 // 1) working until January 2024
 // const url = 'https://www.fronius.com/de-de/germany/solarenergie/installateure-partner/' +
@@ -38,15 +40,16 @@ export default async function getLatestVersion() {
 //
 //  return firmware.title.replace('Fronius Update GEN24 Tauro Verto ', '');
 
-// 4) July 2025
-//  const url = 'https://www.fronius.com/en/solar-energy/installers-partners/' +
-//    'service-support/tech-support/software-and-updates/symo-gen24plus-update';
-//
-//  const response = await axios.get(url);
-//
-//  const version = response.data
-//    .replace(/^.*Firmware Fronius Update GEN24 Tauro Verto /, '')
-//    .replace(/".*$/, '');
+  // 4) July 2025
+  const url = 'https://www.fronius.com/en/solar-energy/installers-partners/' +
+    'service-support/tech-support/software-and-updates/symo-gen24plus-update';
+
+  const response = await axios.get(url);
+
+  version = response.data
+    .replace(/^.*Firmware Fronius Update GEN24 Tauro Verto /, '')
+    .replace(/".*$/, '')
+    .replace(/[ ,A-Z]+/, '');
 
 
 //  // 5) February 2026
@@ -132,7 +135,7 @@ export default async function getLatestVersion() {
 //  // Return
 //  check.assert.match(version, /^\d+\.\d+/);
 
-  const version = 'unknown';
+//  const version = 'unknown';
 
   return version;
 }

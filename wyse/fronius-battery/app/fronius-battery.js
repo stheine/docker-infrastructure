@@ -864,10 +864,17 @@ const handleBatteryGridChargingHandler = async function() {
     currentWh -= 1000; // 1000 Mindestreserve der Batterie;
 
     if(startH > startPvH) {
-      logger.debug('handleBatteryGridChargingHandler startH > startPvH', {startH, startPvH, nowUtc});
+      logger.debug('handleBatteryGridChargingHandler startH > startPvH', {
+        startH,
+        startPvH,
+        nowUtc,
+        firstForecast: _.first(hourlyForecasts),
+      });
 
       startH = startPvH;
       timeH  = startPvH;
+
+      return;
     }
 
     // Prognose für die Nachtstunden bis zum Beginn der PV Produktion
