@@ -543,7 +543,7 @@ services:
     build: backup
     volumes:
       - ./backup/backup.sh:/backup.sh:ro
-      - ./docker-compose.yml:/docker/docker-compose.yml:ro
+      - ./compose.yml:/docker/compose.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - backup-rclone:/root/.config/rclone
       - data:/data:ro
@@ -1013,6 +1013,8 @@ services:
 
   nextcloud-aio-mastercontainer:
     image: nextcloud/all-in-one:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     init: true
     restart: always
     container_name: nextcloud-aio-mastercontainer
@@ -1255,9 +1257,10 @@ services:
   uptime-kuma:
     restart: always
     # build: uptime-kuma
-    image: louislam/uptime-kuma:2
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
+# Note, 2.2.0 seems broken
+    image: louislam/uptime-kuma:2.1.1
+#    labels:
+#      - "com.centurylinklabs.watchtower.enable=true"
     hostname: wyse-uptime-kuma
     networks:
       - ip6net
@@ -1317,6 +1320,8 @@ services:
 
   wordpress:
     image: wordpress
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     restart: always
     # ports:
     #   - 9673:80
@@ -1332,6 +1337,8 @@ services:
 
   wordpress-database:
     image: mysql:8.0
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     restart: always
     environment:
       MYSQL_DATABASE: ${WORDPRESS_DB_DATABASE}
