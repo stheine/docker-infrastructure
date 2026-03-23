@@ -31,7 +31,19 @@ function backup_dir () {
   rm "${tarFile}" \
     || { log "Failed to remove '${tarFile}"; return 1; }
 
+  if [ $(ls -1 "${localDir}" | grep -v 'gpg$' | wc -l) -gt 0 ] ; then
+    log "Not all files encrypted: $(ls -1 ${localDir})"
+    return 1
+  fi
+
   log "Backup encrypted: ${tarFile}"
+
+  log "Cloud Copy start for ${dir}"
+
+  rclone copy "${localDir}/" "${remoteDir}/" \
+    || { log "Failed to copy backups to ${remoteDir}"; return 1; }
+
+  log "Cloud Copy finished for ${dir}"
 
 #  find "${localDir}" -type f -mtime +3 -exec rm {} \; \
 #    || { log "Failed to remove old backups"; return 1; }
@@ -48,13 +60,6 @@ function backup_dir () {
 
   rclone delete --files-from-raw /tmp/files_to_delete "${remoteDir}" \
     || { log "Failed to delete old files from ${remoteDir}"; return 1; }
-
-  log "Cloud Copy start for ${dir}"
-
-  rclone copy "${localDir}" "${remoteDir}" \
-    || { log "Failed to copy backups to ${remoteDir}"; return 1; }
-
-  log "Cloud Copy finished for ${dir}"
 
   rm -rf ${localDir} \
     || { log "Failed to remove local backup ${dir}"; return 1; }

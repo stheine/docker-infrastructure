@@ -1,4 +1,4 @@
-Backup Strategie
+# Backup Strategie
 
 - a300
   - BackInTime, /mnt/qnap_Backup/a300
@@ -58,3 +58,11 @@ rclone einrichten fuer 'pcloudEncrypted'
 - `n` no advanced config
 - `y` OK
 - `q` quit
+
+
+# Restore
+
+- open https://my.pcloud.com
+- navigate to /backup/<folder>
+- download the file to restore
+- `gpg --batch --decrypt --no-symkey-cache --passphrase-file /mnt/qnap/linux/data/backup/pass <file.gpg> > <file>`
