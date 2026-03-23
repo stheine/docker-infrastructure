@@ -177,7 +177,7 @@ const getForecast = async function() {
     } catch(err) {
       logger.error('getForecast() failed', err.message);
 
-      thisHealth = `FAIL: ${err.message}`;
+      thisHealth = `FAIL(forecast): ${err.message}`;
       health     = thisHealth;
 
       if(retry) {
@@ -230,7 +230,7 @@ const getStrompreise = async function() {
     } catch(err) {
       logger.error('getStrompreise() failed', err.message);
 
-      thisHealth = `FAIL: ${err.message}`;
+      thisHealth = `FAIL(strompreise): ${err.message}`;
       health     = thisHealth;
 
       if(retry) {
