@@ -8,6 +8,7 @@ import os            from 'node:os';
 import _             from 'lodash';
 import {CallMonitor} from 'fritz-callmonitor';
 import check         from 'check-types-2';
+import {Cron}        from 'croner';
 import {execa}       from 'execa';
 import Fritzbox      from 'fritzbox';
 import {logger}      from '@stheine/helpers';
@@ -179,134 +180,151 @@ await fritzbox.initTR064Device();
 
 phonebook = await refresh({fritzbox, logger});
 phonebookInterval = setInterval(async() => {
-  const refreshResult = await refresh({fritzbox, logger});
+  try {
+    const refreshResult = await refresh({fritzbox, logger});
 
-  if(refreshResult) {
-    phonebook = refreshResult;
+    if(refreshResult) {
+      phonebook = refreshResult;
+    }
+  } catch(err) {
+    logger.error(`Failed to refresh phonebook: ${err.message}`);
   }
 }, ms('1 hour'));
 
 stateInterval = setInterval(async() => {
-  let   service;
-  let   data;
-  const tele = {};
+  try {
+    let   service;
+    let   data;
+    const tele = {};
 
-  service = fritzbox.services['urn:dslforum-org:service:DeviceInfo:1'];
-  data    = await service.actions.GetInfo();
-//    logger.info('DeviceInfo.getInfo', data);
-  tele.upTime = data.NewUpTime;
+    service = fritzbox.services['urn:dslforum-org:service:DeviceInfo:1'];
+    data    = await service.actions.GetInfo();
+  //    logger.info('DeviceInfo.getInfo', data);
+    tele.upTime = data.NewUpTime;
 
-  service = fritzbox.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
-  data    = await service.actions.GetCommonLinkProperties();
-//    logger.info('WANCommonInterfaceConfig.GetCommonLinkProperties', data);
-// ???   tele.upstreamMaxBitRate   = data.NewLayer1UpstreamMaxBitRate;
-// ???   tele.downstreamMaxBitRate = data.NewLayer1DownstreamMaxBitRate;
-  tele.physicalLinkStatus   = data.NewPhysicalLinkStatus;
+    service = fritzbox.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
+    data    = await service.actions.GetCommonLinkProperties();
+  //    logger.info('WANCommonInterfaceConfig.GetCommonLinkProperties', data);
+  // ???   tele.upstreamMaxBitRate   = data.NewLayer1UpstreamMaxBitRate;
+  // ???   tele.downstreamMaxBitRate = data.NewLayer1DownstreamMaxBitRate;
+    tele.physicalLinkStatus   = data.NewPhysicalLinkStatus;
 
-//    data = await service.actions.GetTotalBytesReceived();
-//    logger.info('WANCommonInterfaceConfig.', data);
+  //    data = await service.actions.GetTotalBytesReceived();
+  //    logger.info('WANCommonInterfaceConfig.', data);
 
-  data = await service.actions['X_AVM-DE_GetOnlineMonitor']({NewSyncGroupIndex: 0});
-  // Max:
-  //   downstream:         Newmax_ds: '28160000',
-  //   upstream:           Newmax_us: '1312000',
-  // Recent:
-  // ! downstream:         Newds_current_bps:    '11733,327046,1384904,...',
-  //   downstream_media:   Newmc_current_bps:    '    0,     0,      0,...',
-  // ! upstream:           Newus_current_bps:    '12184, 18441,  41371,...',
-  //   upstream_realtime:  Newprio_realtime_bps: '10933, 10945,  10933,...',
-  //   upstream_high:      Newprio_high_bps:     '    0,  6039,  29313,...',
-  //   upstream_normal:    Newprio_default_bps:  ' 1251,  1457,   1125,...',
-  //   upstream_low:       Newprio_low_bps:      '    0,     0,      0,...',
-//    logger.info('WANCommonInterfaceConfig.X_AVM-DE_GetOnlineMonitor', data);
-  tele.downstreamMaxBitRate = data.Newmax_ds;
-  tele.upstreamMaxBitRate   = data.Newmax_us;
-  tele.downstreamCurrent    = _.max(data.Newds_current_bps.split(','));
-  tele.upstreamCurrent      = _.max(data.Newus_current_bps.split(','));
+    data = await service.actions['X_AVM-DE_GetOnlineMonitor']({NewSyncGroupIndex: 0});
+    // Max:
+    //   downstream:         Newmax_ds: '28160000',
+    //   upstream:           Newmax_us: '1312000',
+    // Recent:
+    // ! downstream:         Newds_current_bps:    '11733,327046,1384904,...',
+    //   downstream_media:   Newmc_current_bps:    '    0,     0,      0,...',
+    // ! upstream:           Newus_current_bps:    '12184, 18441,  41371,...',
+    //   upstream_realtime:  Newprio_realtime_bps: '10933, 10945,  10933,...',
+    //   upstream_high:      Newprio_high_bps:     '    0,  6039,  29313,...',
+    //   upstream_normal:    Newprio_default_bps:  ' 1251,  1457,   1125,...',
+    //   upstream_low:       Newprio_low_bps:      '    0,     0,      0,...',
+  //    logger.info('WANCommonInterfaceConfig.X_AVM-DE_GetOnlineMonitor', data);
+    tele.downstreamMaxBitRate = data.Newmax_ds;
+    tele.upstreamMaxBitRate   = data.Newmax_us;
+    tele.downstreamCurrent    = _.max(data.Newds_current_bps.split(','));
+    tele.upstreamCurrent      = _.max(data.Newus_current_bps.split(','));
 
-//    service = fritzbox.services['urn:dslforum-org:service:WANIPConnection:1'];
-//    data = await service.actions.GetInfo();
-//    logger.info('WANIPConnection.GetInfo', data);
-//    data = await service.actions.GetStatusInfo();
-//    logger.info('WANIPConnection.GetStatusInfo', data);
+  //    service = fritzbox.services['urn:dslforum-org:service:WANIPConnection:1'];
+  //    data = await service.actions.GetInfo();
+  //    logger.info('WANIPConnection.GetInfo', data);
+  //    data = await service.actions.GetStatusInfo();
+  //    logger.info('WANIPConnection.GetStatusInfo', data);
 
-  service = fritzbox.services['urn:dslforum-org:service:LANEthernetInterfaceConfig:1'];
-//    data = await service.actions.GetInfo();
-//    logger.info('LANEthernetInterfaceConfig.GetInfo', data);
-//    data = await service.actions.GetStatistics();
-//    logger.info('LANEthernetInterfaceConfig.GetStatistics', data);
+    service = fritzbox.services['urn:dslforum-org:service:LANEthernetInterfaceConfig:1'];
+  //    data = await service.actions.GetInfo();
+  //    logger.info('LANEthernetInterfaceConfig.GetInfo', data);
+  //    data = await service.actions.GetStatistics();
+  //    logger.info('LANEthernetInterfaceConfig.GetStatistics', data);
 
-//    logger.info('MQTT publish', tele);
+  //    logger.info('MQTT publish', tele);
 
-  if(mqttClient) {
-    await mqttClient.publishAsync(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
+    if(mqttClient) {
+      await mqttClient.publishAsync(`FritzBox/tele/SENSOR`, JSON.stringify(tele));
+    }
+  } catch(err) {
+    logger.error(`Failed to read Fritzbox statistics: ${err.message}`);
   }
 }, ms('20 seconds'));
 
 // #########################################################################
 // Speedtest
 const speedtest = async function() {
-  let download;
-  let error;
-  let upload;
-  let retries = 6;
+  try {
+    let download;
+    let error;
+    let upload;
+    let retries = 6;
 
-  do {
-    try {
-      const {stdout} = await execa('/usr/bin/speedtest', [
-        // '--host', 'voiptest.starface.de',
-        '--server-id', '55133',
-        '--format', 'json-pretty',
-        '--accept-license',
-        '--accept-gdpr',
-      ]);
+    do {
+      try {
+        const {stdout} = await execa('/usr/bin/speedtest', [
+          // '--host', 'voiptest.starface.de',
+          '--server-id', '55133',
+          '--format', 'json-pretty',
+          '--accept-license',
+          '--accept-gdpr',
+        ]);
 
-      // logger.debug(stdout);
-      const results = JSON.parse(stdout);
+        // logger.debug(stdout);
+        const results = JSON.parse(stdout);
 
-      check.assert.nonEmptyObject(results, `Unexpected ${results}`);
-      check.assert.nonEmptyObject(results.download, `Unexpected ${results}`);
-      check.assert.number(results.download.bandwidth, `Unexpected ${results}`);
-      check.assert.nonEmptyObject(results.upload, `Unexpected ${results}`);
-      check.assert.number(results.upload.bandwidth, `Unexpected ${results}`);
+        check.assert.nonEmptyObject(results, `Unexpected ${results}`);
+        check.assert.nonEmptyObject(results.download, `Unexpected ${results}`);
+        check.assert.number(results.download.bandwidth, `Unexpected ${results}`);
+        check.assert.nonEmptyObject(results.upload, `Unexpected ${results}`);
+        check.assert.number(results.upload.bandwidth, `Unexpected ${results}`);
 
-      download = results.download.bandwidth / 125000 * 1024 * 1024;
-      upload   = results.upload.bandwidth / 125000 * 1024 * 1024;
+        download = results.download.bandwidth / 125000 * 1024 * 1024;
+        upload   = results.upload.bandwidth / 125000 * 1024 * 1024;
 
-      logger.info('speedtest', {
-        download: _.round(download / 1024 / 1024),
-        upload:   _.round(upload   / 1024 / 1024),
-      });
+        logger.info('speedtest', {
+          download: _.round(download / 1024 / 1024),
+          upload:   _.round(upload   / 1024 / 1024),
+        });
 
-      retries = 0;
-    } catch(err) {
-      error = err.message;
+        retries = 0;
+      } catch(err) {
+        error = err.message;
 
-      logger.error(error);
+        logger.error(error);
 
-      retries--;
+        retries--;
 
-      if(retries) {
-        await delay(ms('10m'));
+        if(retries) {
+          await delay(ms('10m'));
+        }
       }
-    }
-  } while(retries && (!download || !upload));
+    } while(retries && (!download || !upload));
 
-  if(download && upload) {
-    await mqttClient.publishAsync(`FritzBox/speedtest/result`, JSON.stringify({download, upload}));
-  } else {
-    await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-      sound:   'none',
-      html:    1,
-      message: error,
-      title:   'Fritz, speedtest failed',
-    }));
+    if(download && upload) {
+      await mqttClient.publishAsync(`FritzBox/speedtest/result`, JSON.stringify({download, upload}));
+    } else {
+      await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+        sound:   'none',
+        html:    1,
+        message: error,
+        title:   'Fritz, speedtest failed',
+      }));
+    }
+  } catch(err) {
+    logger.error(`Failed to run speedtest: ${err.message}`);
   }
 };
 
-speedtestInterval = setInterval(speedtest, ms('6 hours'));
+await speedtest();
 
-speedtest();
+//                    s  m h              d m wd
+const job = new Cron('0 15 0,4,8,12,16,20 * * *', {timezone: 'Europe/Berlin'}, async() => {
+  await speedtest();
+});
+
+_.noop('Cron job started', job);
 
 process.on('SIGHUP', () => speedtest());
 
