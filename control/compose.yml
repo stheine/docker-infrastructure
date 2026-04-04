@@ -33,7 +33,7 @@ services:
   noop:
     restart: always
     build: noop
-    hostname: wyse-noop
+    hostname: pi-control-noop
 
   pihole:
     restart: always
@@ -68,10 +68,10 @@ services:
     image: nickfedor/watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: control-watchtower
+    hostname: pi-control-watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       WATCHTOWER_LABEL_ENABLE: 1
       WATCHTOWER_NOTIFICATIONS: shoutrrr
-      WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
+      WATCHTOWER_NOTIFICATION_URL: smtp://rocky.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=rocky-watchtower&toAddresses=technik@heine7.de
