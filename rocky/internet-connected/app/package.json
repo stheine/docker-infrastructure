@@ -1,0 +1,17 @@
+{
+  "name": "internet-connected",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "internet-connected.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@stheine/helpers": "1.2.1",
+    "dns-socket": "4.2.2",
+    "mqtt": "5.13.0",
+    "ms": "2.1.3"
+  }
+}
