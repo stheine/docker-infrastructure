@@ -7,12 +7,11 @@
 #  1883 mosquitto-websockets   mqtt
 #  2283 immich                 http://192.168.6.5:2283/
 ###  2342 photoprism             http://192.168.6.5:2342/
-#  5233 ladder                 http://192.168.6.5:5233/
+#  4663 homer                  http://192.168.6.5:4663/
 #  6286 octoprint              http://192.168.6.5:6286/
-#  6398 nextcloud              http://192.168.6.5:6398/
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
-#  8080 homer                  http://192.168.6.5:8080/
+#  8080 nextcloud aio          http://192.168.6.5:8080/
 #  8285 vaultwarden            http://192.168.6.5:8285/ https://bitwarden.heine7.de https://bitwarden.heine7.de/admin
 #  8925 hivemq-mqtt-web-client http://192.168.6.5:8925/
 #  9001 mosquitto-websockets   websockets
@@ -31,6 +30,7 @@
 #  1499 unison                 unison/ rsync                 Freigabe in FritzBox
 #  3873-3883 ftpd              ftp -P 3873 heine7.de
 
+name: rocky
 
 volumes:
   auto:
@@ -489,6 +489,13 @@ volumes:
       device: /mnt/qnap/linux/data/wordpress-database
       o: bind
 
+  wordpress-export:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/wordpress-export
+      o: bind
+
 ##  www_auth:
 ##    driver: local
 ##    driver_opts:
@@ -509,12 +516,14 @@ networks:
   backend:
   ip6net:
     enable_ipv6: true
+  nextcloud-aio:
+    enable_ipv6: true
 
 services:
   apache2:
     restart: always
     build: apache2
-    hostname: wyse-apache2
+    hostname: apache2
     volumes:
       - auto:/var/auto
       - fritz:/var/fritz
@@ -532,7 +541,7 @@ services:
   auto:
     restart: always
     build: auto
-    hostname: wyse-auto
+    hostname: auto
     volumes:
       - ./auto/app:/app
       - auto:/var/auto
@@ -553,6 +562,7 @@ services:
       - media_fotos_julia:/data_rsync/Fotos-Julia:ro
       - nextcloud-backup:/data_rsync/nextcloud-backup:ro
       - paperless-export:/data_rsync/paperless-export:ro
+      - wordpress-export:/data_rsync/wordpress-export:ro
 
   carconnectivity-mqtt:
     image: tillsteinbach/carconnectivity-mqtt:latest
@@ -577,7 +587,7 @@ services:
     restart: always
     build: certbot
     stop_signal: SIGKILL
-    hostname: wyse-certbot
+    hostname: certbot
     volumes:
       - ./certbot/renew.sh:/renew.sh:ro
       - /var/run/docker.sock:/var/run/docker.sock
@@ -587,7 +597,7 @@ services:
   comics:
     restart: always
     build: comics
-    hostname: wyse-comics
+    hostname: comics
     volumes:
       - ./comics/app:/app
       - comics:/var/comics
@@ -595,7 +605,7 @@ services:
   control-ui:
     restart: always
     build: control-ui
-    hostname: wyse-control-ui
+    hostname: control-ui
     ports:
       - 26687:26687
     volumes:
@@ -605,7 +615,7 @@ services:
   delete-video:
     restart: always
     build: delete-video
-    hostname: wyse-delete-video
+    hostname: delete-video
     volumes:
       - /mnt/qnap/Sat-Rekorder:/video
       - ./delete-video/app:/app
@@ -613,7 +623,7 @@ services:
   dovecot:
     restart: always
     build: dovecot
-    hostname: wyse-dovecot
+    hostname: dovecot
     ports:
       - 993:993
     volumes:
@@ -625,7 +635,7 @@ services:
 #  ftpd:
 #    restart: always
 #    build: ftpd
-#    hostname: wyse-ftpd
+#    hostname: ftpd
 #    ports:
 #      - "3873:21"
 #      - "3874-3883:3874-3883"
@@ -637,7 +647,7 @@ services:
   fritz:
     restart: always
     build: fritz
-    hostname: wyse-fritz
+    hostname: fritz
     volumes:
       - ./fritz/app:/app
       - fritz:/var/fritz
@@ -645,7 +655,7 @@ services:
   fronius-battery:
     restart: always
     build: fronius-battery
-    hostname: wyse-fronius-battery
+    hostname: fronius-battery
     volumes:
       - ./fronius-battery/app:/app
       - fronius:/var/fronius
@@ -657,7 +667,7 @@ services:
     image: gerbera/gerbera:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-filme
+    hostname: filme
     network_mode: host
     command: gerbera --config /var/run/gerbera/59158-filme/config.xml
     volumes:
@@ -670,7 +680,7 @@ services:
 ##    image: gerbera/gerbera:latest
 ##    labels:
 ##      - "com.centurylinklabs.watchtower.enable=true"
-##    hostname: wyse-fotos
+##    hostname: fotos
 ##    network_mode: host
 ##    command: gerbera --config /var/run/gerbera/59157-fotos/config.xml
 ##    volumes:
@@ -683,7 +693,7 @@ services:
     image: gerbera/gerbera:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-kinder-filme
+    hostname: kinder-filme
     network_mode: host
     command: gerbera --config /var/run/gerbera/59155-kinder-filme/config.xml
     volumes:
@@ -696,7 +706,7 @@ services:
 ##    image: gerbera/gerbera:latest
 ##    labels:
 ##      - "com.centurylinklabs.watchtower.enable=true"
-##    hostname: wyse-kinder-cds
+##    hostname: kinder-cds
 ##    network_mode: host
 ##    command: gerbera --config /var/run/gerbera/59156-kinder-cds/config.xml
 ##    volumes:
@@ -709,7 +719,7 @@ services:
     image: gerbera/gerbera:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-gerbera-musik
+    hostname: gerbera-musik
     network_mode: host
     command: gerbera --config /var/run/gerbera/59154-musik/config.xml
     volumes:
@@ -722,7 +732,7 @@ services:
 ##    image: gerbera/gerbera:latest
 ##    labels:
 ##      - "com.centurylinklabs.watchtower.enable=true"
-##    hostname: wyse-gerbera-video
+##    hostname: gerbera-video
 ##    network_mode: host
 ##    command: gerbera --config /var/run/gerbera/59159-video/config.xml
 ##    volumes:
@@ -733,7 +743,7 @@ services:
   hivemq-mqtt-web-client:
     restart: always
     build: hivemq-mqtt-web-client
-    hostname: wyse-hivemq-mqtt-web-client
+    hostname: hivemq-mqtt-web-client
     ports:
       - 8925:80
     volumes:
@@ -744,16 +754,18 @@ services:
     image: b4bz/homer:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-homer
+    hostname: homer
+    environment:
+      - PORT=4663
     ports:
-      - 8080:8080
+      - 4663:4663
     volumes:
       - homer:/www/assets
 
   imapfilter-fachwart:
     restart: always
     build: imapfilter
-    hostname: wyse-imapfilter-fachwart
+    hostname: imapfilter-fachwart
     environment:
       - MAILBOX=fachwart
     volumes:
@@ -763,7 +775,7 @@ services:
   imapfilter-stefan:
     restart: always
     build: imapfilter
-    hostname: wyse-imapfilter-stefan
+    hostname: imapfilter-stefan
     environment:
       - MAILBOX=stefan
     volumes:
@@ -852,35 +864,9 @@ services:
   internet-connected:
     restart: always
     build: internet-connected
-    hostname: wyse-internet-connected
+    hostname: internet-connected
     volumes:
       - ./internet-connected/app:/app
-
-  ladder:
-    restart: always
-    image: ghcr.io/everywall/ladder:latest
-    container_name: ladder
-    stop_signal: SIGKILL
-    environment:
-      - PORT=5233
-      - RULESET=https://raw.githubusercontent.com/everywall/ladder-rules/main/ruleset.yaml
-      #- RULESET=/app/ruleset.yaml
-      #- ALLOWED_DOMAINS=example.com,example.org
-      #- ALLOWED_DOMAINS_RULESET=false
-      #- EXPOSE_RULESET=true
-      #- PREFORK=false
-      #- DISABLE_FORM=false
-      - FORM_PATH=/app/form.html
-      #- X_FORWARDED_FOR=66.249.66.1
-      #- USER_AGENT=Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)
-      #- USERPASS=foo:bar
-      #- LOG_URLS=true
-      #- GODEBUG=netdns=go
-    ports:
-      - 5233:5233
-    volumes:
-      - ./ladder/ruleset.yaml:/app/ruleset.yaml
-      - ./ladder/handlers/form.html:/app/form.html
 
   mediawiki:
     restart: always
@@ -904,10 +890,37 @@ services:
       MYSQL_DATABASE: my_wiki
       MYSQL_USER: wikiuser
       MYSQL_PASSWORD: example
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: restore
+      # MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     volumes:
       - mediawiki-database:/var/lib/mysql
-      # - mediawiki-database-backup:/database-restore
+    # Restore, add this volume
+      - ./mediawiki-database-backup:/database-restore
+    # Restore, execute
+    # a300:
+    # /home/stheine/stratoHiDrive/backup/mediawiki-database-backup/daily/my_wiki
+    # rsync <backup file> rocky:
+    # rocky:
+    # cd docker/mediawiki-database-backup/
+    # mv ~/<backup file> .
+    # cd ~/docker
+    # docker compose stop mediawiki-database
+    # cd ~/data/
+    # mv mediawiki-database mediawiki-database.weg
+    # mkdir mediawiki-database
+    # docker compose up -d mediawiki-database
+    # docker compose exec mediawiki-database /bin/sh
+    # cd /database-restore
+    # ls <backup file>
+    # # mariadb -u root -p
+    # gunzip < <backup file> | mariadb -u root -p my_wiki
+    # <root password from above>
+    # cleanup, remove the <backup file> from ~/docker/mediawiki-database-backup
+
+    # docker compose run --rm  --entrypoint /bin/sh mediawiki-databaseS
+    # mysqld_safe --skip-grant-tables --skip-syslog --skip-networking
+    # docker exec -it rocky-mediawiki-database-run-a6220101f146 /bin/sh
+    # mariadb -u root
 
   mediawiki-database-backup:
     restart: always
@@ -932,7 +945,7 @@ services:
     image: eclipse-mosquitto:latest
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-mosquitto
+    hostname: mosquitto
     ports:
       - 1883:1883
       - 9001:9001
@@ -944,7 +957,7 @@ services:
   mqtt2rrd:
     restart: always
     build: mqtt2rrd
-    hostname: wyse-mqtt2rrd
+    hostname: mqtt2rrd
     volumes:
       - ./mqtt2rrd/app:/app
       - auto:/var/auto
@@ -959,14 +972,14 @@ services:
   mqtt-fenster:
     restart: always
     build: mqtt-fenster
-    hostname: wyse-mqtt-fenster
+    hostname: mqtt-fenster
     volumes:
       - ./mqtt-fenster/app:/app
 
   mqtt-notify:
     restart: always
     build: mqtt-notify
-    hostname: wyse-mqtt-notify
+    hostname: mqtt-notify
     volumes:
       - ./mqtt-notify/app:/app
       - pushover:/var/pushover
@@ -974,7 +987,7 @@ services:
   mqtt-solcast:
     restart: always
     build: mqtt-solcast
-    hostname: wyse-mqtt-solcast
+    hostname: mqtt-solcast
     volumes:
       - ./mqtt-solcast/app:/app
       - solcast:/var/solcast
@@ -982,7 +995,7 @@ services:
   mqtt-strom:
     restart: always
     build: mqtt-strom
-    hostname: wyse-mqtt-strom
+    hostname: mqtt-strom
     volumes:
       - ./mqtt-strom/app:/app
       - strom:/var/strom
@@ -990,7 +1003,7 @@ services:
   mqtt-vito:
     restart: always
     build: mqtt-vito
-    hostname: wyse-mqtt-vito
+    hostname: mqtt-vito
     volumes:
       - ./mqtt-vito/app:/app
       - vito:/var/vito
@@ -998,7 +1011,7 @@ services:
   mqtt-wetter:
     restart: always
     build: mqtt-wetter
-    hostname: wyse-mqtt-wetter
+    hostname: mqtt-wetter
     volumes:
       - ./mqtt-wetter/app:/app
       - wetter:/var/wetter
@@ -1006,7 +1019,7 @@ services:
   muell:
     restart: always
     build: muell
-    hostname: wyse-muell
+    hostname: muell
     volumes:
       - muell:/data
       - ./muell/app:/app
@@ -1022,7 +1035,7 @@ services:
       - nextcloud_aio_mastercontainer:/mnt/docker-aio-config
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
-      - 6398:8080
+      - 8080:8080
       # - 11000:11000
     environment:
       - APACHE_PORT=11000
@@ -1032,7 +1045,7 @@ services:
   nginx:
     restart: always
     build: nginx
-    hostname: wyse-nginx
+    hostname: nginx
     stop_signal: SIGINT
     ports:
       - 80:80
@@ -1045,7 +1058,6 @@ services:
       - apache2
       - homer
       - immich
-      - ladder
       - mediawiki
       - nextcloud-aio-mastercontainer
       - paperless
@@ -1055,10 +1067,10 @@ services:
   noop:
     restart: always
     build: noop
-    hostname: wyse-noop
+    hostname: noop
 
   octoprint:
-    image: octoprint/octoprint
+    image: octoprint/octoprint:1.11.7
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     restart: unless-stopped
@@ -1200,7 +1212,7 @@ services:
     image: portainer/portainer-ce
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-portainer
+    hostname: portainer
     ports:
       - 8008:9000
     volumes:
@@ -1210,7 +1222,7 @@ services:
   postfix:
     restart: always
     build: postfix
-    hostname: wyse-postfix
+    hostname: postfix
     stop_signal: SIGKILL
     ports:
       - "25:25"
@@ -1220,7 +1232,7 @@ services:
   proxy:
     restart: always
     build: proxy
-    hostname: wyse-proxy
+    hostname: proxy
     ports:
       - "57699:3128"
 #    environment:
@@ -1238,7 +1250,7 @@ services:
 #  sony-pm-alternative:
 #    restart: always
 #    build: sony-pm-alternative
-#    hostname: wyse-sony-pm
+#    hostname: sony-pm
 #    network_mode: host
 #    volumes:
 #      - media_fotos_Sony:/var/lib/Sony
@@ -1246,7 +1258,7 @@ services:
 #  unison:
 #    restart: always
 #    build: unison
-#    hostname: wyse-unison
+#    hostname: unison
 #    ports:
 #      - 1499:1499
 #    volumes:
@@ -1261,7 +1273,7 @@ services:
     image: louislam/uptime-kuma:2.1.1
 #    labels:
 #      - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-uptime-kuma
+    hostname: uptime-kuma
     networks:
       - ip6net
     ports:
@@ -1300,7 +1312,7 @@ services:
   watchdog:
     restart: always
     build: watchdog
-    hostname: wyse-watchdog
+    hostname: watchdog
     volumes:
       - ./watchdog/app:/app
     ports:
@@ -1310,26 +1322,26 @@ services:
     image: nickfedor/watchtower
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
-    hostname: wyse-watchtower
+    hostname: watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       WATCHTOWER_LABEL_ENABLE: 1
       WATCHTOWER_NOTIFICATIONS: shoutrrr
-      WATCHTOWER_NOTIFICATION_URL: smtp://wyse.fritz.box:25?starttls=No&fromAddress=technik@heine7.de&fromName=wyse-watchtower&toAddresses=technik@heine7.de
+      WATCHTOWER_NOTIFICATION_URL: smtp://localhost:25?starttls=No&fromAddress=technik@heine7.de&fromName=rocky-watchtower&toAddresses=technik@heine7.de
 
   wordpress:
     image: wordpress
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     restart: always
-    # ports:
-    #   - 9673:80
+    ports:
+      - 9673:80
+      - 9674:443
     environment:
       WORDPRESS_DB_HOST: wordpress-database
-      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
-      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
-      WORDPRESS_DB_NAME: ${WORDPRESS_DB_DATABASE}
+    env_file:
+      /mnt/qnap/linux/data/wordpress-config/wordpress.env
     volumes:
       - wordpress:/var/www/html
     depends_on:
@@ -1341,12 +1353,15 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     restart: always
     environment:
-      MYSQL_DATABASE: ${WORDPRESS_DB_DATABASE}
-      MYSQL_USER: ${WORDPRESS_DB_USER}
-      MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
       MYSQL_RANDOM_ROOT_PASSWORD: '1'
+    env_file:
+      /mnt/qnap/linux/data/wordpress-config/wordpress.env
     volumes:
       - wordpress-database:/var/lib/mysql
+      - wordpress-export:/export
+    # TODO backup
+    # docker compose exec wordpress-database /bin/bash
+    # mysqldump -u wordpress -p wordpress_db --no-tablespaces > /var/lib/mysql/backup.sql
 
   zigbee2mqtt:
     restart: always
