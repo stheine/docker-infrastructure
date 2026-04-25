@@ -423,7 +423,8 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: /mnt/qnap/linux/data/uptime-kuma
+      # device: /mnt/qnap/linux/data/uptime-kuma
+      device: /home/stheine/data_local/uptime-kuma
       o: bind
 
   vaultwarden:
@@ -1301,11 +1302,9 @@ services:
 
   uptime-kuma:
     restart: always
-    # build: uptime-kuma
-# Note, 2.2.0 seems broken
-    image: louislam/uptime-kuma:2.1.1
-#    labels:
-#      - "com.centurylinklabs.watchtower.enable=true"
+    image: louislam/uptime-kuma:2
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     hostname: uptime-kuma
     networks:
       - ip6net
