@@ -547,6 +547,21 @@ services:
       - auto:/var/auto
       - /var/run/docker.sock:/var/run/docker.sock
 
+  autoheal:
+    # https://github.com/willfarrell/docker-autoheal
+    # Use the 'latest' image, since it contains more features (WEBHOOK) than the tagged version (1.2.0)
+    restart: always
+    image: willfarrell/autoheal:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - AUTOHEAL_INTERVAL=10
+      - AUTOHEAL_START_PERIOD=60
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=20
+      - AUTOHEAL_CONTAINER_LABEL=autoheal-unhealthy
+      - WEBHOOK_URL=${AUTOHEAL_WEBHOOK}
+      - WEBHOOK_JSON_KEY=message
+
   backup:
     restart: always
     build: backup
@@ -1057,6 +1072,21 @@ services:
       - letsencrypt:/etc/letsencrypt
       - letsencrypt_www:/var/letsencrypt
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--fail-early", "--silent", "--show-error", "--output", "/dev/null", "--max-time", "2",
+        "https://heine7.de",
+        "https://homer.heine7.de",
+        "https://immich.heine7.de",
+        "https://wiki.heine7.de",
+        "https://cloud.heine7.de",
+        "https://paperless.heine7.de",
+        "https://bitwarden.heine7.de",
+        "https://www.spasmodische-dysphonie.de"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    labels:
+      - "autoheal-unhealthy=true"
     depends_on:
       - apache2
       - homer
