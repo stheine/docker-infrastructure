@@ -405,9 +405,7 @@ const getChargeTime = function() {
   // logger.debug({kwhToCharge, minKey, minCost, hoursToCharge});
 
   const chargeStartTime = dayjs(nightData[minKey].startTime);
-  const chargeEndTime   = nightData[minKey + (hoursToCharge * 4)] ?
-    dayjs(nightData[minKey + (hoursToCharge * 4)].startTime) :
-    dayjs(chargeStartTime).add(1, 'hour');
+  const chargeEndTime   = dayjs(chargeStartTime).add(hoursToCharge, 'hour');
 
   logger.debug('getChargeTime', {
     vwBatterySocPct,
@@ -794,6 +792,8 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             missingUpdateHandler = setTimeout(async() => {
               missingUpdateHandler = undefined;
               logger.debug('Trigger missingUpdate handler', {vwConnected, vwUpdated});
+
+              await mqttClient.publishAsync('carconnectivity/connectors/volkswagen/connection_state', '', {retain: true});
 
               await restartCarconnectivity('carconnectivity-mqtt');
             }, ms(`${8 * vwUpdateIntervalS / 60 + 1}m`) - ageMs);
