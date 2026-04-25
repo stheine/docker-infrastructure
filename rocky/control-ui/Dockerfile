@@ -56,6 +56,7 @@ RUN \
 
 COPY docker_container_profile /root/.profile
 
+USER    1000:1000
 WORKDIR /app
 
 # ONBUILD \
