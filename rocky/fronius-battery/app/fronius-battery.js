@@ -563,6 +563,9 @@ const handleRate = async function(log = false) {
       await preventBatteryUnload();
       note = `Prevent battery unload ` +
         `(now: ${nowCent}ct, battery: ${status.batteryCent === null ? '-' : `${status.batteryCent}ct`})`;
+    } else if(['Sofort+', 'Überschuss+'].includes(autoStatus.chargeMode) && autoStatus.wallboxState === 'Lädt') {
+      note = `Charge maximum (Auto lädt).`;
+      chargePct = 100;
     } else if(autoStatus.atHome &&
       ['Ladebereit', 'Warte auf Ladefreigabe'].includes(autoStatus.wallboxState) &&
       vwBatterySocPct < vwTargetSocPct &&
