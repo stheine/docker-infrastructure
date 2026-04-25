@@ -50,6 +50,7 @@ RUN \
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 # ##############################################################################
+# Add gpg and rclone for syncing encrypted backup file to a remote server
 
 RUN \
   apt-get install -y \
@@ -59,13 +60,26 @@ RUN \
 COPY ssmtp.conf /etc/ssmtp/ssmtp.conf
 
 # ##############################################################################
+# Install mosquitto client to publish MQTT messages
+RUN \
+  apt-get install -y \
+    mosquitto-clients
+
+# ##############################################################################
 # Configure cron
 # http://manpages.ubuntu.com/manpages/trusty/man8/cron.8.html
 
 RUN \
   apt-get install -y \
-    cron && \
-  echo '23 0 * * * /backup.sh >/proc/1/fd/1 2>/proc/1/fd/2\n@reboot /backup.sh >/proc/1/fd/1 2>/proc/1/fd/2' | /usr/bin/crontab -
+    cron
+RUN \
+  echo \
+    "@reboot /bin/sh -c 'echo \"STARTUP\" > /var/run/backup.status'\n" \
+    '@reboot /health.sh >/proc/1/fd/1 2>/proc/1/fd/2\n' \
+    '* * * * * /health.sh >/proc/1/fd/1 2>/proc/1/fd/2\n' \
+    '@reboot /backup.sh >/proc/1/fd/1 2>/proc/1/fd/2\n' \
+    '23 0 * * * /backup.sh >/proc/1/fd/1 2>/proc/1/fd/2\n' \
+  | sed -e 's/^ *//' | /usr/bin/crontab -
 
 CMD ["/usr/sbin/cron", "-f"]
 # CMD ["/usr/bin/tail", "-f", "/dev/null"]

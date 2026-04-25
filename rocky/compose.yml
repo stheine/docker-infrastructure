@@ -550,8 +550,10 @@ services:
   backup:
     restart: always
     build: backup
+    stop_signal: SIGTERM
     volumes:
       - ./backup/backup.sh:/backup.sh:ro
+      - ./backup/health.sh:/health.sh:ro
       - ./compose.yml:/docker/compose.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - backup-rclone:/root/.config/rclone
@@ -563,6 +565,7 @@ services:
       - nextcloud-backup:/data_rsync/nextcloud-backup:ro
       - paperless-export:/data_rsync/paperless-export:ro
       - wordpress-export:/data_rsync/wordpress-export:ro
+      - uptime-kuma:/data_rsync/uptime-kuma:ro
 
   carconnectivity-mqtt:
     image: tillsteinbach/carconnectivity-mqtt:latest

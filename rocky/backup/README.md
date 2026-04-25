@@ -11,7 +11,7 @@
 
 - otlaptop1 - TODO
 
-- wyse
+- rocky
   - docker/backup
     - Setup
       - the gpg encryption key is in /mnt/qnap/linux/data/backup/pass
@@ -66,3 +66,11 @@ rclone einrichten fuer 'pcloudEncrypted'
 - navigate to /backup/<folder>
 - download the file to restore
 - `gpg --batch --decrypt --no-symkey-cache --passphrase-file /mnt/qnap/linux/data/backup/pass <file.gpg> > <file>`
+
+## Paperless
+
+add `--data-only`, if only the database was newly created, but all the files remained.
+
+```
+docker exec rocky-paperless-1 document_importer /export
+```

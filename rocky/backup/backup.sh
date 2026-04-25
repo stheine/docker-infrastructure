@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# ==========================================================================================
+# Functions
+# ==========================================================================================
+
 function log() {
   echo "$(date +"%Y-%m-%d %H:%M:%S") $*" | tee -a /backup.log
 }
@@ -13,11 +17,24 @@ function backup_dir () {
   tarFile="${localDir}/${dir}_$(date +%Y-%m-%d).tgz"
   remoteDir="pcloud:backup/${dir}"
 
+  rm -rf "${localDir}" \
+    || { log "Failed to clean ${localDir} directory"; return 1; }
+
   mkdir -p "${localDir}" \
     || { log "Failed to create ${localDir} directory"; return 1; }
 
-  tar -zcf "${tarFile}" "${dir}" \
-    || { log "Failed to tar '${dir}' into ${tarFile}"; return 1; }
+  (
+    retries=5
+
+    while ! tar -zcf "${tarFile}" "${dir}"; do
+      ((--retries)) \
+        || exit 1
+
+      log "Retrying after delay"
+
+      sleep 5
+    done
+  ) || { log "Failed to tar '${dir}' into ${tarFile}"; rm ${tarFile}; return 1; }
 
   log "Backup finished: ${dir}"
 
@@ -40,6 +57,9 @@ function backup_dir () {
 
   log "Cloud Copy start for ${dir}"
 
+  rclone mkdir "${remoteDir}" \
+    || { log "Failed to create remote dir ${remoteDir}"; return 1; }
+
   rclone copy "${localDir}/" "${remoteDir}/" \
     || { log "Failed to copy backups to ${remoteDir}"; return 1; }
 
@@ -51,9 +71,6 @@ function backup_dir () {
 #  log "Removed local old backups in ${localDir}"
 
   log "Deleting remote old backups in ${remoteDir}"
-
-  rclone mkdir "${remoteDir}" \
-    || { log "Failed to create remote dir ${remoteDir}"; return 1; }
 
   rclone lsf --files-only --format tp "${remoteDir}" | sort | head -n -20 | cut -d';' -f 2 > /tmp/files_to_delete \
     || { log "Failed to get list of files to delete from ${remoteDir}"; return 1; }
@@ -85,13 +102,37 @@ function backup() {
   #   -----------------------------------------------------
   #   Paperless
   #   - trigger paperless document_exporter
-  #     paperless:/export => docker:/paperless-export => backup:/data/paperless-export
+  #     paperless:/export => docker:/paperless-export => backup:/data_rsync/paperless-export
   log "Start paperless document_exporter"
 
-  /usr/local/bin/docker exec docker-paperless-1 document_exporter --delete --no-progress-bar --verbosity 0 /export \
+  /usr/local/bin/docker exec rocky-paperless-1 document_exporter --delete --no-progress-bar --verbosity 0 /export \
     || { log "Failed to trigger paperless document_exporter"; return 1; }
 
   log "Finished paperless document_exporter"
+
+  #   -----------------------------------------------------
+  #   Uptime Kuma
+  #   - backup content of the non-NFS directory
+  cd /data_rsync
+  backup_dir uptime-kuma \
+    || { log "Failed to backup dir uptime-kuma"; return 1; }
+
+  #   -----------------------------------------------------
+  #   Wordpress Database
+  #   - trigger wordpress database dump
+  #     wordpress:/export => docker:/wordpress-export => backup:/data_rsync/wordpress-export
+  log "Start wordpress database dump"
+
+  /usr/local/bin/docker exec rocky-wordpress-database-1 /bin/sh -c \
+    '/bin/mysqldump \
+    --user="${MYSQL_USER}" \
+    --password="${MYSQL_PASSWORD}" \
+    --no-tablespaces \
+    wordpress_db \
+    > /export/wordpress-database-export.sql' \
+    || { log "Failed to trigger wordpress database dump"; return 1; }
+
+  log "Finished wordpress database dump"
 
   # ==========================================================================================
   # General backup of /data directories
@@ -100,13 +141,15 @@ function backup() {
   for dir in $(ls -1); do
     # Special handling
     # - Paperless, see above
-    # - NextCloud
+    # - Wordpress Database, see above
     # - Immich
-    if [[ "${dir}" =~ ^(immich|nextcloud-backup|nextcloud-data|paperless|paperless-consume)$ ]]; then
+    # - NextCloud
+    if [[ "${dir}" =~ ^(immich|nextcloud-backup|nextcloud-data|paperless|paperless-consume|wordpress-database)$ ]]; then
       continue
     fi
 
-    backup_dir "${dir}"
+    backup_dir "${dir}" \
+      || { log "Failed to backup dir ${dir}"; return 1; }
   done
 
   # ==========================================================================================
@@ -114,18 +157,29 @@ function backup() {
   cd /data_rsync
 
   for dir in $(ls -1); do
-    rsync_dir "${dir}"
+    rsync_dir "${dir}" \
+      || { log "Failed to rsync dir ${dir}"; return 1; }
   done
+
+  log "Finished"
+
+  echo "OK" > /var/run/backup.status
 }
+
+# ==========================================================================================
+# Main
+# ==========================================================================================
 
 FUNCTION=$(declare -f backup)
 
+log "***********************************************************************"
 log "Start"
 
 backup || \
-  {
-    log "Failed to finalize backup (ret=$?)"
-    exit 1
-  }
+{
+  log "Failed to finalize backup (ret=$?)"
 
-log "Finished"
+  echo "FAILED (ret=$?)" > /var/run/backup.status
+
+  exit 1
+}
