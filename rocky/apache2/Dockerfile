@@ -1,4 +1,4 @@
-FROM httpd:2.4-bookworm
+FROM httpd:2.4
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
