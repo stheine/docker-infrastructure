@@ -27,7 +27,7 @@ import sunspec       from './sunspec_map_inverter.js';
 
       switch(spec.name) {
         case 'ChaGriSet':
-          logger.info(spec.name, `${value}   0: PV charge only, 1: allow grid charge`);
+          logger.info(spec.name, `${value}   PV(0): PV charge only, GRID(1): allow grid charge`);
           break;
 
         case 'InOutWRte_RvrtTms':

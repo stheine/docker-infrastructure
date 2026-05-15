@@ -353,6 +353,140 @@ const sunspecMap = [{
   type:   'uint16',
   expect: 24,
 }, {
+  name:   'Conn_WinTms',
+  start:  40240,
+  end:    40240,
+  type:   'uint16',
+}, {
+  name:   'Conn_RvrtTms',
+  start:  40241,
+  end:    40241,
+  type:   'uint16',
+}, {
+  name:   'Conn',
+  start:  40242,
+  end:    40242,
+  type:   'enum16',
+  enumMap: {
+    0: 'DISCONNECTED',
+    1: 'CONNECTED',
+  },
+}, {
+  name:   'WMaxLimPct',
+  start:  40243,
+  end:    40243,
+  type:   'uint16',
+  scale:  'WMaxLimPct_SF',
+}, {
+  name:   'WMaxLimPct_WinTms',
+  start:  40244,
+  end:    40244,
+  type:   'uint16',
+}, {
+  name:   'WMaxLimPct_RvrtTms',
+  start:  40245,
+  end:    40245,
+  type:   'uint16',
+}, {
+  name:   'WMaxLimPct_RmpTms',
+  start:  40246,
+  end:    40246,
+  type:   'uint16',
+}, {
+  name:   'WMaxLim_Ena',
+  start:  40247,
+  end:    40247,
+  type:   'enum16',
+  enumMap: {
+    0: 'DISABLED',
+    1: 'ENABLED',
+  },
+}, {
+  name:   'OutPFSet',
+  start:  40248,
+  end:    40248,
+  type:   'int16',
+  scale:  'OutPFSet_SF',
+}, {
+  name:   'OutPFSet_WinTms',
+  start:  40249,
+  end:    40249,
+  type:   'uint16',
+}, {
+  name:   'OutPFSet_RvrtTms',
+  start:  40250,
+  end:    40250,
+  type:   'uint16',
+}, {
+  name:   'OutPFSet_RmpTms',
+  start:  40251,
+  end:    40251,
+  type:   'uint16',
+}, {
+  name:   'OutPFSet_Ena',
+  start:  40252,
+  end:    40252,
+  type:   'enum16',
+  enumMap: {
+    0: 'DISABLED',
+    1: 'ENABLED',
+  },
+}, {
+  name:   'VArMaxPct',
+  start:  40254,
+  end:    40254,
+  type:   'int16',
+  scale:  'VArPct_SF',
+}, {
+  name:   'VArPct_WinTms',
+  start:  40256,
+  end:    40256,
+  type:   'uint16',
+}, {
+  name:   'VArPct_RvrtTms',
+  start:  40257,
+  end:    40257,
+  type:   'uint16',
+}, {
+  name:   'VArPct_RmpTms',
+  start:  40258,
+  end:    40258,
+  type:   'uint16',
+}, {
+  name:   'VArPct_Mod',
+  start:  40259,
+  end:    40259,
+  type:   'enum16',
+  enumMap: {
+    0: 'MOD0',
+    1: 'MOD1',
+    2: 'VAR-LIMIT-PCT',
+  },
+}, {
+  name:   'VArPct_Ena',
+  start:  40260,
+  end:    40260,
+  type:   'enum16',
+  enumMap: {
+    0: 'DISABLED',
+    1: 'ENABLED',
+  },
+}, {
+  name:   'WMaxLimPct_SF',
+  start:  40261,
+  end:    40261,
+  type:   'sunssf',
+}, {
+  name:   'OutPFSet_SF',
+  start:  40262,
+  end:    40262,
+  type:   'sunssf',
+}, {
+  name:   'VArPct_SF',
+  start:  40263,
+  end:    40263,
+  type:   'sunssf',
+}, {
 // SunSpec Model 'mppt'
   name:   'ID (mppt)',
   start:  40264,

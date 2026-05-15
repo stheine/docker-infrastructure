@@ -87,6 +87,9 @@ const updateStatus = async function(set) {
 // Process handling
 
 const stopProcess = async function() {
+  if(status.batteryHold) {
+    await updateStatus({batteryHold: false});
+  }
   if(status.gridCharge) {
     await updateStatus({gridCharge: false});
   }
@@ -391,6 +394,11 @@ const preventBatteryUnload = async function() {
 
   // Prevent discharge
   try {
+    await inverter.writeRegister('InWRte', [0]);
+  } catch(err) {
+    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
+  }
+  try {
     await inverter.writeRegister('OutWRte', [0]);
   } catch(err) {
     throw new Error(`Failed writing battery discharge rate: ${err.message}`);
@@ -408,12 +416,18 @@ const setBatteryGridCharge = async function(chargePct = 100) {
   // ==> Laden erzwingen = "negatives Entladen":
   //     OutWRte (discharge) auf -10000 (-100.00 %) setzen
 
-  // Max load rate
+  logger.debug('setBatteryGridCharge', {chargePct});
+
+  // Init load rate
   try {
-    // Allow 100% of max Charge rate. * 100 => Scaling Factor
-    await inverter.writeRegister('InWRte', [100 * 100]);
+    await inverter.writeRegister('InWRte', [0]);
   } catch(err) {
-    throw new Error(`Failed writing max battery charge rate: ${err.message}`);
+    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
+  }
+  try {
+    await inverter.writeRegister('OutWRte', [0]);
+  } catch(err) {
+    throw new Error(`Failed writing max battery discharge rate (OutWRte=0)): ${err.message}`);
   }
 
   // Allow charge and discharge control
@@ -422,32 +436,44 @@ const setBatteryGridCharge = async function(chargePct = 100) {
     // Bit1 enable discharge control
     await inverter.writeRegister('StorCtl_Mod', [3]);
   } catch(err) {
-    throw new Error(`Failed writing battery charge control: ${err.message}`);
+    throw new Error(`Failed writing battery charge control (StorCtl_Mod=3): ${err.message}`);
   }
 
   try {
     // Timeout for (dis)charge rate in seconds, 3900s => 65min
     await inverter.writeRegister('InOutWRte_RvrtTms', [3900]);
   } catch(err) {
-    throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
+    throw new Error(`Failed writing battery charge rate timeout (InOutWRte_RvrtTms): ${err.message}`);
   }
 
   // Allow charging from grid
   try {
     await inverter.writeRegister('ChaGriSet', [1]);
   } catch(err) {
-    throw new Error(`Failed writing grid allow: ${err.message}`);
+    throw new Error(`Failed writing grid allow (ChaGriSet=1): ${err.message}`);
   }
 
   // Set load
   try {
     // % of max Charge. * 100 => Scaling Factor
-    await inverter.writeRegister('OutWRte', [-chargePct * 100]);
+    await inverter.writeRegister('OutWRte', [Math.abs(chargePct) * 100]);
   } catch(err) {
-    throw new Error(`Failed writing battery discharge rate: ${err.message}`);
+    throw new Error(`Failed writing battery discharge rate (OutWRte=${-chargePct}): ${err.message}`);
+  }
+  // Max load rate
+  try {
+    // Allow 100% of max Charge rate. * 100 => Scaling Factor
+    await inverter.writeRegister('InWRte', [chargePct * 100]);
+  } catch(err) {
+    throw new Error(`Failed writing max battery charge rate (InWRte=${chargePct})): ${err.message}`);
   }
 
-  await updateStatus({batteryStatus: 'Netzladen'});
+
+  if(chargePct > 0) {
+    await updateStatus({batteryStatus: 'Netzladen'});
+  } else if(chargePct < 0) {
+    await updateStatus({batteryStatus: 'Entladen'});
+  }
 };
 
 const setBatteryPvCharge = async function(chargePct) {
@@ -476,6 +502,8 @@ const setBatteryPvCharge = async function(chargePct) {
   // Set charge rate
   try {
     const set = _.round(chargePct * 100); // * 100 => scalingFactor
+
+    // logger.debug('setBatteryPvCharge', {chargePct});
 
     await inverter.writeRegister('InWRte', [set]); // rate% von max Ladeleistung
   } catch(err) {
@@ -547,7 +575,10 @@ const handleRate = async function(log = false) {
       totalPvWh,
     } = solcastAnalysis;
 
-    if(status.gridCharge) {
+    if(status.batteryHold) {
+      // Do nothing. Battery holding.
+      note = 'Battery Hold';
+    } else if(status.gridCharge) {
       // Do nothing. Battery charging handled in handler.
       note = 'Grid charge';
     } else if(status.preventBatteryUnload) {
@@ -734,7 +765,7 @@ try {
 // #########################################################################
 // Handle battery grid charging
 const handleBatteryGridChargingHandler = async function() {
-  if(status.gridCharge) {
+  if(status.batteryHold || status.gridCharge) {
     gridChargingHandlerTimeout = undefined;
 
     return;
@@ -1264,7 +1295,28 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         }
         break;
 
+      case 'Fronius/solar/cmnd/batteryHold':
+        logger.info(`Battery hold ${Boolean(message)}`);
+
+        if(message) {
+          if(!status.batteryHold) {
+            await updateStatus({batteryHold: true});
+            await updateStatus({batteryStatus: 'Halten'});
+
+            await preventBatteryUnload();
+          }
+        } else {
+          if(status.batteryHold) {
+            await updateStatus({batteryHold: false});
+          }
+        }
+        break;
+
       case 'Fronius/solar/cmnd/gridChargePct': {
+        if(status.batteryHold) {
+          await mqttClient.publishAsync('Fronius/solar/cmnd/batteryHold', null, {retain: true});
+        }
+
         const gridChargePct = Number(message);
 
         if(gridChargePct) {
@@ -1272,7 +1324,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
             await updateStatus({gridCharge: true});
             await setBatteryGridCharge(gridChargePct);
 
-            logger.info(`Starting grid charge with ${gridChargePct}%`);
+            logger.info(`Starting grid ${gridChargePct < 0 ? 'dis' : ''}charge with ${gridChargePct}%`);
 
             if(gridChargingDoneInterval) {
               clearInterval(gridChargingDoneInterval);
@@ -1301,7 +1353,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           }
         } else {
           await updateStatus({gridCharge: false});
-          await handleRate();
+          await handleRate(true);
 
           logger.info(`Stoping grid charge (${chargeStatePct}%)`);
 
@@ -1441,6 +1493,7 @@ await mqttClient.subscribeAsync('auto/tele/STATUS');
 await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/cmnd');
+await mqttClient.subscribeAsync('Fronius/solar/cmnd/batteryHold');
 await mqttClient.subscribeAsync('Fronius/solar/cmnd/gridChargePct');
 await mqttClient.subscribeAsync('Fronius/maintenance/checkSoftwareVersion');
 await mqttClient.subscribeAsync('maxSun/INFO');
