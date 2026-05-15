@@ -72,6 +72,7 @@ process.on('SIGTERM', () => stopProcess());
 let now                           = dayjs();
 let maxSun                        = 0;
 let lastTimestamp                 = null;
+let batteryStatus                 = null;
 let vwBatterySocPct               = null;
 let vwTargetSocPct                = null;
 let wallboxState                  = null;
@@ -112,6 +113,7 @@ process.on('SIGHUP', () => {
     wallboxState,
     vwBatterySocPct,
     vwTargetSocPct,
+    batteryStatus,
   });
 });
 
@@ -153,11 +155,12 @@ const getForecast = async function() {
 
   do {
     try {
+      // https://www.energyforecast.de/api-docs/index.html
       const result = await axios.get(`https://www.energyforecast.de/api/v1/predictions/next_48_hours?` +
-        `&fixed_cost_cent=0` +
+        // `&fixed_cost_cent=0` +
         `&market_zone=DE-LU` +
         `&resolution=QUARTER_HOURLY` +
-        `&vat=0` +
+        // `&vat=0` +
         `&token=${energyForecastAccessToken}`);
 
       check.assert.equal(result.status, 200, `Unexpected result ${result.status} ${result.statusText}`);
@@ -197,6 +200,7 @@ const getStrompreise = async function() {
 
   do {
     try {
+      // https://developer.tibber.com/docs/reference#price
       const queryPrice = '{viewer{homes{currentSubscription{priceInfo(resolution: QUARTER_HOURLY){' +
         'today{total energy startsAt currency level} ' +
         'tomorrow{total energy startsAt currency level}}}}}}';
@@ -208,7 +212,7 @@ const getStrompreise = async function() {
       ];
       const strompreise = _.map(strompreiseRaw, data => ({
         startTime: new Date(data.startsAt),
-        cent:      _.round(data.energy * 100, 2), // Eur/kWh + 100ct/Eur
+        cent:      _.round(data.total * 100, 2), // Eur/kWh + 100ct/Eur
         level:     data.level,
       }));
 
@@ -419,6 +423,21 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
+      case 'Fronius/solar/tele/STATUS':
+        batteryStatus = message.batteryStatus;
+
+        if(batteryStatus === 'Entladen' &&
+          heizstabLeistung &&
+          heizstabInterval
+        ) {
+          logger.info('Akku wird entladen. Beende Speicherheizung mit Heizstab.', {
+            zaehlerLeistung, batteryStatus, batteryLeistung, batteryLevel, heizstabLeistung,
+            aktuellerUeberschuss, solcastHighPvHours, wallboxState, vwBatterySocPct, vwTargetSocPct});
+
+          await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'OFF');
+        }
+        break;
+
       case 'solcast/forecasts': {
         const solcastForecasts = message;
 
@@ -536,7 +555,8 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 //                return;
 //              }
 
-              if(!(['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
+              if(batteryStatus !== 'Entladen' &&
+                !(['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
                 vwBatterySocPct < vwTargetSocPct
               ) && (
                 (
@@ -578,12 +598,13 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               if(aktuellerUeberschuss < 4500 ||
                 (batteryLevel < 50 && solcastHighPvHours < 2) ||
                 (batteryLevel < 70 && solcastHighPvHours < 1) ||
+                batteryStatus === 'Entladen' ||
                 (['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
                   vwBatterySocPct < vwTargetSocPct
                 )
               ) {
                 logger.info('Geringe Einspeisung. Beende Speicherheizung mit Heizstab.', {
-                  zaehlerLeistung, batteryLeistung, batteryLevel, heizstabLeistung,
+                  zaehlerLeistung, batteryStatus, batteryLeistung, batteryLevel, heizstabLeistung,
                   aktuellerUeberschuss, solcastHighPvHours, wallboxState, vwBatterySocPct, vwTargetSocPct});
 
                 await mqttClient.publishAsync(`tasmota/heizstab/cmnd/POWER`, 'OFF');
@@ -665,12 +686,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
       }
 
       case `carconnectivity/garage/${vwId}/drives/primary/level`: {
-        vwBatterySocPct = messageRaw;
+        vwBatterySocPct = Number(messageRaw);
         break;
       }
 
       case `carconnectivity/garage/${vwId}/charging/settings/target_level`: {
-        vwTargetSocPct = messageRaw;
+        vwTargetSocPct = Number(messageRaw);
         break;
       }
 
@@ -701,6 +722,7 @@ await mqttClient.subscribeAsync('auto/tele/STATUS');
 await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/drives/primary/level`);
 await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
+await mqttClient.subscribeAsync('Fronius/solar/tele/STATUS');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/forecasts');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
@@ -717,7 +739,7 @@ await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
 await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
 
 //                    s m h              d m wd
-const job = new Cron('0 5 14,16,18,20,22 * * *', {timezone: 'Europe/Berlin'}, async() => {
+const job = new Cron('0 5 12,13,14,16,18,20,22 * * *', {timezone: 'Europe/Berlin'}, async() => {
   const health1 = await getForecast();
   const health2 = await getStrompreise();
 
