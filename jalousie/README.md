@@ -10,7 +10,7 @@
 - Next
 - Edit settings
   - General:
-    - [x] Set hostname `jalousie`
+    - [x] Set hostname `pi-jalousie`
     - [x] Set username and password
     - [x] Set locale settings, Time zone `Europe/Berlin`
   - Services:
@@ -42,7 +42,11 @@ sudo vi /boot/firmware/config.txt
 dtparam=spi=on
 
 dtoverlay=disable-wifi
-dtoverlay=disable-bt
+# dtoverlay=disable-bt
+```
+
+```
+rfkill unblock all
 ```
 
 ### Install NFS and vim
@@ -54,7 +58,8 @@ sudo apt install -y nfs-common vim
 
 sudo reboot
 
-echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > .selected-editor
+echo "SELECTED_EDITOR=\"/usr/bin/vim.basic\"" > ~/.selected-editor
+echo 'set mouse=' >> ~/.vimrc
 
 echo "192.168.6.7:/linux /mnt/qnap_linux nfs defaults,_netdev,bg,soft 0 0" | sudo tee -a /etc/fstab >/dev/null
 sudo mkdir /mnt/qnap_linux
@@ -129,6 +134,13 @@ docker compose run --rm jalousie-backend npm install
 docker compose run --rm jalousie-io npm install
 docker compose run --rm watchdog npm install
 
+tee ~/docker/.env <<EOF
+CASAMBI_NETWORK_PASSWORD=<REPLACE WITH CASAMBI NETWORK PASSWORD>
+MQTT_BROKER=192.168.6.5
+MQTT_PORT=1883
+MQTT_BASE_TOPIC=casambi
+EOF
+
 docker compose up -d
 ```
 
@@ -138,7 +150,7 @@ docker compose up -d
 sudo apt install nullmailer
 
 <hostname>
-wyse.fritz.box smtp --port=25
+rocky.fritz.box smtp --port=25
 ```
 
 ### Unattended upgrades
