@@ -606,7 +606,7 @@ services:
     restart: always
     build: certbot
     stop_signal: SIGKILL
-    hostname: certbot
+    hostname: rocky-certbot
     volumes:
       - ./certbot/renew.sh:/renew.sh:ro
       - /var/run/docker.sock:/var/run/docker.sock
