@@ -37,19 +37,19 @@ ENV TZ Europe/Berlin
 WORKDIR /addons
 
 # https://www.mediawiki.org/wiki/Extension:ConfirmAccount
-ARG CONFIRM_ACCOUNT_URL=ConfirmAccount-REL1_45-04667a5.tar.gz
+ARG CONFIRM_ACCOUNT_URL=ConfirmAccount-REL1_45-0f43796.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$CONFIRM_ACCOUNT_URL && \
   tar -xzf $CONFIRM_ACCOUNT_URL -C /var/www/html/extensions
 
 # https://www.mediawiki.org/wiki/Extension:WikiCategoryTagCloud
-ARG CATEGORY_CLOUD_URL=WikiCategoryTagCloud-REL1_45-cbbfd52.tar.gz
+ARG CATEGORY_CLOUD_URL=WikiCategoryTagCloud-REL1_45-51354b0.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$CATEGORY_CLOUD_URL && \
   tar -xzf $CATEGORY_CLOUD_URL -C /var/www/html/extensions
 
 # https://www.mediawiki.org/wiki/Extension:UploadWizard
-ARG UPLOAD_WIZARD_URL=UploadWizard-REL1_45-5e3dfc4.tar.gz
+ARG UPLOAD_WIZARD_URL=UploadWizard-REL1_45-e64ceef.tar.gz
 RUN \
   wget https://extdist.wmflabs.org/dist/extensions/$UPLOAD_WIZARD_URL && \
   tar -xzf $UPLOAD_WIZARD_URL -C /var/www/html/extensions
