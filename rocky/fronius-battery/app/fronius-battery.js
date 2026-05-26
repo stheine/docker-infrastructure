@@ -1604,13 +1604,25 @@ froniusInterval = setInterval(async() => {
       logger.error(`froniusInterval(), failed to read data: ${err.message}`);
 
       if(err.message === 'Port Not Open') {
-        await inverter.close();
-        inverter = undefined;
+        // Do not await the close task, to prevent blocking the reconnect.
+        (async() => {
+          const localInverter   = inverter;
+          const localSmartMeter = smartMeter;
 
-        await smartMeter.close();
-        smartMeter = undefined;
+          inverter   = undefined;
+          smartMeter = undefined;
 
-        logger.info('Inverter and SmartMeter closed');
+          await Promise.all([
+            localInverter.close(),
+            localSmartMeter.close(),
+          ]);
+
+          logger.info('Inverter and SmartMeter closed');
+        })();
+
+        logger.info('Close of Inverter and SmartMeter connection triggered');
+      } else {
+        logger.warn(`froniusInterval(), unhandled error: '${err.message}'`);
       }
     }
   });
