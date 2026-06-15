@@ -584,7 +584,8 @@ services:
       - uptime-kuma:/data_rsync/uptime-kuma:ro
 
   carconnectivity-mqtt:
-    image: tillsteinbach/carconnectivity-mqtt:latest
+    # image: tillsteinbach/carconnectivity-mqtt:latest
+    build: carconnectivity-mqtt
     restart: always
     # ports:
     #   - 8973:8973
