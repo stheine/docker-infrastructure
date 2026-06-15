@@ -41,458 +41,481 @@ const stopProcess = async function() {
 process.on('SIGTERM', () => stopProcess());
 
 // ###########################################################################
-// Main (async)
+// Main
 
-(async() => {
-  // #########################################################################
-  // Startup
+// #########################################################################
+// Startup
 
-  logger.info(`Startup --------------------------------------------------`);
+logger.info(`Startup --------------------------------------------------`);
 
-  // #########################################################################
-  // Handle shutdown
-  process.on('SIGTERM', async() => {
-    await stopProcess();
-  });
+// #########################################################################
+// Handle shutdown
+process.on('SIGTERM', async() => {
+  await stopProcess();
+});
 
-  // #########################################################################
-  // Init MQTT connection
-  mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
+// #########################################################################
+// Init MQTT connection
+mqttClient = await mqtt.connectAsync('tcp://192.168.6.5:1883', {clientId: hostname});
 
-  const update = {};
+const update = {};
 
-  mqttClient.on('message', async(topic, messageBuffer) => {
-    const messageRaw = messageBuffer.toString();
+mqttClient.on('message', async(topic, messageBuffer) => {
+  const messageRaw = messageBuffer.toString();
+
+  try {
+    const files    = [];
+    let   message;
 
     try {
-      const files    = [];
-      let   message;
+      message = JSON.parse(messageRaw);
+    } catch{
+      // ignore
+      // logger.debug('JSON.parse', {messageRaw, errMessage: err.message});
+    }
 
-      try {
-        message = JSON.parse(messageRaw);
-      } catch{
-        // ignore
-        // logger.debug('JSON.parse', {messageRaw, errMessage: err.message});
+    if(message.last_seen &&
+      Temporal.Instant.compare(Temporal.Now.instant().subtract('PT6H'), Temporal.Instant.from(message.last_seen)) === 1
+    ) {
+      // outdated
+      logger.warn(`Outdated '${topic}': ${message.last_seen}`);
+
+      return;
+    }
+
+    switch(topic) {
+      case 'esp32-wasser/zaehlerstand/json': {
+        if(message.value && message.error === 'no error') {
+          const file = '/var/wasser/wasser.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              zaehlerstand: message.value,
+            },
+          };
+        // } else {
+        //   logger.error('wasser', {topic, message, messageRaw});
+        }
+        break;
       }
 
-      switch(topic) {
-        case 'esp32-wasser/zaehlerstand/json': {
-          if(message.value && message.error === 'no error') {
-            const file = '/var/wasser/wasser.rrd';
+      case 'FritzBox/tele/SENSOR': {
+        const file = '/var/fritz/fritz.rrd';
 
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                zaehlerstand: message.value,
-              },
-            };
-          // } else {
-          //   logger.error('wasser', {topic, message, messageRaw});
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...{
+            upTime:            message.upTime,
+            downstreamMax:     message.downstreamMaxBitRate,
+            upstreamMax:       message.upstreamMaxBitRate,
+            downstreamCurrent: message.downstreamCurrent,
+            upstreamCurrent:   message.upstreamCurrent,
+          },
+        };
+        break;
+      }
+
+      case 'Fronius/solar/tele/SENSOR': {
+        const file = '/var/fronius/fronius.rrd';
+
+        const {battery, inverter, meter, solar} = message;
+        const updates = {};
+
+        if(battery) {
+          if(battery.solarWh) {
+            updates.solarWh = battery.solarWh;
           }
-          break;
-        }
-
-        case 'FritzBox/tele/SENSOR': {
-          const file = '/var/fritz/fritz.rrd';
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              upTime:            message.upTime,
-              downstreamMax:     message.downstreamMaxBitRate,
-              upstreamMax:       message.upstreamMaxBitRate,
-              downstreamCurrent: message.downstreamCurrent,
-              upstreamCurrent:   message.upstreamCurrent,
-            },
-          };
-          break;
-        }
-
-        case 'Fronius/solar/tele/SENSOR': {
-          const file = '/var/fronius/fronius.rrd';
-
-          const {battery, inverter, meter, solar} = message;
-          const updates = {};
-
-          if(battery) {
-            if(battery.solarWh) {
-              updates.solarWh = battery.solarWh;
-            }
-            if(battery.storageChargeWh) {
-              updates.storageChargeWh = battery.storageChargeWh;
-            }
-            if(battery.storageDisChargeWh) {
-              updates.storageDisChargeWh = battery.storageDisChargeWh;
-            }
-            if(battery.powerIncoming && battery.powerOutgoing) {
-              logger.warn('battery.powerIncoming && powerOutgoing', battery);
-            } else {
-              updates.battery = battery.powerIncoming || -battery.powerOutgoing;
-            }
-            if(battery.stateOfCharge < 0 || battery.stateOfCharge > 1) {
-              logger.warn('battery.stateOfCharge', battery);
-            } else {
-              updates.batteryPct = battery.stateOfCharge * 100;
-            }
+          if(battery.storageChargeWh) {
+            updates.storageChargeWh = battery.storageChargeWh;
           }
-          if(inverter) {
-            updates.inverter = inverter.powerOutgoing || -inverter.powerIncoming;
-            updates.tmpCab   = inverter.tmpCab;
+          if(battery.storageDisChargeWh) {
+            updates.storageDisChargeWh = battery.storageDisChargeWh;
           }
-          if(meter) {
-            if(meter.powerIncoming && meter.powerOutgoing) {
-              logger.warn('meter.powerIncoming && powerOutgoing', meter);
-            } else {
-              updates.meter = meter.powerIncoming || -meter.powerOutgoing;
-            }
-          }
-          if(solar) {
-            if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
-              logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
-            } else {
-              updates.solar = solar.powerOutgoing;
-            }
-          }
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...updates,
-          };
-          break;
-        }
-
-        case 'FritzBox/speedtest/result': {
-          const file = '/var/fritz/speedtest.rrd';
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              upstreamTest:   Math.trunc(message.upload),
-              downstreamTest: Math.trunc(message.download),
-            },
-          };
-          break;
-        }
-
-        case 'JalousieBackend/tele/SENSOR': {
-          // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd';
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...message,
-          };
-          break;
-        }
-
-        case 'Regen/tele/SENSOR': {
-          // logger.info(topic, message);
-          if(message.level) {
-            const file = '/var/jalousie/jalousie.rrd';
-
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                rain: message.level,
-              },
-            };
-          }
-          break;
-        }
-
-        case 'Sonne/tele/SENSOR': {
-          // logger.info(topic, message);
-          const file = '/var/jalousie/jalousie.rrd';
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...{
-              sunThreshold: message.level,
-            },
-          };
-          break;
-        }
-
-        case 'strom/tele/SENSOR': {
-          // logger.info(topic, message);
-          const file = '/var/strom/strom.rrd';
-          const set  = {};
-
-          if(message.momentanLeistung) {
-            set.momentanLeistung = message.momentanLeistung;
-          }
-          if(message.gesamtEinspeisung) {
-            set.gesamtEinspeisung = message.gesamtEinspeisung;
-          }
-          if(message.verbrauchHaus) {
-            set.verbrauchHaus = message.verbrauchHaus;
-          }
-
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...set,
-          };
-          break;
-        }
-
-        case 'tasmota/espstrom/tele/SENSOR': {
-          // logger.info(topic, message);
-          if(message.SML.Verbrauch < 0 || message.SML.Verbrauch > 50000) {
-            logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`, message);
-          } else if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
-            logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`, message);
+          if(battery.powerIncoming && battery.powerOutgoing) {
+            logger.warn('battery.powerIncoming && powerOutgoing', battery);
           } else {
-            const file = '/var/strom/strom.rrd';
-
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                zaehlerEinspeisung: message.SML.Einspeisung,
-                zaehlerVerbrauch:   message.SML.Verbrauch,
-                zaehlerLeistung:    message.SML.Leistung,
-              },
-            };
+            updates.battery = battery.powerIncoming || -battery.powerOutgoing;
           }
-          break;
-        }
-
-        case 'tasmota/espco2/tele/SENSOR': {
-          // logger.info(topic, message);
-          if(message.MHZ19B.CarbonDioxide) {
-            const file = '/var/jalousie/co2.rrd';
-
-            files.push(file);
-            if(message.DHT11) {
-              update[file] = {
-                ...update[file],
-                ...{
-                  co2:      message.MHZ19B.CarbonDioxide,
-                  temp:     message.DHT11.Temperature,
-                  humidity: message.DHT11.Humidity,
-                },
-              };
-            } else if(message.AM2301) {
-              update[file] = {
-                ...update[file],
-                ...{
-                  co2:      message.MHZ19B.CarbonDioxide,
-                  temp:     message.AM2301.Temperature,
-                  humidity: message.AM2301.Humidity,
-                },
-              };
-            }
+          if(battery.stateOfCharge < 0 || battery.stateOfCharge > 1) {
+            logger.warn('battery.stateOfCharge', battery);
+          } else {
+            updates.batteryPct = battery.stateOfCharge * 100;
           }
-          break;
         }
-
-        case 'tasmota/espfeinstaub/tele/SENSOR': {
-          // logger.info(topic, message);
-          if(message.SDS0X1 && message.SDS0X1['PM2.5'] && message.SDS0X1.PM10) {
-            const file = '/var/jalousie/co2.rrd';
-
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                feinstaub2_5: message.SDS0X1['PM2.5'],
-                feinstaub10:  message.SDS0X1.PM10,
-              },
-            };
+        if(inverter) {
+          updates.inverter = inverter.powerOutgoing || -inverter.powerIncoming;
+          updates.tmpCab   = inverter.tmpCab;
+        }
+        if(meter) {
+          if(meter.powerIncoming && meter.powerOutgoing) {
+            logger.warn('meter.powerIncoming && powerOutgoing', meter);
+          } else {
+            updates.meter = meter.powerIncoming || -meter.powerOutgoing;
           }
-          if(message.MHZ19B && message.MHZ19B.CarbonDioxide) {
-            const file = '/var/jalousie/co2klein.rrd';
-
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                co2: message.MHZ19B.CarbonDioxide,
-                temp: message.MHZ19B.Temperature,
-              },
-            };
+        }
+        if(solar) {
+          if(solar.powerOutgoing < 0 || solar.powerOutgoing > 10000) {
+            logger.warn(`UngültigeSolarDachLeistung ${solar.powerOutgoing}`, message);
+          } else {
+            updates.solar = solar.powerOutgoing;
           }
-          break;
         }
 
-        case 'tasmota/heizstab/tele/SENSOR': {
-          const file = '/var/vito/heizstab.rrd';
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...updates,
+        };
+        break;
+      }
 
-          const updates = {
-            heizstabPower:  message.ENERGY.Power,
-            heizstabToday:  message.ENERGY.Today,
-          };
+      case 'FritzBox/speedtest/result': {
+        const file = '/var/fritz/speedtest.rrd';
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...updates,
-          };
-          break;
-        }
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...{
+            upstreamTest:   Math.trunc(message.upload),
+            downstreamTest: Math.trunc(message.download),
+          },
+        };
+        break;
+      }
 
-        case 'tasmota/heizstab/tele/STATE': {
-          const file = '/var/vito/heizstab.rrd';
+      case 'JalousieBackend/tele/SENSOR': {
+        // logger.info(topic, message);
+        const file = '/var/jalousie/jalousie.rrd';
 
-          const updates = {
-            heizstabSwitch: message.POWER === 'ON' ? 1 : 0,
-          };
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...message,
+        };
+        break;
+      }
 
-          files.push(file);
-          update[file] = {
-            ...update[file],
-            ...updates,
-          };
-          break;
-        }
+      case 'Regen/tele/SENSOR': {
+        // logger.info(topic, message);
+        if(message.level) {
+          const file = '/var/jalousie/jalousie.rrd';
 
-        case 'vito/tele/SENSOR': {
-          let file;
-
-          file = '/var/vito/vito.rrd';
           files.push(file);
           update[file] = {
             ...update[file],
             ...{
-              tempAussen:          message.tempAussen,
-              tempKessel:          message.tempKessel,
-              tempPufferOben:      message.tempPufferOben,
-              tempPufferUnten:     message.tempPufferUnten,
-              tempWarmwasser:      message.tempWarmwasser,
-              tempFlamme:          message.tempFlamme,
-              brennerStarts:       message.brennerStarts,
-              brennerStunden:      message.brennerStunden,
-              brennerVerbrauch:    message.brennerVerbrauch,
-              kesselLeistung:      message.kesselLeistung,
-              lambda:              message.lambdaO2,
-              heizkreisPumpe:      message.heizkreisPumpe,
-              zirkulationsPumpe:   message.zirkulationsPumpe,
-              speicherladePumpe:   message.speicherladePumpe,
-              primaerluftklappe:   message.primaerluftklappe,
-              sekundaerluftklappe: message.sekundaerluftklappe,
-              drehzahl:            message.drehzahlIst,
-              betriebsart:         message.hk1Betriebsart,
-              betriebsartSpar:     message.hk1BetriebsartSpar,
+              rain: message.level,
             },
           };
+        }
+        break;
+      }
 
-          file = '/var/jalousie/jalousie.rrd';
+      case 'Sonne/tele/SENSOR': {
+        // logger.info(topic, message);
+        const file = '/var/jalousie/jalousie.rrd';
+
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...{
+            sunThreshold: message.level,
+          },
+        };
+        break;
+      }
+
+      case 'strom/tele/SENSOR': {
+        // logger.info(topic, message);
+        const file = '/var/strom/strom.rrd';
+        const set  = {};
+
+        if(message.momentanLeistung) {
+          set.momentanLeistung = message.momentanLeistung;
+        }
+        if(message.gesamtEinspeisung) {
+          set.gesamtEinspeisung = message.gesamtEinspeisung;
+        }
+        if(message.verbrauchHaus) {
+          set.verbrauchHaus = message.verbrauchHaus;
+        }
+
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...set,
+        };
+        break;
+      }
+
+      case 'tasmota/espstrom/tele/SENSOR': {
+        // logger.info(topic, message);
+        if(message.SML.Verbrauch < 0 || message.SML.Verbrauch > 50000) {
+          logger.warn(`Ungültiger Zählerverbrauch ${message.SML.Verbrauch}`, message);
+        } else if(message.SML.Leistung < -10000 || message.SML.Leistung > 14000) {
+          logger.warn(`Ungültige Zählerleistung ${message.SML.Leistung}`, message);
+        } else {
+          const file = '/var/strom/strom.rrd';
+
           files.push(file);
           update[file] = {
             ...update[file],
             ...{
-              temperatureOutside: message.tempAussen,
+              zaehlerEinspeisung: message.SML.Einspeisung,
+              zaehlerVerbrauch:   message.SML.Verbrauch,
+              zaehlerLeistung:    message.SML.Leistung,
             },
           };
-          break;
         }
+        break;
+      }
 
-        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW': {
-          // logger.info(topic, message);
-          if(message) {
-            const file = '/var/auto/auto.rrd';
+      case 'tasmota/espco2/tele/SENSOR': {
+        // logger.info(topic, message);
+        if(message.MHZ19B.CarbonDioxide) {
+          const file = '/var/jalousie/co2.rrd';
 
-            files.push(file);
+          files.push(file);
+          if(message.DHT11) {
             update[file] = {
               ...update[file],
               ...{
-                chargePowerKw: message,
+                co2:      message.MHZ19B.CarbonDioxide,
+                temp:     message.DHT11.Temperature,
+                humidity: message.DHT11.Humidity,
               },
             };
-          }
-          break;
-        }
-
-        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km': {
-          // logger.info(topic, message);
-          if(message) {
-            const file = '/var/auto/auto.rrd';
-
-            files.push(file);
+          } else if(message.AM2301) {
             update[file] = {
               ...update[file],
               ...{
-                cruisingRangeKm: message,
+                co2:      message.MHZ19B.CarbonDioxide,
+                temp:     message.AM2301.Temperature,
+                humidity: message.AM2301.Humidity,
               },
             };
           }
-          break;
         }
+        break;
+      }
 
-        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct': {
-          // logger.info(topic, message);
-          if(message) {
-            const file = '/var/auto/auto.rrd';
+      case 'tasmota/espfeinstaub/tele/SENSOR': {
+        // logger.info(topic, message);
+        if(message.SDS0X1 && message.SDS0X1['PM2.5'] && message.SDS0X1.PM10) {
+          const file = '/var/jalousie/co2.rrd';
 
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                batterySoc: message,
-              },
-            };
-          }
-          break;
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              feinstaub2_5: message.SDS0X1['PM2.5'],
+              feinstaub10:  message.SDS0X1.PM10,
+            },
+          };
         }
+        if(message.MHZ19B && message.MHZ19B.CarbonDioxide) {
+          const file = '/var/jalousie/co2klein.rrd';
 
-        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K': {
-          // logger.info(topic, message);
-          if(message) {
-            const file = '/var/auto/auto.rrd';
-
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                tempBatteryMaxK: message,
-              },
-            };
-          }
-          break;
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              co2: message.MHZ19B.CarbonDioxide,
+              temp: message.MHZ19B.Temperature,
+            },
+          };
         }
+        break;
+      }
 
-        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K': {
-          // logger.info(topic, message);
-          if(message) {
-            const file = '/var/auto/auto.rrd';
+      case 'tasmota/heizstab/tele/SENSOR': {
+        const file = '/var/vito/heizstab.rrd';
 
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                tempBatteryMinK: message,
-              },
-            };
-          }
-          break;
+        const updates = {
+          heizstabPower:  message.ENERGY.Power,
+          heizstabToday:  message.ENERGY.Today,
+        };
+
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...updates,
+        };
+        break;
+      }
+
+      case 'tasmota/heizstab/tele/STATE': {
+        const file = '/var/vito/heizstab.rrd';
+
+        const updates = {
+          heizstabSwitch: message.POWER === 'ON' ? 1 : 0,
+        };
+
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...updates,
+        };
+        break;
+      }
+
+      case 'vito/tele/SENSOR': {
+        let file;
+
+        file = '/var/vito/vito.rrd';
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...{
+            tempAussen:          message.tempAussen,
+            tempKessel:          message.tempKessel,
+            tempPufferOben:      message.tempPufferOben,
+            tempPufferUnten:     message.tempPufferUnten,
+            tempWarmwasser:      message.tempWarmwasser,
+            tempFlamme:          message.tempFlamme,
+            brennerStarts:       message.brennerStarts,
+            brennerStunden:      message.brennerStunden,
+            brennerVerbrauch:    message.brennerVerbrauch,
+            kesselLeistung:      message.kesselLeistung,
+            lambda:              message.lambdaO2,
+            heizkreisPumpe:      message.heizkreisPumpe,
+            zirkulationsPumpe:   message.zirkulationsPumpe,
+            speicherladePumpe:   message.speicherladePumpe,
+            primaerluftklappe:   message.primaerluftklappe,
+            sekundaerluftklappe: message.sekundaerluftklappe,
+            drehzahl:            message.drehzahlIst,
+            betriebsart:         message.hk1Betriebsart,
+            betriebsartSpar:     message.hk1BetriebsartSpar,
+          },
+        };
+
+        file = '/var/jalousie/jalousie.rrd';
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...{
+            temperatureOutside: message.tempAussen,
+          },
+        };
+        break;
+      }
+
+      case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW': {
+        // logger.info(topic, message);
+        if(message) {
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              chargePowerKw: message,
+            },
+          };
         }
+        break;
+      }
 
-        case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer': {
-          // logger.info(topic, message);
-          if(message) {
-            const file = '/var/auto/auto.rrd';
+      case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km': {
+        // logger.info(topic, message);
+        if(message) {
+          const file = '/var/auto/auto.rrd';
 
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                odometer: message,
-              },
-            };
-          }
-          break;
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              cruisingRangeKm: message,
+            },
+          };
         }
+        break;
+      }
+
+      case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct': {
+        // logger.info(topic, message);
+        if(message) {
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              batterySoc: message,
+            },
+          };
+        }
+        break;
+      }
+
+      case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K': {
+        // logger.info(topic, message);
+        if(message) {
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              tempBatteryMaxK: message,
+            },
+          };
+        }
+        break;
+      }
+
+      case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K': {
+        // logger.info(topic, message);
+        if(message) {
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              tempBatteryMinK: message,
+            },
+          };
+        }
+        break;
+      }
+
+      case 'vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer': {
+        // logger.info(topic, message);
+        if(message) {
+          const file = '/var/auto/auto.rrd';
+
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              odometer: message,
+            },
+          };
+        }
+        break;
+      }
 
 
-        case 'Wind/tele/SENSOR': {
+      case 'Wind/tele/SENSOR': {
+        // logger.info(topic, message);
+        const file = '/var/jalousie/jalousie.rrd';
+
+        files.push(file);
+        update[file] = {
+          ...update[file],
+          ...{
+            windThreshold: message.level,
+          },
+        };
+        break;
+      }
+
+      case 'Zigbee/LuftSensor Büro': {
+        if(message.humidity && message.temperature) {
           // logger.info(topic, message);
           const file = '/var/jalousie/jalousie.rrd';
 
@@ -500,105 +523,89 @@ process.on('SIGTERM', () => stopProcess());
           update[file] = {
             ...update[file],
             ...{
-              windThreshold: message.level,
+              bueroHumidity:    message.humidity,
+              bueroTemperature: message.temperature,
             },
           };
-          break;
         }
+        break;
+      }
 
-        case 'Zigbee/LuftSensor Büro': {
-          if(message.humidity && message.temperature) {
-            // logger.info(topic, message);
-            const file = '/var/jalousie/jalousie.rrd';
+      case 'Zigbee/LuftSensor Wohnzimmer': {
+        if(message.humidity && message.temperature) {
+          // logger.info(topic, message);
+          const file = '/var/jalousie/jalousie.rrd';
 
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                bueroHumidity:    message.humidity,
-                bueroTemperature: message.temperature,
-              },
-            };
-          }
-          break;
+          files.push(file);
+          update[file] = {
+            ...update[file],
+            ...{
+              humidity:       message.humidity,
+              temperatureDht: message.temperature,
+            },
+          };
         }
+        break;
+      }
 
-        case 'Zigbee/LuftSensor Wohnzimmer': {
-          if(message.humidity && message.temperature) {
-            // logger.info(topic, message);
-            const file = '/var/jalousie/jalousie.rrd';
+      case 'Zigbee/bridge/response/networkmap': {
+        // Trigger by mosquitto_pub -h 192.168.6.5 -t Zigbee/bridge/request/networkmap -m graphviz
+        await new Promise(resolve => {
+          graphviz.parse(message?.data?.value, graph => {
+            graph.render('png', async render => {
+              await fsPromises.writeFile('/var/www/zigbee/map.png', render);
 
-            files.push(file);
-            update[file] = {
-              ...update[file],
-              ...{
-                humidity:       message.humidity,
-                temperatureDht: message.temperature,
-              },
-            };
-          }
-          break;
-        }
+              logger.info('Updated map at https://heine7.de/zigbee/map.png');
 
-        case 'Zigbee/bridge/response/networkmap': {
-          // Trigger by mosquitto_pub -h 192.168.6.5 -t Zigbee/bridge/request/networkmap -m graphviz
-          await new Promise(resolve => {
-            graphviz.parse(message?.data?.value, graph => {
-              graph.render('png', async render => {
-                await fsPromises.writeFile('/var/www/zigbee/map.png', render);
-
-                logger.info('Updated map at https://heine7.de/zigbee/map.png');
-
-                resolve();
-              });
+              resolve();
             });
           });
-          break;
-        }
-
-        default:
-          logger.error(`Unhandled topic '${topic}'`, message);
-          break;
+        });
+        break;
       }
 
-      for(const file of files) {
-        // logger.info(file, update[file]);
-
-        await rrdUpdate(file, update[file]);
-      }
-    } catch(err) {
-      logger.error(`Failed mqtt handling for '${topic}': ${messageRaw}`, err);
+      default:
+        logger.error(`Unhandled topic '${topic}'`, message);
+        break;
     }
-  });
 
-  await mqttClient.subscribeAsync('esp32-wasser/zaehlerstand/json');
-  await mqttClient.subscribeAsync('FritzBox/tele/SENSOR');
-  await mqttClient.subscribeAsync('FritzBox/speedtest/result');
-  await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
-  await mqttClient.subscribeAsync('JalousieBackend/tele/SENSOR');
-  await mqttClient.subscribeAsync('Regen/tele/SENSOR');
-  await mqttClient.subscribeAsync('Sonne/tele/SENSOR');
-  await mqttClient.subscribeAsync('strom/tele/SENSOR');
-  await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
-  await mqttClient.subscribeAsync('tasmota/espco2/tele/SENSOR');
-  await mqttClient.subscribeAsync('tasmota/espfeinstaub/tele/SENSOR');
-  await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
-  await mqttClient.subscribeAsync('tasmota/heizstab/tele/STATE');
-  await mqttClient.subscribeAsync('vito/tele/SENSOR');
-  await mqttClient.subscribeAsync('Wind/tele/SENSOR');
-  await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
-  await mqttClient.subscribeAsync('Zigbee/LuftSensor Büro');
-  await mqttClient.subscribeAsync('Zigbee/LuftSensor Wohnzimmer');
-  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW');
-  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km');
-  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct');
-  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K');
-  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K');
-  await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer');
+    for(const file of files) {
+      // logger.info(file, update[file]);
 
-  healthInterval = setInterval(async() => {
-    await mqttClient.publishAsync(`mqtt2rrd/health/STATE`, 'OK');
-  }, ms('1min'));
+      await rrdUpdate(file, update[file]);
+    }
+  } catch(err) {
+    logger.error(`Failed mqtt handling for '${topic}': ${messageRaw}`, err);
+  }
+});
 
+await mqttClient.subscribeAsync('esp32-wasser/zaehlerstand/json');
+await mqttClient.subscribeAsync('FritzBox/tele/SENSOR');
+await mqttClient.subscribeAsync('FritzBox/speedtest/result');
+await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
+await mqttClient.subscribeAsync('JalousieBackend/tele/SENSOR');
+await mqttClient.subscribeAsync('Regen/tele/SENSOR');
+await mqttClient.subscribeAsync('Sonne/tele/SENSOR');
+await mqttClient.subscribeAsync('strom/tele/SENSOR');
+await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
+await mqttClient.subscribeAsync('tasmota/espco2/tele/SENSOR');
+await mqttClient.subscribeAsync('tasmota/espfeinstaub/tele/SENSOR');
+await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
+await mqttClient.subscribeAsync('tasmota/heizstab/tele/STATE');
+await mqttClient.subscribeAsync('vito/tele/SENSOR');
+await mqttClient.subscribeAsync('Wind/tele/SENSOR');
+await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
+await mqttClient.subscribeAsync('Zigbee/LuftSensor Büro');
+await mqttClient.subscribeAsync('Zigbee/LuftSensor Wohnzimmer');
+await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW');
+await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/cruisingRangeElectric_km');
+await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/batteryStatus/currentSOC_pct');
+await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMax_K');
+await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/temperatureBatteryStatus/temperatureHvBatteryMin_K');
+await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/measurements/odometerStatus/odometer');
+
+healthInterval = setInterval(async() => {
   await mqttClient.publishAsync(`mqtt2rrd/health/STATE`, 'OK');
-})();
+}, ms('1min'));
+
+await mqttClient.publishAsync(`mqtt2rrd/health/STATE`, 'OK');

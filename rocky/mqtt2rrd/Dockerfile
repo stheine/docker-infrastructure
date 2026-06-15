@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim
+FROM node:26-trixie-slim
 
 # ##############################################################################
 # Install all the base packages needed for the following installs
