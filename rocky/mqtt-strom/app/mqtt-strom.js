@@ -22,12 +22,11 @@ import utc           from 'dayjs/plugin/utc.js';
 //  sendMail,
 // } from '@stheine/helpers';
 
-import configFile from './configFile.js';
-import statusFile from './statusFile.js';
+import configFile       from './configFile.js';
+import getTibberVehicle from './getTibberVehicle.js';
+import statusFile       from './statusFile.js';
 
 dayjs.extend(utc);
-
-const dcLimit = 5750;
 
 // vitoBetriebsart
 // 0 Warmwasser
@@ -41,10 +40,15 @@ const dcLimit = 5750;
 // Globals
 
 let   healthInterval;
-const hostname           = os.hostname();
-const lastPvProductionKw = new Ringbuffer(60); // Fronius/solar/tele/SENSOR every 5s => 60 => 5min
+const hostname                 = os.hostname();
+const lastPvProductionKw       = new Ringbuffer(60); // Fronius/solar/tele/SENSOR every 5s => 60 => 5min
+let   lastVehicleStateOfCharge = 0;
 let   mqttClient;
-let   health             = 'OK';
+let   health                   = 'OK';
+let   health1;
+let   health2;
+let   health3;
+
 
 // ###########################################################################
 // Process handling
@@ -128,7 +132,7 @@ logger.info(`Startup --------------------------------------------------`);
 const config = await configFile.read();
 const status = await statusFile.read();
 
-const {energyForecastAccessToken, homeId, tibberAccessToken, vwId} = config;
+const {dcLimit, energyForecastAccessToken, homeId, tibberApiAccessToken, vwId} = config;
 
 let {gesamtEinspeisung, verbrauchHaus} = status;
 
@@ -141,7 +145,7 @@ verbrauchHaus      = verbrauchHaus     || 0;
 const tibberQueryUrl = 'https://api.tibber.com/v1-beta/gql';
 const tibberConfig = {
   apiEndpoint: {
-    apiKey:   tibberAccessToken,
+    apiKey:   tibberApiAccessToken,
     queryUrl: tibberQueryUrl,
   },
   homeId, // {viewer{homes{id}}}
@@ -181,7 +185,6 @@ const getForecast = async function() {
       logger.error('getForecast() failed', err.message);
 
       thisHealth = `FAIL(forecast): ${err.message}`;
-      health     = thisHealth;
 
       if(retry) {
         retry--;
@@ -189,7 +192,7 @@ const getForecast = async function() {
         await delay(ms('5m'));
       }
     }
-  } while(retry && health);
+  } while(retry && thisHealth);
 
   return thisHealth;
 };
@@ -235,7 +238,6 @@ const getStrompreise = async function() {
       logger.error('getStrompreise() failed', err.message);
 
       thisHealth = `FAIL(strompreise): ${err.message}`;
-      health     = thisHealth;
 
       if(retry) {
         retry--;
@@ -243,7 +245,41 @@ const getStrompreise = async function() {
         await delay(ms('5m'));
       }
     }
-  } while(retry && health);
+  } while(retry && thisHealth);
+
+  return thisHealth;
+};
+
+const getVehicle = async function() {
+  let thisHealth;
+  let retry = 10;
+
+  do {
+    try {
+      const vehicleData = await getTibberVehicle({config, status});
+
+      // logger.debug(vehicleData);
+      await mqttClient.publishAsync('strom/vehicle/SENSOR', JSON.stringify(vehicleData), {retain: true});
+
+      if(lastVehicleStateOfCharge !== vehicleData['storage.stateOfCharge']) {
+        logger.trace(`Refreshed vehicle ${vehicleData['storage.stateOfCharge']}%`);
+        lastVehicleStateOfCharge = vehicleData['storage.stateOfCharge'];
+      }
+
+      retry      = 0;
+      thisHealth = null;
+    } catch(err) {
+      logger.error('getVehicle() failed', err.message);
+
+      thisHealth = `FAIL(vehicle): ${err.message}`;
+
+      if(retry) {
+        retry--;
+
+        await delay(ms('5m'));
+      }
+    }
+  } while(retry && thisHealth);
 
   return thisHealth;
 };
@@ -558,7 +594,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
               if(batteryStatus !== 'Entladen' &&
                 !(['Lädt', 'Ladebereit', 'Warte auf Ladefreigabe'].includes(wallboxState) &&
                 vwBatterySocPct < vwTargetSocPct
-              ) && (
+                ) && (
                 (
                   aktuellerUeberschuss > 5500 &&
                   (batteryLevel > 50 || solcastHighPvHours >= 2) &&
@@ -738,20 +774,30 @@ while(_.isNull(vitoBetriebsart)) {
 await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
 await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
 
-//                    s m h              d m wd
-const job = new Cron('0 5 12,13,14,16,18,20,22 * * *', {timezone: 'Europe/Berlin'}, async() => {
-  const health1 = await getForecast();
-  const health2 = await getStrompreise();
-
-  health = health1 || health2 || 'OK';
-});
-
-_.noop('Cron job started', job);
-
+// Initial update
 await getForecast();
 await getStrompreise();
+await getVehicle();
+
+// Cron schedule
+//                     s m h                    d m wd
+const job1 = new Cron('0 5 12,13,14,16,18,20,22 * * *', {timezone: 'Europe/Berlin'}, async() => {
+  health1 = await getForecast();
+  health2 = await getStrompreise();
+});
+
+_.noop('Cron job started', job1);
+
+//                     s m h d m wd
+const job2 = new Cron('0 * * * * *', {timezone: 'Europe/Berlin'}, async() => {
+  health3 = await getVehicle();
+});
+
+_.noop('Cron job started', job2);
 
 healthInterval = setInterval(async() => {
+  health = health1 || health2 || health3 || 'OK';
+
   await mqttClient.publishAsync(`mqtt-strom/health/STATE`, health);
 }, ms('1min'));
 await mqttClient.publishAsync(`mqtt-strom/health/STATE`, health);

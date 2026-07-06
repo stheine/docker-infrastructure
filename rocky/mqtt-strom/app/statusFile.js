@@ -1,33 +1,46 @@
-import fsExtra from 'fs-extra';
+import fsPromises from 'node:fs/promises';
 
-const configFiles = [
+import AsyncLock  from 'async-lock';
+import check      from 'check-types-2';
+import fsExtra    from 'fs-extra';
+
+const lock = new AsyncLock();
+
+const statusFiles = [
   '/var/strom/strom.json',
   '/home/stheine/data/strom/strom.json',
 ];
-let activeConfigFile;
+let activeStatusFile;
+let status;
 
 export default {
   async read() {
-    let config;
-
-    for(const configFile of [activeConfigFile, ...configFiles]) {
+    for(const statusFile of [activeStatusFile, ...statusFiles]) {
       try {
-        config = await fsExtra.readJson(configFile);
+        status = await fsExtra.readJson(statusFile);
 
-        activeConfigFile = configFile;
+        activeStatusFile = statusFile;
       } catch{
         // ignore
       }
     }
 
-    return config;
+    check.assert.assigned(activeStatusFile, 'No active status file detected');
+    check.assert.nonEmptyObject(status, `Failed read status from ${activeStatusFile}`);
+
+    return status;
   },
 
-  async write(config) {
-    if(!activeConfigFile) {
-      throw new Error('No active config file detected');
-    }
+  async write(set) {
+    check.assert.assigned(activeStatusFile, 'No active status file detected');
 
-    await fsExtra.writeJson(activeConfigFile, config, {spaces: 2});
+    await lock.acquire('status.json', async() => {
+      for(const [key, value] of Object.entries(set)) {
+        status[key] = value;
+      }
+
+      await fsPromises.copyFile(activeStatusFile, `${activeStatusFile}.bak`);
+      await fsExtra.writeJson(activeStatusFile, status, {spaces: 2});
+    });
   },
 };
