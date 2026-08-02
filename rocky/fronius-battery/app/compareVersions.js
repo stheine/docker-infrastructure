@@ -12,9 +12,13 @@ try {
   await inverter.open();
 
   const currentVersion = await inverter.readRegister('Vr');
+  logger.info({currentVersion});
+
   const latestVersion  = await getLatestVersion();
 
-  logger.info({currentVersion, latestVersion});
+  logger.info({latestVersion});
+} catch(err) {
+  logger.error(err.message);
 } finally {
   await inverter.close();
 }
