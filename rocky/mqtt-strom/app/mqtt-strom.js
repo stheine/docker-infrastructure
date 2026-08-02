@@ -132,12 +132,17 @@ logger.info(`Startup --------------------------------------------------`);
 const config = await configFile.read();
 const status = await statusFile.read();
 
-const {dcLimit, energyForecastAccessToken, homeId, tibberApiAccessToken, vwId} = config;
+const {abrpApiToken, abrpVehicleToken, dcLimit, energyForecastAccessToken, homeId, tibberApiAccessToken, vwId} = config;
 
 let {gesamtEinspeisung, verbrauchHaus} = status;
 
 gesamtEinspeisung  = gesamtEinspeisung || 0;
 verbrauchHaus      = verbrauchHaus     || 0;
+
+
+// #########################################################################
+// Init ABRP URL
+const abrpUrl = `https://api.iternio.com/1/tlm/send`;
 
 // #########################################################################
 // Init Tibber Query
@@ -264,10 +269,36 @@ const getVehicle = async function() {
       if(lastVehicleStateOfCharge !== vehicleData['storage.stateOfCharge']) {
         logger.trace(`Refreshed vehicle ${vehicleData['storage.stateOfCharge']}%`);
         lastVehicleStateOfCharge = vehicleData['storage.stateOfCharge'];
+
+        const params = {
+          api_key: abrpApiToken,
+          token:   abrpVehicleToken,
+          tlm: JSON.stringify({
+            utc: Math.floor(Date.now() / 1000),
+            soc: vehicleData['storage.stateOfCharge'],
+          }),
+        };
+
+        const response = await axios({
+          method:         'POST',
+          url:            abrpUrl,
+          params,
+          validateStatus: null,
+        });
+
+        const {data, status: statusCode, statusText} = response;
+
+        if(status === 200) {
+          thisHealth = null;
+        } else {
+          thisHealth = `Updating ABRP unexpected ` +
+            `status=${statusCode} statusText=${statusText} data=${JSON.stringify(data)}`;
+        }
+      } else {
+        thisHealth = null;
       }
 
       retry      = 0;
-      thisHealth = null;
     } catch(err) {
       logger.error('getVehicle() failed', err.message);
 
