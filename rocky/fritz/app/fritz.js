@@ -265,7 +265,7 @@ const speedtest = async function() {
       try {
         const {stdout} = await execa('/usr/bin/speedtest', [
           // '--host', 'voiptest.starface.de',
-          '--server-id', '55133',
+          '--server-id', '60440',
           '--format', 'json-pretty',
           '--accept-license',
           '--accept-gdpr',
