@@ -49,6 +49,7 @@ const clientId        = `${hostname}-${Math.random().toString(16).slice(2, 8)}`;
 
 let   chargeEndTimeout;
 let   chargeStartTimeout;
+let   ladestartLevel;
 let   lastChargeUpdate;
 let   lastLadeleistungKw;
 let   lastPvProductionKw;
@@ -242,9 +243,9 @@ const startCharging = async function() {
       } else {
         retries--;
 
-        if(retries) {
-          await forceUpdate();
-        }
+        // if(retries) {
+        //   await forceUpdate();
+        // }
       }
     } while(retries);
 
@@ -293,9 +294,9 @@ const stopCharging = async function() {
       } else {
         retries--;
 
-        if(retries) {
-          await forceUpdate();
-        }
+        // if(retries) {
+        //   await forceUpdate();
+        // }
       }
     } while(retries);
 
@@ -663,9 +664,9 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           break;
         }
 
-        case 'forceUpdate':
-          await forceUpdate();
-          break;
+        // case 'forceUpdate':
+        //   await forceUpdate();
+        //   break;
 
         case 'setChargeCurrent':
           await setChargeCurrent(message);
@@ -891,19 +892,27 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         }
 
         if(wallboxState && wallboxState !== 'Lädt' && newWallboxState === 'Lädt') {
-          await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-            priority: -1,
-            sound:    'none',
-            title:    '🚗 Auto',
-            message:  `Ladestart bei ${vwBatterySocPct}%`,
-          }));
+          ladestartLevel = vwBatterySocPct;
+
+          if(vwBatterySocPct !== vwTargetSoc) {
+            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+              priority: -1,
+              sound:    'none',
+              title:    '🚗 Auto',
+              message:  `Ladestart bei ${vwBatterySocPct}%`,
+            }));
+          }
         } else if(wallboxState === 'Lädt' && newWallboxState !== 'Lädt') {
-          await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-            priority: -1,
-            sound:    'none',
-            title:    '🚗 Auto',
-            message:  `Ladeende bei ${vwBatterySocPct}%`,
-          }));
+          if(vwBatterySocPct !== ladestartLevel) {
+            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+              priority: -1,
+              sound:    'none',
+              title:    '🚗 Auto',
+              message:  `Ladeende bei ${vwBatterySocPct}%`,
+            }));
+          }
+
+          ladestartLevel = null;
         }
 
         wallboxState = newWallboxState;
