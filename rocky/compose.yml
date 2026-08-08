@@ -1345,7 +1345,7 @@ services:
   watchdog:
     restart: always
     build: watchdog
-    hostname: watchdog
+    hostname: rocky-watchdog
     volumes:
       - ./watchdog/app:/app
     ports:
