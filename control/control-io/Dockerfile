@@ -44,7 +44,7 @@ RUN \
     make \
     musl-dev \
     python3 \
-    python3-distutils
+    python3-distutils && \
   wget https://github.com/joan2937/pigpio/archive/v$PIGPIO_VERSION.zip && \
   unzip v$PIGPIO_VERSION && \
   cd pigpio-$PIGPIO_VERSION && \
