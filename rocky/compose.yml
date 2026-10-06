@@ -11,7 +11,7 @@
 #  6286 octoprint              http://192.168.6.5:6286/
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
-#  8080 nextcloud aio          http://192.168.6.5:8080/
+#  8080 nextcloud aio          https://192.168.6.5:8080/
 #  8285 vaultwarden            http://192.168.6.5:8285/ https://bitwarden.heine7.de https://bitwarden.heine7.de/admin
 #  8925 hivemq-mqtt-web-client http://192.168.6.5:8925/
 #  9001 mosquitto-websockets   websockets
@@ -582,6 +582,9 @@ services:
       - paperless-export:/data_rsync/paperless-export:ro
       - wordpress-export:/data_rsync/wordpress-export:ro
       - uptime-kuma:/data_rsync/uptime-kuma:ro
+    depends_on:
+      - paperless
+      - wordpress-database
 
 #  carconnectivity-mqtt:
 #    # image: tillsteinbach/carconnectivity-mqtt:latest
@@ -959,6 +962,7 @@ services:
       - ./mediawiki-database-backup/startup.sh:/startup.sh:ro
     depends_on:
       - mediawiki-database
+      - postfix
 
   mosquitto:
     restart: always
@@ -1406,7 +1410,7 @@ services:
       - 1881:1881
     volumes:
       - zigbee2mqtt:/app/data
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
+#    devices:
+#      - /dev/ttyACM0:/dev/ttyACM0
     environment:
       - TZ=Europe/Amsterdam
