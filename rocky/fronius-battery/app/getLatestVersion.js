@@ -1,12 +1,10 @@
-/* eslint-disable prefer-const */
-
 // import _     from 'lodash';
 import axios from 'axios';
 // import check from 'check-types-2';
 // import {parseSetCookie} from 'set-cookie-parser';
 
 export default async function getLatestVersion() {
-  let version;
+//  let version;
 
 // 1) working until January 2024
 // const url = 'https://www.fronius.com/de-de/germany/solarenergie/installateure-partner/' +
@@ -40,16 +38,16 @@ export default async function getLatestVersion() {
 //
 //  return firmware.title.replace('Fronius Update GEN24 Tauro Verto ', '');
 
-  // 4) July 2025
-  const url = 'https://www.fronius.com/en/solar-energy/installers-partners/' +
-    'service-support/tech-support/software-and-updates/symo-gen24plus-update';
+//  // 4) July 2025
+//  const url = 'https://www.fronius.com/en/solar-energy/installers-partners/' +
+//    'service-support/tech-support/software-and-updates/symo-gen24plus-update';
 
-  const response = await axios.get(url);
+//  const response = await axios.get(url);
 
-  version = response.data
-    .replace(/^.*Firmware Fronius Update GEN24 Tauro Verto /, '')
-    .replace(/".*$/, '')
-    .replace(/[ ,A-Z]+/, '');
+//  version = response.data
+//    .replace(/^.*Firmware Fronius Update GEN24 Tauro Verto /, '')
+//    .replace(/".*$/, '')
+//    .replace(/[ ,A-Z]+/, '');
 
 
 //  // 5) February 2026
@@ -136,6 +134,45 @@ export default async function getLatestVersion() {
 //  check.assert.match(version, /^\d+\.\d+/);
 
 //  const version = 'unknown';
+
+  // August 2026
+  // eslint-disable-next-line max-len
+  // https://www.fronius.com/de/download-center?searchword=GEN24&activeDepartment=sbsSolarAndEnergy&language=de&Languages=de&DocumentType=Firmware
+  const url = 'https://www.fronius.com/api/data/search/getdownloadcenter';
+  const data = {
+    id: '67886f88-4cc6-4d46-997a-b7bc4ae6f799',
+    sbsSolarAndEnergy: {
+      facets: [{
+        id: 'de',
+        categoryId: 'language',
+      }, {
+        id: 'de',
+        categoryId: 'Languages',
+      }, {
+        id: 'Firmware',
+        categoryId: 'DocumentType',
+      }],
+      page:1,
+    },
+    language: 'de',
+    searchword: 'GEN24',
+  };
+
+  const response = await axios({
+    method: 'POST',
+    url,
+    data,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0',
+    },
+    validateStatus: () => true,
+  });
+
+  const downloads = response.data.sbsSolarAndEnergy.downloads.results;
+
+  const firmware = downloads.find(download => download.title.includes('Fronius Update GEN24'));
+
+  const version = firmware.title.replace(/^Fronius Update GEN24 Tauro Verto/, '').trim();
 
   return version;
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 /* eslint-disable function-call-argument-newline */
+/* eslint-disable no-lonely-if */
 
 import {setTimeout as delay} from 'node:timers/promises';
 import fsPromises            from 'node:fs/promises';
@@ -87,25 +88,32 @@ const updateStatus = async function(set) {
 // Process handling
 
 const stopProcess = async function() {
+  logger.debug('stopProcess()');
+
   if(status.batteryHold) {
+    logger.debug('stopProcess(), update batteryHold');
     await updateStatus({batteryHold: false});
   }
   if(status.gridCharge) {
+    logger.debug('stopProcess(), update gridCharge');
     await updateStatus({gridCharge: false});
   }
 
   if(healthInterval) {
+    logger.debug('stopProcess(), clear healthInterval');
     clearInterval(healthInterval);
     healthInterval = undefined;
   }
 
   if(froniusInterval) {
+    logger.debug('stopProcess(), clear froniusInterval');
     clearInterval(froniusInterval);
     // logger.info('fronius.closed');
     froniusInterval = undefined;
   }
 
   if(inverter) {
+    logger.debug('stopProcess(), close inverter');
     await inverter.close();
     // logger.info('inverter.closed');
     inverter = undefined;
@@ -113,16 +121,19 @@ const stopProcess = async function() {
 
   if(smartMeter) {
     if(smartMeterInterval) {
+      logger.debug('stopProcess(), clear smartMeterInterval');
       clearInterval(smartMeterInterval);
       smartMeterInterval = undefined;
     }
 
+    logger.debug('stopProcess(), close smartMeter');
     await smartMeter.close();
     // logger.info('smartMeter.closed');
     smartMeter = undefined;
   }
 
   if(mqttClient) {
+    logger.debug('stopProcess(), close mqttClient');
     await mqttClient.endAsync();
     mqttClient = undefined;
   }
@@ -130,7 +141,7 @@ const stopProcess = async function() {
   logger.info(`Shutdown -------------------------------------------------`);
 
   // eslint-disable-next-line no-process-exit
-  process.exit(0);
+  process.exit(1);
 };
 
 process.on('SIGTERM', () => stopProcess());
@@ -1472,12 +1483,9 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         heizstabLeistung = message.ENERGY.Power;
         break;
 
-      case `carconnectivity/garage/${config.vwId}/drives/primary/level`:
-        vwBatterySocPct = Number(messageRaw);
-        break;
-
-      case `carconnectivity/garage/${config.vwId}/charging/settings/target_level`:
-        vwTargetSocPct = Number(messageRaw);
+      case 'strom/vehicle/SENSOR':
+        vwBatterySocPct = message?.['storage.stateOfCharge'];
+        vwTargetSocPct  = message?.['storage.targetStateOfCharge'];
         break;
 
       default:
@@ -1490,8 +1498,6 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 });
 
 await mqttClient.subscribeAsync('auto/tele/STATUS');
-await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/drives/primary/level`);
-await mqttClient.subscribeAsync(`carconnectivity/garage/${config.vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/cmnd');
 await mqttClient.subscribeAsync('Fronius/solar/cmnd/batteryHold');
 await mqttClient.subscribeAsync('Fronius/solar/cmnd/gridChargePct');
@@ -1500,6 +1506,7 @@ await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/analysis');
 await mqttClient.subscribeAsync('strom/tele/preise');
 await mqttClient.subscribeAsync('strom/tele/SENSOR');
+await mqttClient.subscribeAsync('strom/vehicle/SENSOR');
 await mqttClient.subscribeAsync('sunTimes/INFO');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
 await mqttClient.subscribeAsync('tasmota/heizstab/stat/POWER');
