@@ -132,7 +132,7 @@ logger.info(`Startup --------------------------------------------------`);
 const config = await configFile.read();
 const status = await statusFile.read();
 
-const {abrpApiToken, abrpVehicleToken, dcLimit, energyForecastAccessToken, homeId, tibberApiAccessToken, vwId} = config;
+const {abrpApiToken, abrpVehicleToken, dcLimit, energyForecastAccessToken, homeId, tibberApiAccessToken} = config;
 
 let {gesamtEinspeisung, verbrauchHaus} = status;
 
@@ -752,15 +752,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
-      case `carconnectivity/garage/${vwId}/drives/primary/level`: {
-        vwBatterySocPct = Number(messageRaw);
+      case 'strom/vehicle/SENSOR':
+        vwBatterySocPct = message?.['storage.stateOfCharge'];
+        vwTargetSocPct  = message?.['storage.targetStateOfCharge'];
         break;
-      }
-
-      case `carconnectivity/garage/${vwId}/charging/settings/target_level`: {
-        vwTargetSocPct = Number(messageRaw);
-        break;
-      }
 
       default: {
         logger.error(`Unhandled topic '${topic}'`, messageRaw);
@@ -786,12 +781,11 @@ await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/SetOption31', '1');
 await mqttClient.publishAsync('tasmota/waschmaschine/cmnd/LedPower1', '0'); // Green/Link off
 
 await mqttClient.subscribeAsync('auto/tele/STATUS');
-await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/drives/primary/level`);
-await mqttClient.subscribeAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level`);
 await mqttClient.subscribeAsync('Fronius/solar/tele/SENSOR');
 await mqttClient.subscribeAsync('Fronius/solar/tele/STATUS');
 await mqttClient.subscribeAsync('maxSun/INFO');
 await mqttClient.subscribeAsync('solcast/forecasts');
+await mqttClient.subscribeAsync('strom/vehicle/SENSOR');
 await mqttClient.subscribeAsync('tasmota/espstrom/tele/SENSOR');
 await mqttClient.subscribeAsync('tasmota/spuelmaschine/stat/POWER1');
 await mqttClient.subscribeAsync('tasmota/waschmaschine/stat/POWER');
