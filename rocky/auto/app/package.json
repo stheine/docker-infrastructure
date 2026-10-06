@@ -10,7 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@stheine/helpers": "1.2.1",
+    "@stheine/helpers": "1.4.0",
     "@stheine/ringbufferjs": "0.1.1",
     "async-lock": "1.4.1",
     "check-types-2": "11.8.1",

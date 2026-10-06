@@ -13,7 +13,7 @@ import _                     from 'lodash';
 import AsyncLock             from 'async-lock';
 import check                 from 'check-types-2';
 import dayjs                 from 'dayjs';
-import {execa}               from 'execa';
+// import {execa}               from 'execa';
 // import fsExtra               from 'fs-extra';
 import {logger}              from '@stheine/helpers';
 import mqtt                  from 'mqtt';
@@ -31,7 +31,7 @@ const forceUpdateDelay = '15s';
 // Read static data
 
 const config = await configFile.read();
-const {vwBatteryCapacityKwh, vwId} = config;
+const {vwBatteryCapacityKwh} = config;
 
 const status = await statusFile.read();
 let   {/* atHome, */ chargeMode, wallboxState} = status;
@@ -54,10 +54,10 @@ let   lastChargeUpdate;
 let   lastLadeleistungKw;
 let   lastPvProductionKw;
 let   lastPvProductionKwAvg;
-let   disconnectedHandler;
+// let   disconnectedHandler;
 let   hausBatterySocPct;
 let   maxSunTime;
-let   missingUpdateHandler;
+// let   missingUpdateHandler;
 let   pvProductionKw;
 let   revertChargeModeTimeout;
 let   strompreise;
@@ -66,7 +66,7 @@ let   vwBatterySocPct;
 // let   vwAutoUnlock;
 // let   vwParkingLatitude;
 // let   vwParkingLongitude;
-let   vwTargetSoc;
+let   vwTargetSocPct;
 // let   vwTargetSocPending;
 // let   vwUpdated;
 // let   vwUpdateIntervalS;
@@ -109,8 +109,8 @@ const logState = function(where) {
     `  pvProduction:              ${_.round(pvProductionKw, 1)} kW\n` +
     // `  vwParkingLatitude:      ${vwParkingLatitude}\n` +
     // `  vwParkingLongitude:     ${vwParkingLongitude}\n` +
-    // `  vwTargetSoc:               ${vwTargetSoc} %` +
-      // `${vwTargetSocPending && vwTargetSocPending !== vwTargetSoc ? ` (pending: ${vwTargetSocPending} %)` : ''}\n` +
+    // `  vwTargetSocPct:            ${vwTargetSocPct} %` +
+    // `${vwTargetSocPending && vwTargetSocPending !== vwTargetSocPct ? ` (pending: ${vwTargetSocPending} %)` : ''}\n` +
     `  vwBatterySoc:              ${vwBatterySocPct} %\n` +
     `  wallboxExternalCurrent:    ${wallboxExternalCurrent} mA\n` +
     // `  vwConnected:               ${vwConnected} ${vwUpdated}\n` +
@@ -204,7 +204,7 @@ const startCharging = async function() {
   }
 
 //  if((vwTargetSocPending && vwBatterySocPct >= vwTargetSocPending) ||
-//    (!vwTargetSocPending && vwBatterySocPct >= vwTargetSoc)
+//    (!vwTargetSocPending && vwBatterySocPct >= vwTargetSocPct)
 //  ) {
 //    logger.info('Ladeziel bereits erreicht');
 //
@@ -370,15 +370,15 @@ const getChargeTime = function() {
     return {};
   }
 
-  // if(vwBatterySocPct >= (vwTargetSocPending || vwTargetSoc))
-  if(vwBatterySocPct >= (vwTargetSoc)) {
+  // if(vwBatterySocPct >= (vwTargetSocPending || vwTargetSocPct))
+  if(vwBatterySocPct >= vwTargetSocPct) {
     return {};
   }
 
   // logger.debug({strompreise});
 
-  // const kwhToCharge = vwBatteryCapacityKwh * ((vwTargetSocPending || vwTargetSoc) - vwBatterySocPct) / 100;
-  const kwhToCharge = vwBatteryCapacityKwh * (vwTargetSoc - vwBatterySocPct) / 100;
+  // const kwhToCharge = vwBatteryCapacityKwh * ((vwTargetSocPending || vwTargetSocPct) - vwBatterySocPct) / 100;
+  const kwhToCharge = vwBatteryCapacityKwh * (vwTargetSocPct - vwBatterySocPct) / 100;
   const hoursToCharge = Math.ceil(kwhToCharge / 10);
 
   const now           = dayjs.utc();
@@ -412,7 +412,7 @@ const getChargeTime = function() {
 
   logger.debug('getChargeTime', {
     vwBatterySocPct,
-    vwTargetSoc,
+    vwTargetSocPct,
     // vwTargetSocPending,
     kwhToCharge,
     hoursToCharge,
@@ -446,8 +446,8 @@ const handleNightChargingSchedule = async function(force = false) {
     }
   }
 
-  // if(vwBatterySocPct >= (vwTargetSocPending || vwTargetSoc))
-  if(vwBatterySocPct >= vwTargetSoc) {
+  // if(vwBatterySocPct >= (vwTargetSocPending || vwTargetSocPct))
+  if(vwBatterySocPct >= vwTargetSocPct) {
     // logger.debug(`handleNightChargingSchedule, already charged`);
 
     return;
@@ -502,7 +502,7 @@ const handleNightChargingSchedule = async function(force = false) {
 };
 
 const checkPVUeberschussLaden = async function() {
-  if(vwBatterySocPct >= vwTargetSoc) {
+  if(vwBatterySocPct >= vwTargetSocPct) {
     return;
   }
   if(!lastPvProductionKwAvg) {
@@ -646,7 +646,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
                 // }
 
                 // if(vwTargetSocPending && vwTargetSocPending !== 80 ||
-                //   !vwTargetSocPending && vwTargetSoc !== 80
+                //   !vwTargetSocPending && vwTargetSocPct !== 80
                 // ) {
                   // await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', JSON.stringify(80), {retain: true});
                 // }
@@ -682,12 +682,12 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
 //        case 'vwTargetSocPending':
 //          if(message) {
-//            if(message !== vwTargetSoc) {
+//            if(message !== vwTargetSocPct) {
 //              vwTargetSocPending = message;
 //
 //              logger.debug(`Setze targetSoc=${message} (pending)`);
 //
-//              await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
+//             await mqttClient.publishAsync(`carconnectivity/garage/${vwId}/charging/settings/target_level_writetopic`,
 //                JSON.stringify(message));
 //            } else {
 //              vwTargetSocPending = null;
@@ -797,7 +797,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 //              missingUpdateHandler = undefined;
 //              logger.debug('Trigger missingUpdate handler', {vwConnected, vwUpdated});
 //
-//              await mqttClient.publishAsync('carconnectivity/connectors/volkswagen/connection_state', '', {retain: true});
+//          await mqttClient.publishAsync('carconnectivity/connectors/volkswagen/connection_state', '', {retain: true});
 //
 //              await restartCarconnectivity('carconnectivity-mqtt');
 //            }, ms(`${8 * vwUpdateIntervalS / 60 + 1}m`) - ageMs);
@@ -811,7 +811,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
       case 'strom/vehicle/SENSOR':
         vwBatterySocPct = message?.['storage.stateOfCharge'];
-        vwTargetSoc     = message?.['storage.targetStateOfCharge'];
+        vwTargetSocPct  = message?.['storage.targetStateOfCharge'];
         break;
 
 //      case `carconnectivity/garage/${vwId}/drives/primary/level`:
@@ -825,10 +825,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 //        break;
 
 //      case `carconnectivity/garage/${vwId}/charging/settings/target_level`:
-//        vwTargetSoc = message;
+//        vwTargetSocPct = message;
 //
 //        if(vwTargetSocPending) {
-//          if(vwTargetSocPending === vwTargetSoc) {
+//          if(vwTargetSocPending === vwTargetSocPct) {
 //            logger.debug(`Pending targetSoc=${message} active now`);
 //
 //            await mqttClient.publishAsync('auto/cmnd/vwTargetSocPending', '', {retain: true});
@@ -894,7 +894,7 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         if(wallboxState && wallboxState !== 'Lädt' && newWallboxState === 'Lädt') {
           ladestartLevel = vwBatterySocPct;
 
-          if(vwBatterySocPct !== vwTargetSoc) {
+          if(vwBatterySocPct !== vwTargetSocPct) {
             await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
               priority: -1,
               sound:    'none',
@@ -904,15 +904,17 @@ mqttClient.on('message', async(topic, messageBuffer) => {
           }
         } else if(wallboxState === 'Lädt' && newWallboxState !== 'Lädt') {
           if(vwBatterySocPct !== ladestartLevel) {
-            await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
-              priority: -1,
-              sound:    'none',
-              title:    '🚗 Auto',
-              message:  `Ladeende bei ${vwBatterySocPct}%`,
-            }));
-          }
+            setTimeout(async() => {
+              await mqttClient.publishAsync(`mqtt-notify/notify`, JSON.stringify({
+                priority: -1,
+                sound:    'none',
+                title:    '🚗 Auto',
+                message:  `Ladeende bei ${vwBatterySocPct}%`,
+              }));
 
-          ladestartLevel = null;
+              ladestartLevel = null;
+            }, ms('5m'));
+          }
         }
 
         wallboxState = newWallboxState;
