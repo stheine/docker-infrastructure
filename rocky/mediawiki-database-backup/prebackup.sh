@@ -10,6 +10,6 @@ if [ ! -f /backup/stratoHiDrive.flag ]; then
   if [ -f /backup/stratoHiDrive.flag ]; then
     echo "$(date +"%Y-%m-%d %H:%M:%S") mounted Strato HiDrive" | tee -a /backup/backup.out
   else
-    echo "$(date +"%Y-%m-%d %H:%M:%S") Failed to mounted Strato HiDrive" | tee -a /backup/backup.out
+    echo "$(date +"%Y-%m-%d %H:%M:%S") Failed to mount Strato HiDrive" | tee -a /backup/backup.out
   fi
 fi
