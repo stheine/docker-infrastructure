@@ -1,12 +1,12 @@
 # Backup Strategie
 
-- a300
-  - BackInTime, /mnt/qnap_Backup/a300
+- x300
+  - BackInTime, /mnt/qnap_Backup/x300
     - /home/stheine
     - /home/stheine_ot
     - /mnt/qnap_Data/Docs
     - /mnt/qnap_linux
-  - BackInTime (root), /mnt/qnap_Backup/a300
+  - BackInTime (root), /mnt/qnap_Backup/x300
     - /etc
 
 - otlaptop1 - TODO
@@ -43,22 +43,50 @@
         TODO in backup container aufnehmen
 
 
+rclone einrichten fuer 'pcloud' - this is the base for pcloudEncrypted and contains the credentials
+- `docker compose exec backup /bin/bash`
+- `rclone config`
+- `n` New remote
+- name: `pcloud`
+- storage: `pcloud`
+- client_id: `<blank>`
+- client_secret: `<blank>`
+- advanced: `n` no advanced config
+- auto config: `n`
+- ON THE LOCAL SYSTEM, execute: `rclone authorize "pcloud"`
+- maybe add the parameter: `--no-check-certificate`
+- COPY THE RESULTING TOKEN
+- config_token: `<paste>`
+- complete: `y` OK
+- quit: `q` quit
+
 rclone einrichten fuer 'pcloudEncrypted'
 - `docker compose exec backup /bin/bash`
 - `rclone config`
 - `n` New remote
-- `pcloudEncrypted`
-- `crypt`
-- `pcloud:encrypted`
-- `standard` Encrypt the filenames
-- `true` Encrypt directory names
-- `y` own password
-- value from `~/data/backup/pass`
-- `n` optional password blank
-- `n` no advanced config
-- `y` OK
-- `q` quit
+- name: `pcloudEncrypted`
+- storage: `crypt`
+- remote: `pcloud:encrypted`
+- filename_encryption: `standard` Encrypt the filenames
+- directory_name_encryption: `true` Encrypt directory names
+- password: `y` own password
+- password: 2x value from `~/data/backup/pass`
+- salt: `n` optional password blank
+- advanced: `n` no advanced config
+- complete: `y` OK
+- quit: `q` quit
 
+# Test pCloud access:
+
+```
+rclone lsf --files-only --format tp pcloud:backup/homer
+```
+
+# Re-authorize pCloud access:
+
+```
+rclone config reconnect pcloud:
+```
 
 # Restore
 
