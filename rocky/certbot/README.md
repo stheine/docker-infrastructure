@@ -41,17 +41,10 @@ ssh ipv4
 
 cd docker
 docker compose run --rm certbot /bin/bash -l
-cd /etc/letsencrypt/live/heine7.de/
+cd /etc/letsencrypt/live/rocky.heine7.de/
 /usr/bin/openssl x509 -in cert.pem -text -noout | grep DNS
 /usr/bin/certbot certonly --webroot --webroot-path=/var/letsencrypt \
-  -d heine7.de \
-  -d bitwarden.heine7.de \
-  -d cloud.heine7.de \
-  -d homer.heine7.de \
-  -d immich.heine7.de \
-  -d paperless.heine7.de \
-  -d wiki.heine7.de \
-  -d www.spasmodische-dysphonie.de
+  -d rocky.heine7.de
 # (E)xpand
 exit
 docker compose kill -s HUP dovecot
