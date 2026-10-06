@@ -4,10 +4,10 @@
 /* eslint-disable max-len */
 /* eslint-disable unicorn/no-useless-spread */
 
-import fsPromises from 'node:fs/promises';
+// import fsPromises from 'node:fs/promises';
 import os         from 'node:os';
 
-import graphviz   from 'graphviz';
+// import graphviz   from 'graphviz';
 import {logger}   from '@stheine/helpers';
 import mqtt       from 'mqtt';
 import ms         from 'ms';
@@ -548,21 +548,21 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
       }
 
-      case 'Zigbee/bridge/response/networkmap': {
-        // Trigger by mosquitto_pub -h 192.168.6.5 -t Zigbee/bridge/request/networkmap -m graphviz
-        await new Promise(resolve => {
-          graphviz.parse(message?.data?.value, graph => {
-            graph.render('png', async render => {
-              await fsPromises.writeFile('/var/www/zigbee/map.png', render);
-
-              logger.info('Updated map at https://heine7.de/zigbee/map.png');
-
-              resolve();
-            });
-          });
-        });
-        break;
-      }
+//      case 'Zigbee/bridge/response/networkmap': {
+//        // Trigger by mosquitto_pub -h 192.168.6.5 -t Zigbee/bridge/request/networkmap -m graphviz
+//        await new Promise(resolve => {
+//          graphviz.parse(message?.data?.value, graph => {
+//            graph.render('png', async render => {
+//              await fsPromises.writeFile('/var/www/zigbee/map.png', render);
+//
+//              logger.info('Updated map at https://heine7.de/zigbee/map.png');
+//
+//              resolve();
+//            });
+//          });
+//        });
+//        break;
+//      }
 
       default:
         logger.error(`Unhandled topic '${topic}'`, message);
@@ -594,7 +594,7 @@ await mqttClient.subscribeAsync('tasmota/heizstab/tele/SENSOR');
 await mqttClient.subscribeAsync('tasmota/heizstab/tele/STATE');
 await mqttClient.subscribeAsync('vito/tele/SENSOR');
 await mqttClient.subscribeAsync('Wind/tele/SENSOR');
-await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
+// await mqttClient.subscribeAsync('Zigbee/bridge/response/networkmap');
 await mqttClient.subscribeAsync('Zigbee/LuftSensor Büro');
 await mqttClient.subscribeAsync('Zigbee/LuftSensor Wohnzimmer');
 await mqttClient.subscribeAsync('vwsfriend/vehicles/WVWZZZE1ZPP505932/domains/charging/chargingStatus/chargePower_kW');
