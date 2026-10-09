@@ -387,6 +387,18 @@ const preventBatteryUnload = async function() {
   // Entladen verhindern (während Auto geladen wird):
   // OutWRte (discharge) auf 0 (null) setzen
 
+  // Prevent discharge
+  try {
+    await inverter.writeRegister('InWRte', [0]);
+  } catch(err) {
+    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
+  }
+  try {
+    await inverter.writeRegister('OutWRte', [0]);
+  } catch(err) {
+    throw new Error(`Failed writing battery discharge rate: ${err.message}`);
+  }
+
   // Allow charge and discharge control
   try {
     // Bit0 enable charge control
@@ -403,18 +415,6 @@ const preventBatteryUnload = async function() {
     throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
   }
 
-  // Prevent discharge
-  try {
-    await inverter.writeRegister('InWRte', [0]);
-  } catch(err) {
-    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
-  }
-  try {
-    await inverter.writeRegister('OutWRte', [0]);
-  } catch(err) {
-    throw new Error(`Failed writing battery discharge rate: ${err.message}`);
-  }
-
   await updateStatus({batteryStatus: 'Halten'});
 
   // logger.info('preventBatteryUnload');
@@ -429,16 +429,12 @@ const setBatteryGridCharge = async function(chargePct = 100) {
 
   logger.debug('setBatteryGridCharge', {chargePct});
 
-  // Init load rate
+  // Max load rate
   try {
-    await inverter.writeRegister('InWRte', [0]);
+    // Allow 100% of max Charge rate. * 100 => Scaling Factor
+    await inverter.writeRegister('InWRte', [100 * 100]);
   } catch(err) {
-    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
-  }
-  try {
-    await inverter.writeRegister('OutWRte', [0]);
-  } catch(err) {
-    throw new Error(`Failed writing max battery discharge rate (OutWRte=0)): ${err.message}`);
+    throw new Error(`Failed writing max battery charge rate (InWRte=${chargePct})): ${err.message}`);
   }
 
   // Allow charge and discharge control
@@ -467,18 +463,10 @@ const setBatteryGridCharge = async function(chargePct = 100) {
   // Set load
   try {
     // % of max Charge. * 100 => Scaling Factor
-    await inverter.writeRegister('OutWRte', [Math.abs(chargePct) * 100]);
+    await inverter.writeRegister('OutWRte', [-Math.abs(chargePct) * 100]);
   } catch(err) {
     throw new Error(`Failed writing battery discharge rate (OutWRte=${-chargePct}): ${err.message}`);
   }
-  // Max load rate
-  try {
-    // Allow 100% of max Charge rate. * 100 => Scaling Factor
-    await inverter.writeRegister('InWRte', [chargePct * 100]);
-  } catch(err) {
-    throw new Error(`Failed writing max battery charge rate (InWRte=${chargePct})): ${err.message}`);
-  }
-
 
   if(chargePct > 0) {
     await updateStatus({batteryStatus: 'Netzladen'});
@@ -1311,10 +1299,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
 
         if(message) {
           if(!status.batteryHold) {
+            await preventBatteryUnload();
+
             await updateStatus({batteryHold: true});
             await updateStatus({batteryStatus: 'Halten'});
-
-            await preventBatteryUnload();
           }
         } else {
           if(status.batteryHold) {
