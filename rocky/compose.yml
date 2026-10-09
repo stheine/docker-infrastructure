@@ -8,10 +8,12 @@
 #  2283 immich                 http://192.168.6.5:2283/
 ###  2342 photoprism             http://192.168.6.5:2342/
 #  4663 homer                  http://192.168.6.5:4663/
+#  5580 matterjs-server        websocket
 #  6286 octoprint              http://192.168.6.5:6286/
 #  7273 paperless              http://192.168.6.5:7273/
 #  8008 portainer              http://192.168.6.5:8008/
 #  8080 nextcloud aio          https://192.168.6.5:8080/
+#  8123 homeassistant          http://192.168.6.5:8123/
 #  8285 vaultwarden            http://192.168.6.5:8285/ https://bitwarden.heine7.de https://bitwarden.heine7.de/admin
 #  8925 hivemq-mqtt-web-client http://192.168.6.5:8925/
 #  9001 mosquitto-websockets   websockets
@@ -131,6 +133,13 @@ volumes:
 ##      device: /mnt/qnap/linux/data/gerberaVideo
 ##      o: bind
 
+  homeassistant:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/homeassistant
+      o: bind
+
   homer:
     driver: local
     driver_opts:
@@ -192,6 +201,13 @@ volumes:
     driver_opts:
       type: none
       device: /mnt/qnap/linux/data/letsencrypt_www
+      o: bind
+
+  matter_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/qnap/linux/data/matter_data
       o: bind
 
   media_data_docs:
@@ -772,6 +788,15 @@ services:
     volumes:
       - ./hivemq-mqtt-web-client/nginx.conf:/etc/nginx/nginx.conf:ro
 
+  homeassistant:
+    restart: always
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    network_mode: host
+    privileged: true
+    volumes:
+      - homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+
   homer:
     restart: always
     image: b4bz/homer:latest
@@ -890,6 +915,20 @@ services:
     hostname: internet-connected
     volumes:
       - ./internet-connected/app:/app
+
+  matterjs-server:
+    restart: always
+    image: ghcr.io/matter-js/matterjs-server:stable
+#    labels:
+#      - "com.centurylinklabs.watchtower.enable=true"
+    network_mode: host
+    ports:
+      - 5580:5580
+    volumes:
+      - matter_data:/data
+    environment:
+      - ENABLE_TEST_NET_DCL=true
+      - TZ=Europe/Berlin
 
   mediawiki:
     restart: always
