@@ -16,7 +16,9 @@ import sunspec       from './sunspec_map_inverter.js';
     // const result = await inverter.readRegisters(['Mn', 'Md', 'Vr', 'SN']);
     // const result = await inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCWH', '4_DCWH']);
     // const result = await inverter.readRegisters(['StVnd', 'VA']);
-    const result = await inverter.readRegisters(['ChaSt', 'ChaState', 'StorCtl_Mod', 'InOutWRte_RvrtTms', 'InWRte']);
+    // const result = await inverter.readRegisters(['ChaSt', 'ChaState', 'StorCtl_Mod', 'InOutWRte_RvrtTms', 'InWRte']);
+    // const result = await inverter.readRegisters(['ChaSt', 'ChaState', 'WChaMax']);
+    const result = await inverter.readRegisters(['WHRtg']);
 
     logger.info(result);
   } finally {
