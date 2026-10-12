@@ -211,10 +211,10 @@ const wattToRate = function(watt) {
 
 const getBatteryChargePct = function() {
   if(!capacityWh) {
-    return {chargePct: 0, note: 'Missing capacityWh'};
+    return {chargePct: null, note: 'Missing capacityWh'};
   }
   if(_.isEmpty(solcastAnalysis)) {
-    return {chargePct: 0, note: 'Missing solcastAnalysis'};
+    return {chargePct: null, note: 'Missing solcastAnalysis'};
   }
 
   const maxDcPower        = _.max(dcPowers.dump());
@@ -357,12 +357,22 @@ const getBatteryChargePct = function() {
 
 let handleRateErrorCount = 0;
 
+const dumpBatterySettings = async function(context) {
+  const values = await inverter.readRegisters(
+    ['ChaGriSet', 'ChaSt', 'InOutWRte_RvrtTms', 'InWRte', 'OutWRte', 'StorCtl_Mod']
+  );
+
+  logger.debug(`${context} batterySettings`, values);
+};
+
 const resetBattery = async function() {
+  // await dumpBatterySettings('resetBattery()');
+
   // Allow charge and discharge control
   try {
     await inverter.writeRegister('StorCtl_Mod', [0]);
   } catch(err) {
-    throw new Error(`Failed writing battery charge control: ${err.message}`);
+    throw new Error(`Failed writing battery charge control (StorCtl_Mod=0): ${err.message}`);
   }
 
   try {
@@ -378,26 +388,28 @@ const resetBattery = async function() {
     throw new Error(`Failed writing grid allow: ${err.message}`);
   }
 
+  try {
+    await inverter.writeRegister('InWRte', [0]);
+  } catch(err) {
+    throw new Error(`Failed writing InWRte: ${err.message}`);
+  }
+
+  try {
+    await inverter.writeRegister('OutWRte', [0]);
+  } catch(err) {
+    throw new Error(`Failed writing OutWRte: ${err.message}`);
+  }
+
   await updateStatus({batteryStatus: 'Default'});
 
   // logger.info('resetBattery');
 };
 
 const preventBatteryUnload = async function() {
+  // await dumpBatterySettings('preventBatteryUnload()');
+
   // Entladen verhindern (während Auto geladen wird):
   // OutWRte (discharge) auf 0 (null) setzen
-
-  // Prevent discharge
-  try {
-    await inverter.writeRegister('InWRte', [0]);
-  } catch(err) {
-    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
-  }
-  try {
-    await inverter.writeRegister('OutWRte', [0]);
-  } catch(err) {
-    throw new Error(`Failed writing battery discharge rate: ${err.message}`);
-  }
 
   // Allow charge and discharge control
   try {
@@ -405,7 +417,7 @@ const preventBatteryUnload = async function() {
     // Bit1 enable discharge control
     await inverter.writeRegister('StorCtl_Mod', [3]);
   } catch(err) {
-    throw new Error(`Failed writing battery charge control: ${err.message}`);
+    throw new Error(`Failed writing battery charge control (StorCtl_Mod=3): ${err.message}`);
   }
 
   try {
@@ -415,12 +427,28 @@ const preventBatteryUnload = async function() {
     throw new Error(`Failed writing battery charge rate timeout: ${err.message}`);
   }
 
+  // Prevent discharge
+  try {
+    await inverter.writeRegister('OutWRte', [0]);
+  } catch(err) {
+    await dumpBatterySettings('preventBatteryUnload() error');
+    throw new Error(`Failed writing battery discharge rate: ${err.message}`);
+  }
+  try {
+    await inverter.writeRegister('InWRte', [0]);
+  } catch(err) {
+    await dumpBatterySettings('preventBatteryUnload() error');
+    throw new Error(`Failed writing max battery charge rate (InWRte=0)): ${err.message}`);
+  }
+
   await updateStatus({batteryStatus: 'Halten'});
 
   // logger.info('preventBatteryUnload');
 };
 
 const setBatteryGridCharge = async function(chargePct = 100) {
+  // await dumpBatterySettings(`setBatteryGridCharge(${chargePct})`);
+
   // Akku zwangsladen (während niedriger Strompreise):
   // ==> Maximale Ladeleistung:
   //     InWRte (charge) auf 10000 (100.00 %) setzen
@@ -428,14 +456,6 @@ const setBatteryGridCharge = async function(chargePct = 100) {
   //     OutWRte (discharge) auf -10000 (-100.00 %) setzen
 
   logger.debug('setBatteryGridCharge', {chargePct});
-
-  // Max load rate
-  try {
-    // Allow 100% of max Charge rate. * 100 => Scaling Factor
-    await inverter.writeRegister('InWRte', [100 * 100]);
-  } catch(err) {
-    throw new Error(`Failed writing max battery charge rate (InWRte=${chargePct})): ${err.message}`);
-  }
 
   // Allow charge and discharge control
   try {
@@ -451,6 +471,14 @@ const setBatteryGridCharge = async function(chargePct = 100) {
     await inverter.writeRegister('InOutWRte_RvrtTms', [3900]);
   } catch(err) {
     throw new Error(`Failed writing battery charge rate timeout (InOutWRte_RvrtTms): ${err.message}`);
+  }
+
+  // Max load rate
+  try {
+    // Allow 100% of max Charge rate. * 100 => Scaling Factor
+    await inverter.writeRegister('InWRte', [100 * 100]);
+  } catch(err) {
+    throw new Error(`Failed writing max battery charge rate (InWRte=${chargePct})): ${err.message}`);
   }
 
   // Allow charging from grid
@@ -476,12 +504,14 @@ const setBatteryGridCharge = async function(chargePct = 100) {
 };
 
 const setBatteryPvCharge = async function(chargePct) {
+  // await dumpBatterySettings(`setBatteryPvCharge(${chargePct})`);
+
   // Allow charge control
   try {
     // Bit0 enable charge control
     await inverter.writeRegister('StorCtl_Mod', [1]);
   } catch(err) {
-    throw new Error(`Failed writing battery charge control: ${err.message}`);
+    throw new Error(`Failed writing battery charge control (StorCtl_Mod=3): ${err.message}`);
   }
 
   try {
@@ -734,9 +764,12 @@ try {
   // #########################################################################
   // Read battery basics
   try {
-    chargeStatePct  = _.round(await inverter.readRegister('ChaState'), 1);
-    capacityWh      = await inverter.readRegister('WHRtg');
-    chargeBaselineW = await inverter.readRegister('WChaMax');
+    capacityWh = await inverter.readRegister('WHRtg'); // read separately
+
+    const results = await inverter.readRegisters(['ChaState', 'WChaMax']);
+
+    chargeStatePct  = _.round(results.ChaState, 1);
+    chargeBaselineW = results.WChaMax;
   } catch(err) {
     logger.error(`Failed to read battery basics: ${err.message}`);
 
@@ -1550,7 +1583,7 @@ froniusInterval = setInterval(async() => {
     try {
       const results = await promiseAllByKeys({
         resultsSmartMeter: smartMeter.readRegisters(['W']),
-        resultsMppt:       inverter.readRegisters(['ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW',
+        resultsMppt:       inverter.readRegisters(['ChaSt', 'ChaState', '1_DCW', '2_DCW', '3_DCW', '4_DCW',
           '1_DCWH', '2_DCWH', '3_DCWH', '4_DCWH']),
         resultsInverter:   inverter.readRegisters(['W', 'TmpCab']),
       });
@@ -1576,6 +1609,7 @@ froniusInterval = setInterval(async() => {
           powerIncoming: resultsMppt['3_DCW'],
           powerOutgoing: resultsMppt['4_DCW'],
           stateOfCharge: resultsMppt.ChaState / 100,
+          chargeStatus:  resultsMppt.ChaSt,
           ...newStatus,
         },
         meter: {
@@ -1641,7 +1675,7 @@ setInterval(async() => {
 
   if(!capacityWh || !chargeBaselineW) {
     try {
-      capacityWh      = await inverter.readRegister('WHRtg');
+      capacityWh      = await inverter.readRegister('WHRtg'); // read separately
       chargeBaselineW = await inverter.readRegister('WChaMax');
 
       await sendMail({
