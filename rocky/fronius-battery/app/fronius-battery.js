@@ -577,7 +577,7 @@ const handleRate = async function(log = false) {
 
       dcPowers.enq(dcPower);
     } catch(err) {
-      if(err.message === 'Port Not Open') {
+      if(err.message === 'Port Not Open' || err.message.startsWith('connect EHOSTUNREACH')) {
         await inverter.close();
         inverter = undefined;
 
@@ -851,6 +851,7 @@ const handleBatteryGridChargingHandler = async function() {
         return;
       }
     } else {
+      logger.debug(`handleBatteryGridChargingHandler, valid forecast!`, {solcastAnalysis, sunTimes});
       retries = 0;
     }
   } while(retries);
@@ -1451,7 +1452,10 @@ mqttClient.on('message', async(topic, messageBuffer) => {
         break;
 
       case 'solcast/analysis':
-        solcastAnalysis = message;
+        solcastAnalysis = {
+          ...message,
+          received:   dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        };
         break;
 
       case 'strom/tele/preise':
@@ -1553,11 +1557,15 @@ froniusInterval = setInterval(async() => {
           logger.info('Reconnecting Modbus Inverter');
           inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspec: sunspecInverter});
           await inverter.open();
+
+          await inverter.readRegister('Vr');
         }
         if(!smartMeter) {
           logger.info('Reconnecting Modbus SmartMeter');
           smartMeter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 200, sunspec: sunspecSmartMeter});
           await smartMeter.open();
+
+          await smartMeter.readRegister('Vr');
         }
       } catch(err) {
         if(err.message.includes('ECONNREFUSED')) {

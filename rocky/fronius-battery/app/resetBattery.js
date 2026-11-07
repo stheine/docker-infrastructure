@@ -8,8 +8,8 @@ const inverter = new FroniusClient({ip: '192.168.6.11', port: 502, id: 1, sunspe
 try {
   await inverter.open();
 
-  const rate = -0.5; // 20%
-  let   setRate;
+//  const rate = -0.5; // 20%
+//  let   setRate;
 
   // Set charge rate
   try {
