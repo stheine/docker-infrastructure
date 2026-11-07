@@ -129,6 +129,8 @@ export const analyzeForecasts = function(forecasts) {
     tomorrowPvWh,
     totalPvHours,
     totalPvWh,
+    refreshed:       forecasts.refreshed,
+    analyzed:        dayjs().format('YYYY-MM-DD HH:mm:ss'),
   };
 };
 
@@ -177,14 +179,17 @@ export const getSolcastForecasts = async function(config) {
     check.assert.equal(response.status, 200, `Unexpected response ${response.status} ${response.statusText}`);
     check.assert.equal(response.statusText, 'OK', `Unexpected response ${response.status} ${response.statusText}`);
 
-    newSolcast = response.data;
+    newSolcast = {
+      ...response.data,
+      refreshed:        dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    };
 
     check.assert.object(newSolcast);
     check.assert.array(newSolcast.forecasts);
 
     await fsExtra.writeJson('/var/solcast/solcast-cache.json', newSolcast, {spaces: 2});
 
-    logger.trace('Refreshed solcast cache');
+    logger.trace(`Refreshed solcast cache totalPvWh=${newSolcast.totalPvWh}`);
 
     return newSolcast.forecasts;
   } catch(err) {
